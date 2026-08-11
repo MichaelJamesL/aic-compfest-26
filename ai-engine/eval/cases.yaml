@@ -1,0 +1,179 @@
+# Labelled evaluation scenarios for MaintenanceEngine.
+# Each case encodes a full AnalysisRequest plus the expected outcome. The eval
+# script builds the request, runs the engine, and scores against `expected`.
+# root_cause / blockers are keyword lists — a case scores a hit when any
+# keyword appears (case-insensitive) in the relevant output field.
+
+- id: clean_asset
+  tier: standard
+  asset: {id: pump-1, name: Main Pump, type: pump, criticality: medium}
+  readings:
+    - {tag: bearing_temp_c, value: 49.0, unit: c, recorded_at: "2026-08-01T00:00:00Z"}
+    - {tag: bearing_temp_c, value: 50.0, unit: c, recorded_at: "2026-08-02T00:00:00Z"}
+    - {tag: bearing_temp_c, value: 51.0, unit: c, recorded_at: "2026-08-03T00:00:00Z"}
+    - {tag: bearing_temp_c, value: 50.0, unit: c, recorded_at: "2026-08-04T00:00:00Z"}
+    - {tag: bearing_temp_c, value: 49.0, unit: c, recorded_at: "2026-08-05T00:00:00Z"}
+    - {tag: bearing_temp_c, value: 50.0, unit: c, recorded_at: "2026-08-06T00:00:00Z"}
+    - {tag: bearing_temp_c, value: 51.0, unit: c, recorded_at: "2026-08-07T00:00:00Z"}
+    - {tag: bearing_temp_c, value: 50.0, unit: c, recorded_at: "2026-08-08T00:00:00Z"}
+    - {tag: bearing_temp_c, value: 49.0, unit: c, recorded_at: "2026-08-09T00:00:00Z"}
+    - {tag: bearing_temp_c, value: 50.0, unit: c, recorded_at: "2026-08-10T00:00:00Z"}
+  manual_condition: null
+  history: []
+  business: {production_schedule: null, spareparts: [], sparepart_eta: null, technicians_available: null, operator_report: null}
+  expected: {priority: low, root_cause: [normal, healthy, none], references_window: false, blockers: []}
+
+- id: slow_drift
+  tier: standard
+  asset: {id: pump-2, name: Circulator, type: pump, criticality: medium}
+  readings:
+    - {tag: bearing_temp_c, value: 50.0, unit: c, recorded_at: "2026-08-01T00:00:00Z"}
+    - {tag: bearing_temp_c, value: 52.0, unit: c, recorded_at: "2026-08-02T00:00:00Z"}
+    - {tag: bearing_temp_c, value: 54.0, unit: c, recorded_at: "2026-08-03T00:00:00Z"}
+    - {tag: bearing_temp_c, value: 56.0, unit: c, recorded_at: "2026-08-04T00:00:00Z"}
+    - {tag: bearing_temp_c, value: 58.0, unit: c, recorded_at: "2026-08-05T00:00:00Z"}
+    - {tag: bearing_temp_c, value: 60.0, unit: c, recorded_at: "2026-08-06T00:00:00Z"}
+    - {tag: bearing_temp_c, value: 62.0, unit: c, recorded_at: "2026-08-07T00:00:00Z"}
+    - {tag: bearing_temp_c, value: 64.0, unit: c, recorded_at: "2026-08-08T00:00:00Z"}
+    - {tag: bearing_temp_c, value: 66.0, unit: c, recorded_at: "2026-08-09T00:00:00Z"}
+    - {tag: bearing_temp_c, value: 68.0, unit: c, recorded_at: "2026-08-10T00:00:00Z"}
+  manual_condition: null
+  history: []
+  business: {production_schedule: "Line B idle next week", spareparts: [], sparepart_eta: null, technicians_available: 1, operator_report: null}
+  expected: {priority: medium, root_cause: [drift, wear, temperature, degradation], references_window: true, blockers: []}
+
+- id: critical_spike
+  tier: standard
+  asset: {id: fan-1, name: Cooling Fan, type: fan, criticality: critical}
+  readings:
+    - {tag: motor_vibration_g, value: 2.0, unit: g, recorded_at: "2026-08-01T00:00:00Z"}
+    - {tag: motor_vibration_g, value: 2.1, unit: g, recorded_at: "2026-08-02T00:00:00Z"}
+    - {tag: motor_vibration_g, value: 2.0, unit: g, recorded_at: "2026-08-03T00:00:00Z"}
+    - {tag: motor_vibration_g, value: 2.2, unit: g, recorded_at: "2026-08-04T00:00:00Z"}
+    - {tag: motor_vibration_g, value: 2.0, unit: g, recorded_at: "2026-08-05T00:00:00Z"}
+    - {tag: motor_vibration_g, value: 2.1, unit: g, recorded_at: "2026-08-06T00:00:00Z"}
+    - {tag: motor_vibration_g, value: 2.0, unit: g, recorded_at: "2026-08-07T00:00:00Z"}
+    - {tag: motor_vibration_g, value: 2.2, unit: g, recorded_at: "2026-08-08T00:00:00Z"}
+    - {tag: motor_vibration_g, value: 2.0, unit: g, recorded_at: "2026-08-09T00:00:00Z"}
+    - {tag: motor_vibration_g, value: 80.0, unit: g, recorded_at: "2026-08-10T00:00:00Z"}
+  manual_condition: "loud knocking, extreme vibration"
+  history: []
+  business: {production_schedule: "critical line running", spareparts: ["motor bearing"], sparepart_eta: null, technicians_available: 2, operator_report: "fan shaking violently"}
+  expected: {priority: critical, root_cause: [bearing, vibration, imbalance, failure], references_window: false, blockers: []}
+
+- id: overdue_maintenance
+  tier: standard
+  asset: {id: compressor-1, name: Air Compressor, type: compressor, criticality: medium, specs: {maintenance_interval_days: 30}}
+  readings: []
+  manual_condition: "run hours exceeded service interval"
+  history:
+    - {asset_id: compressor-1, performed_at: "2025-01-15T00:00:00Z", action: oil change, findings: "scheduled service", parts_used: []}
+  business: {production_schedule: null, spareparts: [], sparepart_eta: null, technicians_available: 1, operator_report: null}
+  expected: {priority: medium, root_cause: [overdue, service, interval, maintenance], references_window: true, blockers: []}
+
+- id: sparepart_eta_blocker
+  tier: professional
+  asset: {id: pump-3, name: Transfer Pump, type: pump, criticality: high}
+  readings:
+    - {tag: bearing_temp_c, value: 55.0, unit: c, recorded_at: "2026-08-01T00:00:00Z"}
+    - {tag: bearing_temp_c, value: 56.0, unit: c, recorded_at: "2026-08-02T00:00:00Z"}
+    - {tag: bearing_temp_c, value: 57.0, unit: c, recorded_at: "2026-08-03T00:00:00Z"}
+    - {tag: bearing_temp_c, value: 58.0, unit: c, recorded_at: "2026-08-04T00:00:00Z"}
+    - {tag: bearing_temp_c, value: 59.0, unit: c, recorded_at: "2026-08-05T00:00:00Z"}
+    - {tag: bearing_temp_c, value: 60.0, unit: c, recorded_at: "2026-08-06T00:00:00Z"}
+    - {tag: bearing_temp_c, value: 61.0, unit: c, recorded_at: "2026-08-07T00:00:00Z"}
+    - {tag: bearing_temp_c, value: 62.0, unit: c, recorded_at: "2026-08-08T00:00:00Z"}
+    - {tag: bearing_temp_c, value: 63.0, unit: c, recorded_at: "2026-08-09T00:00:00Z"}
+    - {tag: bearing_temp_c, value: 64.0, unit: c, recorded_at: "2026-08-10T00:00:00Z"}
+  manual_condition: "bearing wear"
+  history: []
+  business: {production_schedule: "batch needed daily", spareparts: ["SKF-6204"], sparepart_eta: "bearing SKF-6204 ETA 5 days", technicians_available: 2, operator_report: null}
+  expected: {priority: high, root_cause: [bearing, temperature, wear], references_window: true, blockers: [SKF-6204, ETA, 5 days]}
+
+- id: production_schedule_window
+  tier: professional
+  asset: {id: motor-1, name: Mill Motor, type: motor, criticality: high}
+  readings:
+    - {tag: winding_temp_c, value: 70.0, unit: c, recorded_at: "2026-08-01T00:00:00Z"}
+    - {tag: winding_temp_c, value: 71.0, unit: c, recorded_at: "2026-08-02T00:00:00Z"}
+    - {tag: winding_temp_c, value: 72.0, unit: c, recorded_at: "2026-08-03T00:00:00Z"}
+    - {tag: winding_temp_c, value: 71.0, unit: c, recorded_at: "2026-08-04T00:00:00Z"}
+    - {tag: winding_temp_c, value: 73.0, unit: c, recorded_at: "2026-08-05T00:00:00Z"}
+    - {tag: winding_temp_c, value: 72.0, unit: c, recorded_at: "2026-08-06T00:00:00Z"}
+    - {tag: winding_temp_c, value: 74.0, unit: c, recorded_at: "2026-08-07T00:00:00Z"}
+    - {tag: winding_temp_c, value: 75.0, unit: c, recorded_at: "2026-08-08T00:00:00Z"}
+    - {tag: winding_temp_c, value: 76.0, unit: c, recorded_at: "2026-08-09T00:00:00Z"}
+    - {tag: winding_temp_c, value: 78.0, unit: c, recorded_at: "2026-08-10T00:00:00Z"}
+  manual_condition: null
+  history: []
+  business: {production_schedule: "Line A busy until Saturday", spareparts: ["motor seal"], sparepart_eta: null, technicians_available: 2, operator_report: "overheating under load"}
+  expected: {priority: high, root_cause: [temperature, winding, overheating], references_window: true, blockers: []}
+
+- id: repeat_failure
+  tier: standard
+  asset: {id: pump-4, name: Dosing Pump, type: pump, criticality: medium}
+  readings:
+    - {tag: bearing_temp_c, value: 45.0, unit: c, recorded_at: "2026-08-01T00:00:00Z"}
+    - {tag: bearing_temp_c, value: 46.0, unit: c, recorded_at: "2026-08-02T00:00:00Z"}
+    - {tag: bearing_temp_c, value: 45.0, unit: c, recorded_at: "2026-08-03T00:00:00Z"}
+    - {tag: bearing_temp_c, value: 47.0, unit: c, recorded_at: "2026-08-04T00:00:00Z"}
+    - {tag: bearing_temp_c, value: 48.0, unit: c, recorded_at: "2026-08-05T00:00:00Z"}
+    - {tag: bearing_temp_c, value: 52.0, unit: c, recorded_at: "2026-08-06T00:00:00Z"}
+    - {tag: bearing_temp_c, value: 55.0, unit: c, recorded_at: "2026-08-07T00:00:00Z"}
+    - {tag: bearing_temp_c, value: 58.0, unit: c, recorded_at: "2026-08-08T00:00:00Z"}
+    - {tag: bearing_temp_c, value: 60.0, unit: c, recorded_at: "2026-08-09T00:00:00Z"}
+    - {tag: bearing_temp_c, value: 63.0, unit: c, recorded_at: "2026-08-10T00:00:00Z"}
+  manual_condition: null
+  history:
+    - {asset_id: pump-4, performed_at: "2026-07-20T00:00:00Z", action: "bearing replacement", findings: "bearing failure", parts_used: [SKF-6204]}
+    - {asset_id: pump-4, performed_at: "2026-07-25T00:00:00Z", action: "bearing replacement", findings: "bearing failure", parts_used: [SKF-6204]}
+  business: {production_schedule: null, spareparts: [], sparepart_eta: null, technicians_available: 1, operator_report: "failed twice this month"}
+  expected: {priority: high, root_cause: [repeat, recurring, bearing, recurring failure], references_window: true, blockers: []}
+
+- id: operator_report_cause
+  tier: standard
+  asset: {id: gearbox-1, name: Main Gearbox, type: gearbox, criticality: high}
+  readings:
+    - {tag: oil_pressure_bar, value: 3.0, unit: bar, recorded_at: "2026-08-01T00:00:00Z"}
+    - {tag: oil_pressure_bar, value: 3.1, unit: bar, recorded_at: "2026-08-02T00:00:00Z"}
+    - {tag: oil_pressure_bar, value: 3.0, unit: bar, recorded_at: "2026-08-03T00:00:00Z"}
+    - {tag: oil_pressure_bar, value: 2.9, unit: bar, recorded_at: "2026-08-04T00:00:00Z"}
+    - {tag: oil_pressure_bar, value: 3.0, unit: bar, recorded_at: "2026-08-05T00:00:00Z"}
+    - {tag: oil_pressure_bar, value: 2.8, unit: bar, recorded_at: "2026-08-06T00:00:00Z"}
+    - {tag: oil_pressure_bar, value: 2.7, unit: bar, recorded_at: "2026-08-07T00:00:00Z"}
+    - {tag: oil_pressure_bar, value: 2.6, unit: bar, recorded_at: "2026-08-08T00:00:00Z"}
+    - {tag: oil_pressure_bar, value: 2.5, unit: bar, recorded_at: "2026-08-09T00:00:00Z"}
+    - {tag: oil_pressure_bar, value: 2.4, unit: bar, recorded_at: "2026-08-10T00:00:00Z"}
+  manual_condition: null
+  history: []
+  business: {production_schedule: null, spareparts: ["oil filter"], sparepart_eta: null, technicians_available: 1, operator_report: "clogged oil filter seen during inspection"}
+  expected: {priority: medium, root_cause: [oil filter, filter, clogged, oil], references_window: true, blockers: []}
+
+- id: starter_text_only
+  tier: starter
+  asset: {id: lathe-1, name: Workbench Lathe, type: lathe, criticality: low}
+  readings: []
+  manual_condition: "cutter is dull, finishing poor"
+  history: []
+  business: {production_schedule: null, spareparts: [], sparepart_eta: null, technicians_available: null, operator_report: null}
+  expected: {priority: medium, root_cause: [cutter, dull, tool, wear], references_window: false, blockers: []}
+
+- id: professional_full_context
+  tier: professional
+  asset: {id: cnc-1, name: CNC Mill, type: cnc-mill, criticality: critical}
+  readings:
+    - {tag: spindle_vibration_g, value: 1.5, unit: g, recorded_at: "2026-08-01T00:00:00Z"}
+    - {tag: spindle_vibration_g, value: 1.6, unit: g, recorded_at: "2026-08-02T00:00:00Z"}
+    - {tag: spindle_vibration_g, value: 1.5, unit: g, recorded_at: "2026-08-03T00:00:00Z"}
+    - {tag: spindle_vibration_g, value: 1.7, unit: g, recorded_at: "2026-08-04T00:00:00Z"}
+    - {tag: spindle_vibration_g, value: 1.6, unit: g, recorded_at: "2026-08-05T00:00:00Z"}
+    - {tag: spindle_vibration_g, value: 1.8, unit: g, recorded_at: "2026-08-06T00:00:00Z"}
+    - {tag: spindle_vibration_g, value: 1.9, unit: g, recorded_at: "2026-08-07T00:00:00Z"}
+    - {tag: spindle_vibration_g, value: 2.0, unit: g, recorded_at: "2026-08-08T00:00:00Z"}
+    - {tag: spindle_vibration_g, value: 2.1, unit: g, recorded_at: "2026-08-09T00:00:00Z"}
+    - {tag: spindle_vibration_g, value: 2.3, unit: g, recorded_at: "2026-08-10T00:00:00Z"}
+  manual_condition: "spindle bearing rumbling"
+  history:
+    - {asset_id: cnc-1, performed_at: "2026-06-01T00:00:00Z", action: "spindle inspection", findings: "minor bearing play", parts_used: []}
+  business: {production_schedule: "critical batch due Friday, line full until then", spareparts: ["spindle bearing"], sparepart_eta: "spindle bearing ETA 3 days", technicians_available: 1, operator_report: "spindle rumbles and precision drifting on titanium parts"}
+  expected: {priority: critical, root_cause: [spindle, bearing, vibration, rumbling], references_window: true, blockers: [spindle bearing, ETA, 3 days]}

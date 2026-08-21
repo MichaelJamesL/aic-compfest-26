@@ -18,8 +18,9 @@ spare-parts availability and ETA, and the number of technicians available.
 
 Rules:
 - The health_score and anomalies are PRECOMPUTED by deterministic signal
-  processing. Do NOT invent, recompute, or second-guess them. Copy them into
-  your output verbatim.
+  processing. Defects (visual inspection) are likewise precomputed by
+  PatchCore visual anomaly detection. Do NOT invent, recompute, or
+  second-guess any of them. Copy them into your output verbatim.
 - Every claim you make must be traceable. When you draw on a document, cite it
   by title in square brackets, e.g. [bearing replacement SOP]. The `sources`
   field must list every cited title.
@@ -28,11 +29,13 @@ Rules:
   object matching that schema. No markdown, no prose, no code fences.
 
 The schema is: health_score (int), health_summary (str), anomalies (list of
-{tag, observed, expected_range [lo, hi], severity, method}), root_causes (list
-of {cause, confidence, evidence}), recommendation (str), priority, [
-"low"|"medium"|"high"|"critical"], recommended_window (str|null), explanation
-(str), blockers (list of str), work_order (object|null: {title, steps, parts,
-est_duration_h, required_skills, safety_notes}), sources (list of str).
+{tag, observed, expected_range [lo, hi], severity, method}), defects (list of
+{image, subject, score, threshold, label, severity, region [x,y,w,h],
+heatmap_path, method}), root_causes (list of {cause, confidence, evidence}),
+recommendation (str), priority [ "low"|"medium"|"high"|"critical"],
+recommended_window (str|null), explanation (str), blockers (list of str),
+work_order (object|null: {title, steps, parts, est_duration_h, required_skills,
+safety_notes}), sources (list of str).
 
 Worked example:
 {
@@ -42,6 +45,7 @@ Worked example:
     {"tag": "bearing_temp_c", "observed": 92.4,
      "expected_range": [58.1, 81.2], "severity": "high", "method": "iqr"}
   ],
+  "defects": [],
   "root_causes": [
     {"cause": "Bearing lubrication failure",
      "confidence": 0.7,
@@ -91,6 +95,8 @@ def _business_block(bundle: ContextBundle) -> str:
 
 
 def _context_str(bundle: ContextBundle) -> str:
+    defects_block = _defects_block(bundle)
+
     return (
         "=== ASSET FACTS ===\n"
         f"{bundle.assets_facts}\n\n"
@@ -99,6 +105,8 @@ def _context_str(bundle: ContextBundle) -> str:
         "anomalies: "
         + (str([a.model_dump() for a in bundle.anomalies]) if bundle.anomalies else "none")
         + "\n\n"
+        + defects_block
+        + "\n"
         "=== REFERENCE DOCUMENTS (cite by title) ===\n"
         f"{_corpus_block(bundle)}\n\n"
         "=== RECENT MAINTENANCE HISTORY ===\n"
@@ -110,6 +118,21 @@ def _context_str(bundle: ContextBundle) -> str:
         "=== MANUAL CONDITION ==="
         f"\n{bundle.manual_condition or 'none'}"
     )
+
+
+def _defects_block(bundle: ContextBundle) -> str:
+    if not bundle.defects:
+        return "=== VISUAL INSPECTION ===\n(no images inspected)\n\n"
+    lines = ["=== VISUAL INSPECTION ==="]
+    defect_rate = bundle.defect_rate
+    lines.append(f"defect_rate: {defect_rate:.0%} ({sum(1 for d in bundle.defects if d.label == 'defect')} of {len(bundle.defects)})")
+    for d in bundle.defects:
+        region_str = f" region=({d.region[0]},{d.region[1]},{d.region[2]},{d.region[3]})" if d.region else ""
+        lines.append(
+            f"- {d.image}: score={d.score:.3f}, threshold={d.threshold:.3f}, "
+            f"label={d.label}, severity={d.severity}{region_str}"
+        )
+    return "\n".join(lines) + "\n\n"
 
 
 def build_user_turn(bundle: ContextBundle, tier) -> str:

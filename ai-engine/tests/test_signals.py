@@ -1,6 +1,6 @@
 import datetime
 
-from src.schemas import Anomaly, Asset, MaintenanceRecord, SensorReading
+from src.schemas import Anomaly, Asset, DefectFinding, MaintenanceRecord, SensorReading
 from src.signals import detect_anomalies, health_score
 
 
@@ -53,3 +53,14 @@ def test_overdue_maintenance_deducts():
     score, summary = health_score(asset, [], [old], now=now)
     assert score < 100
     assert "overdue" in summary.lower()
+
+
+def test_health_score_falls_as_defect_severity_rises():
+    asset = Asset(id="a1", name="Pump", type="pump")
+    now = datetime.datetime(2026, 8, 10, tzinfo=datetime.timezone.utc)
+    low = DefectFinding(image="t.png", score=0.6, threshold=0.5, label="defect", severity="low")
+    high = DefectFinding(image="t.png", score=0.95, threshold=0.5, label="defect", severity="high")
+    clean_score, _ = health_score(asset, [], [], now=now)
+    low_score, _ = health_score(asset, [], [], [low], now=now)
+    high_score, _ = health_score(asset, [], [], [high], now=now)
+    assert clean_score > low_score > high_score

@@ -58,6 +58,7 @@ def _build_request(case: dict) -> AnalysisRequest:
             for h in case.get("history", [])
         ],
         business=BusinessContext(**case.get("business", {})),
+        images=case.get("images", []),
     )
 
 

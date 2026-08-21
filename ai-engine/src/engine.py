@@ -58,7 +58,6 @@ class MaintenanceEngine:
             retries=1,
             model_settings=_MODEL_SETTINGS,
         )
-
         # Last run's usage, so callers (e.g. the demo) can read cache metrics.
         self.last_usage: Any | None = None
 
@@ -72,6 +71,7 @@ class MaintenanceEngine:
         # The model never gets to set the defensible numbers or the audit trail.
         result.health_score = bundle.health_score
         result.anomalies = bundle.anomalies
+        result.defects = bundle.defects
         result.sources = bundle.source_names
         result.tier = request.tier
         result.model = config.MODEL

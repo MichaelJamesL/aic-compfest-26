@@ -1,13 +1,11 @@
-"""Runnable end-to-end demo: one fixture machine through the real API.
-
-Run with `python -m src.demo` (requires DEEPSEEK_API_KEY and a Postgres
-instance with the knowledge schema).
-"""
 from __future__ import annotations
 
 import json
 import os
+import tempfile
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
+from random import gauss, randint
 
 from src import (
     AnalysisRequest,
@@ -19,7 +17,41 @@ from src import (
     SensorReading,
     Tier,
 )
-from src import knowledge
+from src import knowledge, vision
+
+
+def _generate_plates(tmp: Path, count: int = 8) -> Path:
+    from PIL import Image, ImageDraw
+
+    normal_dir = tmp / "normal"
+    normal_dir.mkdir()
+    for i in range(count):
+        img = Image.new("L", (224, 224), 200)
+        draw = ImageDraw.Draw(img)
+        noise = [gauss(0, 10) for _ in range(20)]
+        for _ in range(20):
+            x, y = randint(0, 223), randint(0, 223)
+            r = randint(1, 4)
+            gray = max(0, min(255, int(200 + gauss(0, 10))))
+            draw.ellipse([x - r, y - r, x + r, y + r], fill=gray)
+        img.save(str(normal_dir / f"plate_{i}.png"))
+    return normal_dir
+
+
+def _generate_defective(tmp: Path) -> str:
+    from PIL import Image, ImageDraw
+
+    img = Image.new("L", (224, 224), 200)
+    draw = ImageDraw.Draw(img)
+    for _ in range(20):
+        x, y = randint(0, 223), randint(0, 223)
+        r = randint(1, 4)
+        gray = max(0, min(255, int(200 + gauss(0, 10))))
+        draw.ellipse([x - r, y - r, x + r, y + r], fill=gray)
+    draw.line([(20, 20), (200, 200)], fill=0, width=3)
+    path = str(tmp / "defective.png")
+    img.save(path)
+    return path
 
 
 def fixture_request() -> AnalysisRequest:
@@ -34,7 +66,6 @@ def fixture_request() -> AnalysisRequest:
         specs={"max_temp_c": 85, "maintenance_interval_days": 90},
     )
 
-    # Bearing temperature drifting up from ~60C to ~90C over 30 hourly readings.
     readings = [
         SensorReading(
             tag="bearing_temp_c",
@@ -78,6 +109,7 @@ def fixture_request() -> AnalysisRequest:
         asset=asset,
         readings=readings,
         history=history,
+        images=[],
         business=business,
     )
 
@@ -87,8 +119,20 @@ def main() -> None:
         print("DEEPSEEK_API_KEY is not set; cannot run the demo.")
         return
 
-    engine = MaintenanceEngine()
-    result = engine.analyze(fixture_request())
+    with tempfile.TemporaryDirectory() as tmp_str:
+        tmp = Path(tmp_str)
+        normal_dir = _generate_plates(tmp)
+        defective_path = _generate_defective(tmp)
+
+        print("Fitting PatchCore on nominal plates...")
+        vision.fit("pump-01", normal_dir)
+        print("  done.")
+
+        request = fixture_request()
+        request.images = [defective_path]
+
+        engine = MaintenanceEngine()
+        result = engine.analyze(request)
 
     print(json.dumps(result.model_dump(), indent=2, default=str))
 

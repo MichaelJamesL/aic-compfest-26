@@ -31,13 +31,13 @@ The monorepo is split across three roles:
                 ┌─────────────────────────────────────────────┐
                 │                     ai-engine/               │
                 │  MaintenanceEngine (the only surface)        │
-                │  signals → context → pydantic_ai agent       │
+                │  signals + vision → context → pydantic_ai    │
                 └───┬──────────────────────┬──────────────────┘
                     │                      │
         ┌───────────▼──────────┐  ┌────────▼──────────┐
         │      knowledge.py    │  │      DeepSeek      │
         │  pgvector RAG        │  │  pydantic_ai Agent │
-        │  fastembed e5-multi   │  │  structured output │
+        │  fastembed e5-multi  │  │  structured output │
         └──────────────────────┘  └────────────────────┘
 ```
 
@@ -50,8 +50,9 @@ The monorepo is split across three roles:
 - **Knowledge base** is **Postgres/pgvector**. Embeddings come from local
   `fastembed` (`intfloat/multilingual-e5-large` — Indonesian + English, CPU, no key, offline).
 - **Signals are deterministic, not the LLM's.** Anomaly detection (rolling
-  median + IQR) and health scoring (weighted deductions) are pure rules in
-  `signals.py`. The model *explains* the score; it can never invent it.
+  median + IQR), visual defect detection (PatchCore via anomalib), and health
+  scoring (weighted deductions) are pure rules in `signals.py` and `vision.py`.
+  The model *explains* the score; it can never invent it.
   `tier`, `model`, and `sources` are also set by the engine, so the audit trail
   can't be hallucinated.
 
@@ -102,6 +103,9 @@ below). Common patterns:
   `Agent`.
 - **Signals/scoring** → deterministic rules in `signals.py`; keep the LLM out
   of the numbers. Weights live in one `HEALTH_WEIGHTS` dict.
+- **Visual defect detection** → `vision.py` using **anomalib** (`anomalib.models.Patchcore`).
+  Fit once per asset on nominal images; infer on request. Contained behind
+  `[vision]` extra — base install is unchanged.
 - **Retrieval** → `knowledge.py` (pgvector) + `context.py` (token-budgeted
   `select_context`). Keep the prompt prefix stable for DeepSeek's context cache.
 - **Tests** → pytest. Use pydantic_ai's `TestModel`/`FunctionModel` for

@@ -10,7 +10,7 @@ from datetime import datetime, timedelta, timezone
 import numpy as np
 
 from . import config
-from .schemas import Anomaly, Asset, MaintenanceRecord, SensorReading
+from .schemas import Anomaly, Asset, DefectFinding, MaintenanceRecord, SensorReading
 
 # Whether a tag has enough points to be scored at all.
 MIN_POINTS = config.MIN_POINTS_PER_TAG
@@ -29,6 +29,7 @@ _SEVERITY_BY_MULT = [
 # Deductions from 100, keyed by severity. Tunable without touching logic.
 HEALTH_WEIGHTS = {
     "anomaly": {"low": 5, "medium": 10, "high": 20, "critical": 30},
+    "defect": {"low": 5, "medium": 10, "high": 20, "critical": 30},
     "overdue": 10,       # days since last maintenance (per interval, capped)
     "repeat": 5,         # per repeat failure in the window
 }
@@ -107,12 +108,14 @@ def health_score(
     asset: Asset,
     anomalies: list[Anomaly],
     history: list[MaintenanceRecord],
+    defects: list[DefectFinding] | None = None,
     now: datetime | None = None,
 ) -> tuple[int, str]:
     """Weighted deduction from 100. Returns (score, summary).
 
-    Deductions: anomaly severity, overdue maintenance vs the asset's interval,
-    and repeat failures on the same tag within REPEAT_WINDOW_DAYS.
+    Deductions: anomaly severity, defect severity, overdue maintenance vs
+    the asset's interval, and repeat failures on the same tag within
+    REPEAT_WINDOW_DAYS.
     """
     now = now or datetime.now(timezone.utc)
     score = 100.0
@@ -121,6 +124,11 @@ def health_score(
     for a in anomalies:
         score -= HEALTH_WEIGHTS["anomaly"][a.severity]
         reasons.append(f"{a.tag} anomaly ({a.severity})")
+
+    for d in (defects or []):
+        if d.label == "defect":
+            score -= HEALTH_WEIGHTS["defect"][d.severity]
+            reasons.append(f"{d.image} defect ({d.severity})")
 
     interval = DEFAULT_MAINT_INTERVAL_DAYS
     if asset.specs.get("maintenance_interval_days"):

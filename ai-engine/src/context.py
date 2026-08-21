@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import tiktoken
 
-from . import config, knowledge
+from . import config, knowledge, vision
 from .schemas import AnalysisRequest, ContextBundle, ContextDoc
 from .signals import detect_anomalies, health_score
 
@@ -28,16 +28,22 @@ def _retrieval_query(request: AnalysisRequest) -> str:
     parts = [request.asset.name, request.asset.type]
     if request.business.operator_report:
         parts.append(request.business.operator_report)
+    if request.images:
+        parts.append("visual inspection defect detection")
     return " ".join(p for p in parts if p).strip()
 
 
-def _assets_facts(request: AnalysisRequest, anomalies: list, health: int, summary: str) -> str:
+def _assets_facts(request: AnalysisRequest, anomalies: list, health: int, summary: str, defects: list | None = None) -> str:
     specs = ", ".join(f"{k}={v}" for k, v in request.asset.specs.items()) or "none"
-    return (
+    base = (
         f"{request.asset.name} ({request.asset.type}), criticality={request.asset.criticality}, "
         f"specs: {specs}, anomalies: {len(anomalies)}, health_score={health}. "
         f"Health summary: {summary}"
     )
+    if defects:
+        defect_count = sum(1 for d in defects if d.label == "defect")
+        base += f" Defects: {defect_count} of {len(defects)} images flagged."
+    return base
 
 
 def _pack_corpus(docs: list[ContextDoc], budget_tokens: int) -> list[ContextDoc]:
@@ -61,7 +67,8 @@ def select_context(
     budget = budget_tokens if budget_tokens is not None else config.CONTEXT_BUDGET_TOKENS
 
     anomalies = detect_anomalies(request.readings)
-    health, summary = health_score(request.asset, anomalies, request.history)
+    defects = vision.inspect(request.asset.id, request.images) if request.images else []
+    health, summary = health_score(request.asset, anomalies, request.history, defects)
 
     query = _retrieval_query(request)
     corpus = knowledge.search(query, request.asset.id, k=RETRIEVAL_K)
@@ -71,8 +78,9 @@ def select_context(
     ]
 
     return ContextBundle(
-        assets_facts=_assets_facts(request, anomalies, health, summary),
+        assets_facts=_assets_facts(request, anomalies, health, summary, defects),
         anomalies=anomalies,
+        defects=defects,
         health_score=health,
         corpus=_pack_corpus(corpus, budget),
         history=history,

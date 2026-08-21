@@ -59,10 +59,23 @@ class BusinessContext(BaseModel):
     operator_report: str | None = None
 
 
+class DefectFinding(BaseModel):
+    image: str
+    subject: Literal["asset", "product"] = "asset"
+    score: float
+    threshold: float
+    label: Literal["ok", "defect"]
+    severity: Literal["low", "medium", "high", "critical"] = "low"
+    region: tuple[int, int, int, int] | None = None
+    heatmap_path: str | None = None
+    method: str = "patchcore"
+
+
 class AnalysisRequest(BaseModel):
     tier: Tier
     asset: Asset
     readings: list[SensorReading] = Field(default_factory=list)
+    images: list[str] = Field(default_factory=list)
     manual_condition: str | None = None
     history: list[MaintenanceRecord] = Field(default_factory=list)
     business: BusinessContext = Field(default_factory=BusinessContext)
@@ -97,6 +110,7 @@ class AnalysisResult(BaseModel):
     health_score: int  # 0-100, from signals.py, not the LLM
     health_summary: str
     anomalies: list[Anomaly]
+    defects: list[DefectFinding] = Field(default_factory=list)
     root_causes: list[RootCause]
     recommendation: str
     priority: Literal["low", "medium", "high", "critical"]
@@ -122,11 +136,20 @@ class ContextDoc(BaseModel):
 class ContextBundle(BaseModel):
     assets_facts: str
     anomalies: list[Anomaly]
+    defects: list[DefectFinding] = Field(default_factory=list)
     health_score: int
     corpus: list[ContextDoc]
     history: list[MaintenanceRecord]
     business: BusinessContext
     manual_condition: str | None = None
+
+    @property
+    def defect_rate(self) -> float:
+        total = len(self.defects)
+        if not total:
+            return 0.0
+        defective = sum(1 for d in self.defects if d.label == "defect")
+        return defective / total
 
     @property
     def source_names(self) -> list[str]:

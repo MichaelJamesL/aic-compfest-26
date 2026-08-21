@@ -4,6 +4,7 @@ The single import surface: `from src import MaintenanceEngine`.
 """
 from __future__ import annotations
 
+from . import knowledge
 from .engine import MaintenanceEngine
 from .schemas import (
     AnalysisRequest,
@@ -11,6 +12,7 @@ from .schemas import (
     Anomaly,
     Asset,
     BusinessContext,
+    DefectFinding,
     Document,
     MaintenanceRecord,
     RootCause,
@@ -32,6 +34,7 @@ __all__ = [
     "Document",
     "BusinessContext",
     "Anomaly",
+    "DefectFinding",
     "RootCause",
     "WorkOrder",
 ]

@@ -39,3 +39,10 @@ CLIENT_TIMEOUT_S: float = float(os.getenv("AIENGINE_TIMEOUT", "120"))
 
 # How many filled-in readings are required before a tag is scored.
 MIN_POINTS_PER_TAG: int = 8
+
+# --- Vision / PatchCore -----------------------------------------------------
+BANK_DIR: str = os.getenv("AIENGINE_BANK_DIR", "ai-engine/.banks")
+DEFECT_THRESHOLD: float | None = (
+    float(v) if (v := os.getenv("AIENGINE_DEFECT_THRESHOLD")) else None
+)
+PATCHCORE_BACKBONE: str = os.getenv("AIENGINE_PATCHCORE_BACKBONE", "wideresnet50")

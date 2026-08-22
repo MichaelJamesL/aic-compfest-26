@@ -65,6 +65,35 @@ what a coding task needs.
 5. If you discover a new bug you are not fixing right now, add it to
    `DEFECTS.md` with a reproduction.
 
+## Git workflow
+
+Never commit straight to `main`. One branch per unit of work, merged when it is
+green.
+
+```bash
+git checkout -b <type>/<short-slug>      # feat/ fix/ docs/ chore/
+# … work …
+cd frontend && npm run test && npm run build     # or the area's own checks
+git add -A && git commit -m "feat: three to five words"
+git push -u origin HEAD
+git checkout main && git merge --no-ff <branch> && git push origin main
+```
+
+Rules:
+
+- **Commit messages are 3–5 words total**, including the Conventional Commits
+  prefix (`feat:`, `fix:`, `docs:`, `chore:`, `refactor:`). Conventional Commits
+  are required by the rulebook. Never mention the assistant.
+- **Run the area's checks before committing**, not after. A red commit on a
+  shared branch costs someone else an hour.
+- **Update the area checklist in the same commit as the code.** A tick and its
+  feature land together or neither does.
+- **Merge with `--no-ff`** so each unit of work stays a visible group in the
+  history.
+- Never rewrite published history. No force-push to `main`, ever.
+- Nothing in the repo may identify an educational institution — rulebook
+  requirement, and it applies to commit messages and author names too.
+
 ## Checklist rules
 
 A box is ticked **only** when the feature is fully implemented *and* a test that

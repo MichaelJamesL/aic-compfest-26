@@ -199,6 +199,32 @@ export interface WorkOrder {
   updated_at: string
 }
 
+/** Pending — POST /work-orders/{id}/result. See docs/API.md. */
+export interface TechnicianResult {
+  steps_done: string[]
+  findings: string
+  parts_used: string[]
+  hours_spent: number | null
+}
+
+/** Pending — POST /work-orders/{id}/verify. One synchronous call, no loop. */
+export type Verdict = 'resolved' | 'partial' | 'not_resolved'
+
+export interface Verification {
+  verdict: Verdict
+  evidence: string[]
+  follow_up: string[]
+  summary: string
+}
+
+export interface MaintenanceReport {
+  problem: string
+  action: string
+  verification: Verification
+  final_state: string
+  written_back: boolean
+}
+
 export interface AnalysisInput {
   tier?: 'starter' | 'standard' | 'professional'
   trigger?: string

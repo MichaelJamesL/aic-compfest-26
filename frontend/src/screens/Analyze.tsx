@@ -247,7 +247,7 @@ export function AnalyzeScreen() {
 
           <div className="col-span-12 xl:col-span-4">
             <Card tint="clay" className="xl:sticky xl:top-24">
-              <h2 className="text-sm font-medium">Kelengkapan input</h2>
+              <h3 className="text-sm font-medium">Kelengkapan input</h3>
               <ul className="mt-4 space-y-2.5">
                 {coverage.map((item) => (
                   <li key={item.label} className="flex items-center gap-2.5 text-[13px]">

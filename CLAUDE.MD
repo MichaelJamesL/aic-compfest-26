@@ -8,4 +8,8 @@
 - Tick a checklist box only when the feature is implemented **and** a test that
   exercises it passes — the rule is in `docs/INDEX.md`. Update the checklist in
   the same commit as the code.
-- Conventional Commits. Don't mention Claude when committing.
+- **Git workflow** (full version in `docs/INDEX.md`): branch per unit of work,
+  run the area's checks, commit, push, then merge to `main` with `--no-ff`.
+  Never commit directly to `main`.
+- Commit messages are **3–5 words total**, including the Conventional Commits
+  prefix. Don't mention Claude when committing.

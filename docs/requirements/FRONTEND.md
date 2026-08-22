@@ -12,7 +12,7 @@ npm run build    # tsc -b && vite build
 npm run dev      # :5173, proxies /api /config /health to :8000
 ```
 
-Last full run: `60 passed (7 files)`, build clean, and the dev proxy verified
+Last full run: `95 passed (11 files)`, build clean, and the dev proxy verified
 against a live backend on :8000.
 
 Read in this order:
@@ -94,10 +94,10 @@ is asserted.
 - [x] `Table` — sentence-case headers, row dividers only, tabular numbers — verified: the anomaly-row assertions in `AnalysisResult.test.tsx`
 - [x] `Badge` — the four severity tints plus the solid-negative variant — verified: priority badge asserted in `AnalysisResult.test.tsx`
 - [ ] `Bars` — 14/10, top-radius 6, one highlighted bar — **untested**: renders in the QC card, but the hover tooltip and the max-scaling have no assertion
-- [ ] `MetricCard` — **built, unused**: no screen uses it yet. Either wire it into a screen or delete it; an untouched component is dead weight.
-- [ ] `Button` — primary / secondary / ghost / destructive, both surfaces — **untested**: rendered everywhere, no assertion on variant or disabled behaviour
-- [ ] `Input`, `Select`, `Textarea` — labels above, never floating, never uppercase — **untested**
-- [ ] `DropZone` — dashed hairline, drag state, extension + size hint — **untested**: the drag-over branch in particular
+- [x] `MetricCard` — icon chip, title, action, value, caption, badge — verified: used for the headline numbers on the comparison screen and asserted in `Flow.test.tsx`
+- [ ] `Button` — primary / secondary / ghost / destructive, both surfaces — **partial**: the disabled state and its explanatory `title` are asserted in three screens; the visual variants are covered only by the design self-check, not by a test
+- [x] `Input`, `Select`, `Textarea` — labels above, never floating, never uppercase — verified: every field is reachable by `getByLabelText` in `Analyze.test.tsx` and `Flow.test.tsx`, which is only true if the label is correctly associated
+- [ ] `DropZone` — dashed hairline, drag state, extension + size hint — **partial**: the disabled branch is asserted (QC upload on the analyse screen); the drag-over branch is untested
 - [ ] `Tooltip` — the sanctioned `.glass-light` element, with the `@supports` fallback — **untested**: only reachable on hover
 - [ ] `Skeleton` — `--raised`, real content dimensions — **untested**
 - [ ] Focus-visible ring on every interactive element; full keyboard traversal — **unverified**: `:focus-visible` is in the base layer, but no keyboard pass has been done
@@ -122,13 +122,13 @@ is asserted.
 - [x] 3h Approval bar with the autonomy-boundary wording — verified
 - [ ] 3b QC → mesin chain card — **partial**: the card and its honest "no defect class yet" state are built and tested. The actual chain, and **the restraint case**, need the classifier and the mapping table.
 - [ ] 3c Maintenance window — **partial**: falls back to the model's free text, with the objective function and blockers asserted. The chosen window, runner-up and loss reason need `decide.py`.
-- [ ] 1 Setup — three drop zones + document table with the three ingestion states — **untested**: built and wired against the live API (documents come back `pending` and the table says so), no test
-- [ ] 2 Analisis baru — single form, input-completeness panel, fixed §15 wording — **untested**: built, CSV parsing is tested but the screen is not
-- [ ] 2b The waiting state — stepped pipeline, honestly labelled as estimates — **untested**: built, survives to the 120 s cap by construction, no test
-- [ ] 4 Work order list + detail with the state track — **untested**: built and wired; approval is dead-ended by `../DEFECTS.md#wo-approve` and the UI says so
-- [ ] 5 Technician execution form — not started
-- [ ] 6 Verification & final report, export action — not started
-- [ ] 7 Run comparison (graceful degradation) — not started
+- [x] 1 Setup — three drop zones + document table with the three ingestion states — verified: `src/screens/Setup.test.tsx`, 8 tests incl. all three ingestion states, the "will not appear as sources" warning, empty and error states
+- [x] 2 Analisis baru — single form, input-completeness panel, fixed §15 wording — verified: `src/screens/Analyze.test.tsx`, 8 tests incl. the verbatim adoption sentence, the run button never disabled for missing input, and the full-replace business-context payload
+- [ ] 2b The waiting state — stepped pipeline, honestly labelled as estimates — **untested**: built and reachable, but no test drives the timer to the 120 s cap
+- [x] 4 Work order list + detail with the state track — verified: `src/screens/WorkOrders.test.tsx`, 8 tests incl. the disabled approve/reject naming `../DEFECTS.md#wo-approve`, the role gate, and the terminal `rejected` track
+- [x] 5 Technician execution form — verified: `src/screens/Flow.test.tsx`, 5 tests. Submitting is disabled and names the missing `POST …/result`; the screen states that a result does not close the work order.
+- [x] 6 Verification & final report — verified: `Flow.test.tsx`, 2 tests. With no `/verify` route the screen explains the three verdicts and names both missing pieces instead of rendering an empty shell. The verdict and report layout is built but unreachable until the backend lands.
+- [x] 7 Run comparison (graceful degradation) — verified: `Flow.test.tsx`, 4 tests incl. per-run input coverage (0/6 vs 5/6) and the verbatim adoption sentence
 
 ### Cross-cutting
 
@@ -137,15 +137,15 @@ is asserted.
 - [x] `status: "failed"` handled although the HTTP status is 201 — verified: `AnalysisResult.test.tsx`
 - [x] Partial input designed as a first-class state, not an error — verified: three tests, incl. the empty-corpus and no-anomaly messages
 - [x] Self-check list in `VISUAL_LANGUAGE.md` §11 — the automatable items verified: no colour literals, no uppercase labels, no card shadows, no gradients
-- [ ] All four states (empty / loading / error / partial) on every screen — **partial**: complete on screen 3 only
+- [ ] All four states (empty / loading / error / partial) on every screen — **partial**: empty, error and partial are covered across screens 1–4 and 7; **no loading state is asserted anywhere**
 - [ ] `prefers-reduced-motion` honoured — implemented in the base layer, untested
 - [ ] Recorded at 1440×900 without horizontal scroll — **unverified**: no browser pass yet
 - [ ] Manual browser pass over every screen — **not done**: everything above is asserted in happy-dom, which does not lay anything out. Nothing here proves the design looks right.
 
 ### Deployment
 
-- [ ] `Dockerfile` — build stage plus nginx serving `dist` and proxying `/api`
-- [ ] `web` service in `docker-compose.yml`
+- [ ] `Dockerfile` — build stage plus nginx serving `dist` and proxying `/api` — **written, unverified**: the Docker daemon was not running, so the image has never been built. Run `docker compose build web` before trusting it.
+- [x] `web` service in `docker-compose.yml` — verified: `docker compose config` exits clean. It proxies to a `backend` service that does not exist yet (B6), so API calls will 502 until that lands.
 - [ ] Verified from a clean clone: `docker compose up` → the UI loads and the full chain works
 
 ---
@@ -164,6 +164,7 @@ routes land; do not invent a different shape.
 | Approval bar | `../DEFECTS.md#wo-approve` |
 | Execution + verification + report | `POST …/result`, `POST …/verify`, `GET …/report` |
 | Setup — document status | `../DEFECTS.md#reindex-nameerror` (every document reads `pending` today) |
+| Compose — a working `docker compose up` | the `backend` service, `requirements/BACKEND.md` §7 |
 
 ## Out of scope — do not build
 

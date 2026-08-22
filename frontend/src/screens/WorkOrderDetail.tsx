@@ -149,6 +149,17 @@ function Detail({ order, onChange }: { order: WorkOrder; onChange: (o: WorkOrder
             memverifikasi bukti.
           </p>
 
+          <Link to={`/work-orders/${order.id}/execute`}>
+            <Button size="sm" variant="ghost">
+              Form teknisi
+            </Button>
+          </Link>
+          <Link to={`/work-orders/${order.id}/report`}>
+            <Button size="sm" variant="ghost">
+              Verifikasi & laporan
+            </Button>
+          </Link>
+
           {order.status === 'draft' && (
             <Button size="sm" variant="primary" disabled={busy} onClick={() => act('approve')}>
               Ajukan persetujuan

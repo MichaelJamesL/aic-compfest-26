@@ -1,6 +1,6 @@
 import { useState } from 'react'
-import { useNavigate, useParams } from 'react-router'
-import { ArrowRight, Download, FileText, ShieldAlert, Wrench } from 'lucide-react'
+import { Link, useNavigate, useParams } from 'react-router'
+import { ArrowRight, Download, FileText, GitCompare, ShieldAlert, Wrench } from 'lucide-react'
 import { AppShell } from '../shell/AppShell'
 import { api, errorCopy } from '../api/client'
 import { useRequest } from '../lib/useRequest'
@@ -116,6 +116,11 @@ function Result({ detail, onReload }: { detail: AnalysisDetail; onReload: () => 
           {result.model ?? 'model tidak diketahui'} · tier {result.tier ?? '—'}
         </span>
         <div className="ml-auto flex gap-2">
+          <Link to={`/analysis/${detail.id}/compare`}>
+            <Button size="sm" icon={<GitCompare size={14} />}>
+              Bandingkan run
+            </Button>
+          </Link>
           <Button size="sm" icon={<Download size={14} />} disabled title="Belum tersedia di backend">
             Ekspor
           </Button>
@@ -284,7 +289,7 @@ function QcChainCard({ result }: { result: AnalysisResult }) {
 
   return (
     <Card tint="sage" className="col-span-12 md:col-span-6 xl:col-span-3">
-      <h2 className="text-sm font-medium">Rantai QC → mesin</h2>
+      <h3 className="text-sm font-medium">Rantai QC → mesin</h3>
 
       {classified.length > 0 ? (
         <ol className="mt-4 space-y-3 text-[13px]">
@@ -325,7 +330,7 @@ function ScheduleCard({ result }: { result: AnalysisResult }) {
 
   return (
     <Card tint="apricot" className="col-span-12 md:col-span-6 xl:col-span-3">
-      <h2 className="text-sm font-medium">Jendela maintenance</h2>
+      <h3 className="text-sm font-medium">Jendela maintenance</h3>
 
       {schedule ? (
         <dl className="mt-4 space-y-3 text-[13px]">
@@ -384,7 +389,7 @@ function SourcesCard({
 
   return (
     <Card tint="clay" className="col-span-12 md:col-span-6 xl:col-span-3">
-      <h2 className="text-sm font-medium">Sumber & keterbatasan</h2>
+      <h3 className="text-sm font-medium">Sumber & keterbatasan</h3>
 
       <div className="mt-4">
         {result.sources.length > 0 ? (

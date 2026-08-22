@@ -16,5 +16,18 @@ services:
       timeout: 5s
       retries: 5
 
+  # The frontend. Serves the built SPA and proxies /api, /config and /health
+  # to the backend service, which does not exist yet — see
+  # docs/requirements/BACKEND.md §7 (B6). Until it does, `web` starts and
+  # serves the UI, but every request to the API returns 502.
+  web:
+    build:
+      context: ./frontend
+    container_name: aic26-web
+    ports:
+      - "5173:80"
+    depends_on:
+      - db
+
 volumes:
   db_data:

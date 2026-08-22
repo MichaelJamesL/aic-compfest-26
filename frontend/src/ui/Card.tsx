@@ -27,6 +27,10 @@ export function Card({
   return <Tag className={cn('rounded-card p-5', TINT[tint], className)}>{children}</Tag>
 }
 
+/**
+ * Heading hierarchy: h1 is the page title in the header, h2 is a section of the
+ * page (SectionTitle), h3 is a card or a labelled block inside one.
+ */
 export function CardTitle({
   children,
   muted = false,
@@ -34,9 +38,7 @@ export function CardTitle({
   children: ReactNode
   muted?: boolean
 }) {
-  return (
-    <h2 className={cn('text-sm font-medium', muted && 'text-dim')}>{children}</h2>
-  )
+  return <h3 className={cn('text-sm font-medium', muted && 'text-dim')}>{children}</h3>
 }
 
 export function SectionTitle({ children }: { children: ReactNode }) {

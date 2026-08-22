@@ -56,11 +56,28 @@ The monorepo is split across three roles:
   `tier`, `model`, and `sources` are also set by the engine, so the audit trail
   can't be hallucinated.
 
-## Functional requirements (AIC Compfest)
+## Documentation
 
-See **[`docs/FR.md`](docs/FR.md)** — the single source of truth for the
-functional requirements, module/feature table, and the Starter/Standard/
-Professional deployment packages.
+**Start at [`docs/INDEX.md`](docs/INDEX.md).** It maps every document to the
+task it answers, and carries the session protocol and the checklist rules. Load
+two or three files from there instead of exploring the repo.
+
+The ones you will need most:
+
+| File | For |
+| --- | --- |
+| [`docs/STATUS.md`](docs/STATUS.md) | Where every requirement actually stands. Read at the start of every session. |
+| [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | Module boundaries, data flow, and the invariants that must survive every refactor. |
+| [`docs/API.md`](docs/API.md) | The verified HTTP contract between frontend and backend. |
+| [`docs/DEFECTS.md`](docs/DEFECTS.md) | Reproduced bugs. Read before editing `backend/app/main.py` or `ai-engine/src/signals.py`. |
+| [`docs/requirements/`](docs/requirements/) | One checklist per area: AI_ENGINE, BACKEND, FRONTEND. |
+| [`docs/design/`](docs/design/) | Visual language extracted from the reference, and the screen specs. |
+| [`docs/FR.md`](docs/FR.md) | The competition's functional-requirement table — official names and scope. |
+| [`docs/FINAL_IDEA.md`](docs/FINAL_IDEA.md) | Single source of truth for the idea. §15 holds fixed wording; use it verbatim in UI copy. |
+| [`docs/DECISIONS.md`](docs/DECISIONS.md) | Locked decisions D0–D11 and why. Read before proposing an architecture change. |
+
+Do not read `FINAL_IDEA.md` or `DECISIONS.md` in full for a coding task — the
+engineering docs above already carry what code needs.
 
 ## Onboarding
 

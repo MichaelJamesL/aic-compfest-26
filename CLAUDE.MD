@@ -1,3 +1,11 @@
 # Guide for Claude Code
-- See at AGENTS.md for system prompt
-- Don't mention Claude when commiting.
+
+- **Read [`docs/INDEX.md`](docs/INDEX.md) first, in every session.** It maps
+  every document to the task it answers, so you can load two or three files
+  instead of exploring the repo. Then read
+  [`docs/STATUS.md`](docs/STATUS.md) to see where work stands.
+- See [`AGENTS.MD`](AGENTS.MD) for the engineering posture and framework rules.
+- Tick a checklist box only when the feature is implemented **and** a test that
+  exercises it passes — the rule is in `docs/INDEX.md`. Update the checklist in
+  the same commit as the code.
+- Conventional Commits. Don't mention Claude when committing.

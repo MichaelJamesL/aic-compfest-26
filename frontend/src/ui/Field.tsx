@@ -30,10 +30,14 @@ export function Field({
   )
 }
 
+// No `outline-none` here. It sets `outline-style: none`, and a later
+// `outline-2` only sets the width — so the ring never draws and keyboard users
+// lose the caret entirely. The base `:focus-visible` rule in index.css handles
+// this correctly for every control.
 const CONTROL =
   'w-full rounded-control bg-card px-3.5 text-sm text-white placeholder:text-faint ' +
   'border border-hair transition-colors duration-100 hover:border-hair-strong ' +
-  'focus:border-hair-strong focus:outline-none focus-visible:outline-2 focus-visible:outline-white/60'
+  'focus:border-hair-strong'
 
 export function TextInput({
   label,

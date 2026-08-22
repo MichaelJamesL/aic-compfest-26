@@ -16,7 +16,7 @@ npm run dev      # :5173, proxies /api /config /health to :8000
 node scripts/browser-pass.mjs
 ```
 
-Last full run: `97 passed (11 files)`, build clean, `browser-pass` clean, and
+Last full run: `124 passed (13 files)`, build clean, lint clean, `browser-pass` clean, and
 the dev proxy verified against a live backend on :8000.
 
 `scripts/browser-pass.mjs` exists because happy-dom does no layout: the unit
@@ -24,7 +24,12 @@ tests cannot see a broken grid, a clipped label, or a panel that scrolls
 sideways. It drives Chromium over all eight routes plus a narrow viewport,
 screenshots each to `scripts/.shots/` (git-ignored), and fails on horizontal
 overflow, a missing or duplicated `h1`, an empty card, a blank page, the wrong
-font, or any console error. Run it before claiming a screen is done.
+font, or any console error.
+
+It also walks the keyboard: Tab through a form screen and a read-only screen,
+asserting every stop has a visible focus ring; checks the header turns to glass
+only after scrolling past 24px; and checks `prefers-reduced-motion` actually
+collapses transitions. Run it before claiming a screen is done.
 
 Read in this order:
 [`../design/VISUAL_LANGUAGE.md`](../design/VISUAL_LANGUAGE.md) →
@@ -104,14 +109,14 @@ is asserted.
 - [x] `Card` incl. the four tinted variants (text always `#111111` on tints) — verified: rendered and asserted throughout `AnalysisResult.test.tsx`
 - [x] `Table` — sentence-case headers, row dividers only, tabular numbers — verified: the anomaly-row assertions in `AnalysisResult.test.tsx`
 - [x] `Badge` — the four severity tints plus the solid-negative variant — verified: priority badge asserted in `AnalysisResult.test.tsx`
-- [ ] `Bars` — 14/10, top-radius 6, one highlighted bar — **untested**: renders in the QC card, but the hover tooltip and the max-scaling have no assertion
+- [x] `Bars` — 14/10, top-radius 6, one highlighted bar — verified: `ui.test.tsx` covers axis labels, scaling against the largest value, the hover tooltip appearing and clearing, and the dimming of unhovered bars
 - [x] `MetricCard` — icon chip, title, action, value, caption, badge — verified: used for the headline numbers on the comparison screen and asserted in `Flow.test.tsx`
 - [ ] `Button` — primary / secondary / ghost / destructive, both surfaces — **partial**: the disabled state and its explanatory `title` are asserted in three screens; the visual variants are covered only by the design self-check, not by a test
 - [x] `Input`, `Select`, `Textarea` — labels above, never floating, never uppercase — verified: every field is reachable by `getByLabelText` in `Analyze.test.tsx` and `Flow.test.tsx`, which is only true if the label is correctly associated
 - [ ] `DropZone` — dashed hairline, drag state, extension + size hint — **partial**: the disabled branch is asserted (QC upload on the analyse screen); the drag-over branch is untested
-- [ ] `Tooltip` — the sanctioned `.glass-light` element, with the `@supports` fallback — **untested**: only reachable on hover
-- [ ] `Skeleton` — `--raised`, real content dimensions — **untested**
-- [ ] Focus-visible ring on every interactive element; full keyboard traversal — **unverified**: `:focus-visible` is in the base layer, but no keyboard pass has been done
+- [x] `Tooltip` — the sanctioned `.glass-light` element — verified: asserted on hover in `ui.test.tsx`; the `@supports` opaque fallback is declared in `index.css`
+- [x] `Skeleton` — `--raised`, real content dimensions, announced as `role="status"` — verified: `loading.test.tsx` asserts it on all seven screens
+- [x] Focus-visible ring on every interactive element; full keyboard traversal — verified: `browser-pass` tabs through both a form screen and a read-only screen and fails on any stop without a ring
 
 ### Shell
 
@@ -119,7 +124,7 @@ is asserted.
 - [x] `NavRail` — three items, active pill — verified: rendered in all screen tests
 - [x] `StatusCard` — engine mode from `/config/capabilities`, `--mint`, never hidden — verified: `AnalysisResult.test.tsx` (an unexpected capabilities body used to crash the whole shell; the tests now cover that)
 - [x] `Header` — title, subtitle, search, icons, avatar chip with role switcher — verified: rendered in all screen tests
-- [ ] Sticky `.glass-dark` header past 24px of scroll — **untested**: implemented, but the scroll listener has no assertion
+- [x] Sticky `.glass-dark` header past 24px of scroll — verified: `browser-pass` asserts no blur before scrolling and blur after
 - [ ] Count badge on a nav item — not built; nothing needs one yet
 
 ### Screens — see `../design/SCREENS.md`
@@ -135,7 +140,7 @@ is asserted.
 - [ ] 3c Maintenance window — **partial**: falls back to the model's free text, with the objective function and blockers asserted. The chosen window, runner-up and loss reason need `decide.py`.
 - [x] 1 Setup — three drop zones + document table with the three ingestion states — verified: `src/screens/Setup.test.tsx`, 8 tests incl. all three ingestion states, the "will not appear as sources" warning, empty and error states
 - [x] 2 Analisis baru — single form, input-completeness panel, fixed §15 wording — verified: `src/screens/Analyze.test.tsx`, 8 tests incl. the verbatim adoption sentence, the run button never disabled for missing input, and the full-replace business-context payload
-- [ ] 2b The waiting state — stepped pipeline, honestly labelled as estimates — **untested**: built and reachable, but no test drives the timer to the 120 s cap
+- [x] 2b The waiting state — stepped pipeline, honestly labelled as estimates — verified: `RunProgress.test.tsx`, 8 tests incl. the elapsed clock starting only at the engine call and the fallback to "masih berjalan…" past the 120 s timeout
 - [x] 4 Work order list + detail with the state track — verified: `src/screens/WorkOrders.test.tsx`, 8 tests incl. the disabled approve/reject naming `../DEFECTS.md#wo-approve`, the role gate, and the terminal `rejected` track
 - [x] 5 Technician execution form — verified: `src/screens/Flow.test.tsx`, 5 tests. Submitting is disabled and names the missing `POST …/result`; the screen states that a result does not close the work order.
 - [x] 6 Verification & final report — verified: `Flow.test.tsx`, 2 tests. With no `/verify` route the screen explains the three verdicts and names both missing pieces instead of rendering an empty shell. The verdict and report layout is built but unreachable until the backend lands.
@@ -148,8 +153,8 @@ is asserted.
 - [x] `status: "failed"` handled although the HTTP status is 201 — verified: `AnalysisResult.test.tsx`
 - [x] Partial input designed as a first-class state, not an error — verified: three tests, incl. the empty-corpus and no-anomaly messages
 - [x] Self-check list in `VISUAL_LANGUAGE.md` §11 — the automatable items verified: no colour literals, no uppercase labels, no card shadows, no gradients
-- [ ] All four states (empty / loading / error / partial) on every screen — **partial**: empty, error and partial are covered across screens 1–4 and 7; **no loading state is asserted anywhere**
-- [ ] `prefers-reduced-motion` honoured — implemented in the base layer, untested
+- [x] All four states (empty / loading / error / partial) on every screen — verified: `loading.test.tsx` covers the loading state on all seven screens and asserts no error or empty state leaks while data is in flight; empty, error and partial are covered per screen above
+- [x] `prefers-reduced-motion` honoured — verified: `browser-pass` loads the page under `reducedMotion: 'reduce'` and fails if any transition survives above 50ms
 - [x] Recorded at 1440×900 without horizontal scroll — verified: `scripts/browser-pass.mjs` asserts it on all eight routes plus a 900px viewport
 - [x] Browser pass over every screen — done at 1440×900; screenshots reviewed against `docs/ref/ui-ref.jpg`. Six layout and contrast defects were found and fixed (see the commit); the pass is now clean and re-runnable.
 
@@ -175,6 +180,24 @@ structurally cannot catch, and they will recur.
   Track labels now have short forms.
 - A `disabled` primary button kept its white fill at 40% opacity, so a blocked
   action was still the loudest element on the bar. Disabled now drops the fill.
+
+### Defects found by the interaction pass
+
+- **No focus ring on any form control.** `Field.tsx` combined `outline-none`
+  with `focus-visible:outline-2`. The first sets `outline-style: none`; the
+  second only sets the width, so the ring never drew — every input, select and
+  textarea was invisible to keyboard users. The base `:focus-visible` rule now
+  handles them.
+- **No focus ring on the header search input**, which set `outline-none` with
+  nothing restoring it. The ring now lives on the surrounding pill, which is
+  the right pattern for a composite control.
+- **`Bars` floored its scale at `Math.max(..., 1)`.** Defect rates are
+  fractions, so a 31% batch rendered at 31% of the chart height instead of
+  filling it, flattening the batch-over-batch trend the chart exists to show.
+- Two checker bugs of my own, both false positives, both corrected: comparing
+  `transition-duration` against the string `"0s"` when reduced motion computes
+  it as `"1e-05s"`, and treating an intentional `overflow: hidden` truncation
+  as a layout failure.
 
 ### Deployment
 

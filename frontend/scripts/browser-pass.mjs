@@ -108,6 +108,91 @@ async function visit(page, name, path) {
   return probe
 }
 
+/**
+ * Behaviour a DOM-only test cannot reach: real focus, real scrolling, real
+ * media queries.
+ */
+async function keyboardWalk(page, route) {
+  const reachable = []
+  const ringless = []
+
+  for (let i = 0; i < 30; i++) {
+    await page.keyboard.press('Tab')
+    const focused = await page.evaluate(() => {
+      const el = document.activeElement
+      if (!el || el === document.body) return null
+      const visible = (node) => {
+        const style = getComputedStyle(node)
+        return style.outlineStyle !== 'none' && parseFloat(style.outlineWidth) > 0
+      }
+      // A composite control may draw the ring on its wrapper.
+      const ring = visible(el) || (el.parentElement ? visible(el.parentElement) : false)
+      const name =
+        el.textContent?.trim() ||
+        el.getAttribute('aria-label') ||
+        el.getAttribute('placeholder') ||
+        ''
+      return { tag: el.tagName.toLowerCase(), label: name.slice(0, 28), ring }
+    })
+    if (!focused) break
+    reachable.push(focused.label || focused.tag)
+    if (!focused.ring) {
+      ringless.push(`${focused.tag}${focused.label ? ` "${focused.label}"` : ''}`)
+    }
+  }
+
+  if (reachable.length < 8) {
+    report('fail', route, `only ${reachable.length} elements reachable by Tab`)
+  }
+  // An invisible focus ring is an accessibility failure, not a style choice.
+  for (const element of ringless.slice(0, 3)) {
+    report('fail', route, `no focus ring on ${element}`)
+  }
+}
+
+async function interactions(browser, { analysisId }) {
+  const result = `/analysis/${analysisId}`
+  const context = await browser.newContext({ viewport: VIEWPORT })
+  const page = await context.newPage()
+
+  // Walk both a form screen and a read-only screen: only one has inputs, and
+  // the inputs are where focus rings actually go missing.
+  for (const route of ['/analyze', result]) {
+    await page.goto(BASE + route, { waitUntil: 'networkidle' })
+    await keyboardWalk(page, route)
+  }
+
+  // The header turns to glass only once the page scrolls past 24px.
+  await page.goto(BASE + result, { waitUntil: 'networkidle' })
+  const header = () =>
+    page.evaluate(() => getComputedStyle(document.querySelector('header')).backdropFilter)
+  const before = await header()
+  await page.evaluate(() => window.scrollTo(0, 200))
+  await page.waitForTimeout(200)
+  const after = await header()
+  if (before !== 'none') report('fail', result, `header is glass before scrolling (${before})`)
+  if (!after.includes('blur')) report('fail', result, `header did not become glass on scroll (${after})`)
+  await page.screenshot({ path: join(OUT, 'header-stuck.png') })
+  await context.close()
+
+  // prefers-reduced-motion must collapse transitions, not be ignored.
+  // Durations collapse to 0.01ms, which computes as "1e-05s" — parse rather
+  // than compare against the string "0s".
+  const reduced = await browser.newContext({ viewport: VIEWPORT, reducedMotion: 'reduce' })
+  const quiet = await reduced.newPage()
+  await quiet.goto(BASE + result, { waitUntil: 'networkidle' })
+  const durations = await quiet.evaluate(() =>
+    [...document.querySelectorAll('button, a')]
+      .map((el) => getComputedStyle(el).transitionDuration)
+      .map((value) => Math.max(...value.split(',').map((part) => parseFloat(part) || 0)))
+      .filter((seconds) => seconds > 0.05),
+  )
+  if (durations.length) {
+    report('fail', result, `${durations.length} transitions survive prefers-reduced-motion`)
+  }
+  await reduced.close()
+}
+
 const browser = await chromium.launch()
 try {
   rmSync(OUT, { recursive: true, force: true })
@@ -131,6 +216,8 @@ try {
     await visit(page, name, path)
     await context.close()
   }
+
+  await interactions(browser, await discover())
 
   // Narrow viewport: the rail collapses, tables scroll inside themselves.
   const narrow = await browser.newContext({ viewport: { width: 900, height: 900 } })

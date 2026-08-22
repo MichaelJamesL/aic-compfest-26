@@ -27,7 +27,10 @@ export function Bars({
   className?: string
 }) {
   const [active, setActive] = useState<number | null>(null)
-  const max = Math.max(...bars.map((b) => b.value), 1)
+  // Not `Math.max(..., 1)`: defect rates are fractions, and flooring the
+  // scale at 1 flattens every bar to its raw percentage of the chart — which
+  // hides exactly the batch-over-batch trend this chart exists to show.
+  const max = Math.max(...bars.map((b) => b.value), 0) || 1
 
   return (
     <div className={cn('relative', className)}>

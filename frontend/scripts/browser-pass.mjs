@@ -219,10 +219,46 @@ try {
 
   await interactions(browser, await discover())
 
-  // Narrow viewport: the rail collapses, tables scroll inside themselves.
+  // Narrow viewport: the rail collapses to icons, tables scroll inside
+  // themselves. Navigation and the engine-mode signal must survive.
   const narrow = await browser.newContext({ viewport: { width: 900, height: 900 } })
   const page = await narrow.newPage()
-  await visit(page, 'result-900', `/analysis/${analysisId}`)
+  const route = `/analysis/${analysisId}`
+  await visit(page, 'result-900', route)
+
+  const rail = await page.evaluate(() => {
+    const nav = document.querySelector('nav')
+    if (!nav) return { present: false }
+    const box = nav.getBoundingClientRect()
+    return {
+      present: box.width > 0 && box.height > 0,
+      width: Math.round(box.width),
+      links: [...nav.querySelectorAll('a')].map(
+        (a) => a.getAttribute('title') || a.textContent?.trim() || '',
+      ),
+      engineMode: Boolean(
+        nav.querySelector('[aria-label^="Mesin analisis"]') ||
+          nav.textContent?.includes('Mesin analisis'),
+      ),
+    }
+  })
+
+  if (!rail.present) {
+    report('fail', `${route} @900`, 'navigation disappears at narrow widths')
+  } else {
+    if (rail.links.length !== 3) {
+      report('fail', `${route} @900`, `expected 3 nav destinations, found ${rail.links.length}`)
+    }
+    if (rail.width > 96) {
+      report('warn', `${route} @900`, `rail is ${rail.width}px, expected a ~64px icon strip`)
+    }
+    // Presenting stub output as model output is the one unrecoverable mistake,
+    // so the engine-mode signal may never be dropped by a breakpoint.
+    if (!rail.engineMode) {
+      report('fail', `${route} @900`, 'engine-mode indicator is missing from the rail')
+    }
+  }
+
   await narrow.close()
 } finally {
   await browser.close()

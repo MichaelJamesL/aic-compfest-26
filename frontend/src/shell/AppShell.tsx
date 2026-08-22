@@ -28,10 +28,8 @@ export function AppShell({
   return (
     <div className="min-h-screen bg-page p-4 lg:p-6">
       <div className="mx-auto flex max-w-[1440px] rounded-shell bg-shell shadow-shell">
-        <div className="hidden lg:block">
-          <NavRail />
-        </div>
-        <div className="min-w-0 flex-1 p-3 lg:pl-0">
+        <NavRail />
+        <div className="min-w-0 flex-1 p-3 pl-0">
           <div className="min-h-[calc(100vh-3.5rem)] rounded-panel bg-panel">
             <Header title={title} subtitle={subtitle} stuck={stuck} />
             <main className="px-4 pb-4">{children}</main>

@@ -34,11 +34,11 @@ export function StateTrack({ status }: { status: WorkOrderStatus }) {
             </span>
             <span
               className={cn(
-                'flex-1 truncate text-[11.5px]',
+                'flex-1 text-[11.5px] whitespace-nowrap',
                 current ? 'font-medium text-white' : 'text-faint',
               )}
             >
-              {WORK_ORDER[step].label}
+              {WORK_ORDER[step].short}
             </span>
             {i < WORK_ORDER_TRACK.length - 1 && (
               <span className="h-px flex-1 bg-hair" aria-hidden />
@@ -49,8 +49,8 @@ export function StateTrack({ status }: { status: WorkOrderStatus }) {
       {ended && (
         <li className="flex items-center gap-1.5">
           <span className="size-2 rounded-full bg-crit" aria-hidden />
-          <span className="text-[11.5px] font-medium text-crit-text">
-            {WORK_ORDER[status].label}
+          <span className="text-[11.5px] font-medium whitespace-nowrap text-crit-text">
+            {WORK_ORDER[status].short}
           </span>
         </li>
       )}

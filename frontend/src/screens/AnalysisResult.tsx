@@ -7,7 +7,9 @@ import { useRequest } from '../lib/useRequest'
 import { healthSegments, inputCoverage } from '../lib/health'
 import { formatDuration, formatPercent } from '../lib/format'
 import {
+  TONE_TEXT,
   healthLabel,
+  healthTone,
   priorityLabel,
   priorityTone,
   severityLabel,
@@ -150,6 +152,7 @@ function Result({ detail, onReload }: { detail: AnalysisDetail; onReload: () => 
               value={result.health_score}
               suffix="/100"
               caption={healthLabel(result.health_score)}
+              captionClass={TONE_TEXT[healthTone(result.health_score)]}
             />
           </div>
           <DonutLegend segments={segments} />

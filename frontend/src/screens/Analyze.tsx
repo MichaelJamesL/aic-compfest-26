@@ -5,6 +5,7 @@ import { AppShell } from '../shell/AppShell'
 import { api } from '../api/client'
 import { useRequest } from '../lib/useRequest'
 import { parseCsv, toReadings, type ParsedReading } from '../lib/csv'
+import { FORM_INPUTS } from '../lib/health'
 import { Card, CardTitle, SectionTitle } from '../ui/Card'
 import { Button } from '../ui/Button'
 import { DropZone } from '../ui/DropZone'
@@ -33,17 +34,17 @@ export function AnalyzeScreen() {
 
   const selected = assets.data?.find((asset) => asset.id === assetId) ?? null
 
-  const coverage = useMemo(
-    () => [
-      { label: 'Data sensor', present: readings.length > 0 },
-      { label: 'Citra QC', present: false },
-      { label: 'Jadwal produksi', present: schedule.trim().length > 0 },
-      { label: 'Stok & ETA sparepart', present: spareparts.trim().length > 0 },
-      { label: 'Ketersediaan teknisi', present: technicians.trim().length > 0 },
-      { label: 'Kondisi manual / laporan operator', present: (condition || operator).trim().length > 0 },
-    ],
-    [readings.length, schedule, spareparts, technicians, condition, operator],
-  )
+  const coverage = useMemo(() => {
+    const present: Record<string, boolean> = {
+      sensor: readings.length > 0,
+      qc: false,
+      schedule: schedule.trim().length > 0,
+      parts: spareparts.trim().length > 0,
+      tech: technicians.trim().length > 0,
+      condition: (condition || operator).trim().length > 0,
+    }
+    return FORM_INPUTS.map((input) => ({ ...input, present: present[input.key] }))
+  }, [readings.length, schedule, spareparts, technicians, condition, operator])
 
   async function run() {
     if (!assetId) return
@@ -250,7 +251,7 @@ export function AnalyzeScreen() {
               <h3 className="text-sm font-medium">Kelengkapan input</h3>
               <ul className="mt-4 space-y-2.5">
                 {coverage.map((item) => (
-                  <li key={item.label} className="flex items-center gap-2.5 text-[13px]">
+                  <li key={item.key} className="flex items-center gap-2.5 text-[13px]">
                     <span
                       className={
                         item.present
@@ -275,8 +276,8 @@ export function AnalyzeScreen() {
                   {coverage
                     .filter((item) => !item.present)
                     .map((item) => (
-                      <li key={item.label} className="text-xs leading-5 text-ink-dim">
-                        {item.label} — kedalaman keputusan berkurang di bagian terkait.
+                      <li key={item.key} className="text-xs leading-5 text-ink-dim">
+                        <span className="font-medium">{item.label}</span> — {item.cost}
                       </li>
                     ))}
                   {coverage.every((item) => item.present) && (

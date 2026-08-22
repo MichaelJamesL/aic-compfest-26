@@ -134,8 +134,9 @@ describe('Compare — graceful degradation', () => {
     renderRoute('/analysis/run-1/compare?with=run-2', '/analysis/:id/compare', <CompareScreen />)
     expect(await screen.findByText('Run A')).toBeTruthy()
     expect(screen.getByText('Run B')).toBeTruthy()
-    expect(screen.getByText('0/6 input')).toBeTruthy()
-    expect(screen.getByText('5/6 input')).toBeTruthy()
+    // Run A has only the manual condition; run B has everything but QC images.
+    expect(screen.getByText('1/7 input')).toBeTruthy()
+    expect(screen.getByText('6/7 input')).toBeTruthy()
 
     // Headline numbers render as metric cards: icon chip, title, value, caption.
     const headlines = screen.getAllByRole('heading', { level: 3, name: 'Skor kesehatan' })

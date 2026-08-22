@@ -68,15 +68,33 @@ describe('Analyze — the single input form', () => {
     expect(zone.closest('button')?.disabled).toBe(true)
   })
 
-  it('tracks input completeness as fields are filled', async () => {
+  it('states what each missing input costs, specifically', async () => {
+    render()
+    await screen.findByText('Kelengkapan input')
+    // Not a repeated generic sentence — each input names its own consequence.
+    expect(
+      screen.getByText(/jendela maintenance tidak bisa dioptimalkan, hanya diprioritaskan/),
+    ).toBeTruthy()
+    expect(screen.getByText(/ETA tidak bisa jadi blocker penjadwalan/)).toBeTruthy()
+  })
+
+  it('drops an input from the missing list once it is filled', async () => {
     render()
     await screen.findByText('Kelengkapan input')
     fireEvent.change(screen.getByLabelText('Jadwal produksi'), {
       target: { value: 'Sen-Sab 2 shift' },
     })
     await waitFor(() =>
-      expect(screen.queryByText(/^Jadwal produksi — kedalaman keputusan berkurang/)).toBeNull(),
+      expect(
+        screen.queryByText(/jendela maintenance tidak bisa dioptimalkan/),
+      ).toBeNull(),
     )
+  })
+
+  it('does not claim maintenance history, which this form does not collect', async () => {
+    render()
+    await screen.findByText('Kelengkapan input')
+    expect(screen.queryByText('Histori maintenance')).toBeNull()
   })
 
   it('sends the complete business context, since the endpoint replaces rather than patches', async () => {

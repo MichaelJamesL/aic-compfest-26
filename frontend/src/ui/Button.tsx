@@ -31,7 +31,10 @@ export function Button({
       className={cn(
         'inline-flex items-center justify-center gap-2 rounded-control font-medium',
         'transition-colors duration-100 ease-out',
-        'disabled:pointer-events-none disabled:opacity-40',
+        // A blocked action must not stay the loudest element: disabled drops
+        // the fill entirely rather than just fading it.
+        'disabled:pointer-events-none disabled:border disabled:border-hair',
+        'disabled:bg-transparent disabled:text-faint disabled:shadow-none',
         size === 'md' ? 'h-10 px-[18px] text-sm' : 'h-8 px-3 text-[13px]',
         VARIANT[variant],
         className,

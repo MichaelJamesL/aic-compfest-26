@@ -16,7 +16,7 @@ npm run dev      # :5173, proxies /api /config /health to :8000
 node scripts/browser-pass.mjs
 ```
 
-Last full run: `124 passed (13 files)`, build clean, lint clean, `browser-pass` clean, and
+Last full run: `139 passed (14 files)`, build clean, lint clean, `browser-pass` clean, and
 the dev proxy verified against a live backend on :8000.
 
 `scripts/browser-pass.mjs` exists because happy-dom does no layout: the unit
@@ -28,8 +28,10 @@ font, or any console error.
 
 It also walks the keyboard: Tab through a form screen and a read-only screen,
 asserting every stop has a visible focus ring; checks the header turns to glass
-only after scrolling past 24px; and checks `prefers-reduced-motion` actually
-collapses transitions. Run it before claiming a screen is done.
+only after scrolling past 24px; checks `prefers-reduced-motion` actually
+collapses transitions; and at 900px checks the rail is still there, still has
+three destinations, and still shows the engine mode. Run it before claiming a
+screen is done.
 
 Read in this order:
 [`../design/VISUAL_LANGUAGE.md`](../design/VISUAL_LANGUAGE.md) →
@@ -111,9 +113,9 @@ is asserted.
 - [x] `Badge` — the four severity tints plus the solid-negative variant — verified: priority badge asserted in `AnalysisResult.test.tsx`
 - [x] `Bars` — 14/10, top-radius 6, one highlighted bar — verified: `ui.test.tsx` covers axis labels, scaling against the largest value, the hover tooltip appearing and clearing, and the dimming of unhovered bars
 - [x] `MetricCard` — icon chip, title, action, value, caption, badge — verified: used for the headline numbers on the comparison screen and asserted in `Flow.test.tsx`
-- [ ] `Button` — primary / secondary / ghost / destructive, both surfaces — **partial**: the disabled state and its explanatory `title` are asserted in three screens; the visual variants are covered only by the design self-check, not by a test
+- [x] `Button` — primary / secondary / ghost / destructive, both surfaces — verified: `ui.test.tsx` asserts each variant's distinct treatment, the small size, the accessible name on an icon-only button, and that a disabled button drops its fill and states why
 - [x] `Input`, `Select`, `Textarea` — labels above, never floating, never uppercase — verified: every field is reachable by `getByLabelText` in `Analyze.test.tsx` and `Flow.test.tsx`, which is only true if the label is correctly associated
-- [ ] `DropZone` — dashed hairline, drag state, extension + size hint — **partial**: the disabled branch is asserted (QC upload on the analyse screen); the drag-over branch is untested
+- [x] `DropZone` — dashed hairline, drag state, extension + size hint — verified: `ui.test.tsx` covers the hint text, the dashed→solid→dashed drag cycle, files reaching the caller, and a disabled zone ignoring both highlight and drop
 - [x] `Tooltip` — the sanctioned `.glass-light` element — verified: asserted on hover in `ui.test.tsx`; the `@supports` opaque fallback is declared in `index.css`
 - [x] `Skeleton` — `--raised`, real content dimensions, announced as `role="status"` — verified: `loading.test.tsx` asserts it on all seven screens
 - [x] Focus-visible ring on every interactive element; full keyboard traversal — verified: `browser-pass` tabs through both a form screen and a read-only screen and fails on any stop without a ring
@@ -121,7 +123,7 @@ is asserted.
 ### Shell
 
 - [x] `AppShell` — page → shell → rail + panel, the exact inset and radii — verified: rendered in all 13 screen tests
-- [x] `NavRail` — three items, active pill — verified: rendered in all screen tests
+- [x] `NavRail` — three items, active pill, and a 64px icon strip below 1024 — verified: `src/shell/NavRail.test.tsx` (7 tests) plus the narrow-viewport assertions in `browser-pass`
 - [x] `StatusCard` — engine mode from `/config/capabilities`, `--mint`, never hidden — verified: `AnalysisResult.test.tsx` (an unexpected capabilities body used to crash the whole shell; the tests now cover that)
 - [x] `Header` — title, subtitle, search, icons, avatar chip with role switcher — verified: rendered in all screen tests
 - [x] Sticky `.glass-dark` header past 24px of scroll — verified: `browser-pass` asserts no blur before scrolling and blur after
@@ -180,6 +182,17 @@ structurally cannot catch, and they will recur.
   Track labels now have short forms.
 - A `disabled` primary button kept its white fill at 40% opacity, so a blocked
   action was still the loudest element on the bar. Disabled now drops the fill.
+
+### Defects found by the responsive pass
+
+- **Navigation disappeared entirely below 1024px.** `AppShell` wrapped the rail
+  in `hidden lg:block`, so at 900px there were no links to Setup, Analisis or
+  Work order at all — and the engine-mode card went with it, meaning a viewer
+  could not tell stub output from model output. `SCREENS.md` specifies a 64px
+  icon strip, not removal. The rail now collapses instead of vanishing, keeps
+  an accessible name on each item once labels are hidden, and carries a compact
+  engine-mode dot. `browser-pass` asserts all three at 900px so it cannot
+  regress.
 
 ### Defects found by the interaction pass
 

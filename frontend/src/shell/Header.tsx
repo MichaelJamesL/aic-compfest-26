@@ -87,12 +87,14 @@ export function Header({
         {subtitle && <p className="mt-0.5 truncate text-xs text-faint">{subtitle}</p>}
       </div>
 
-      <label className="hidden h-9 max-w-[280px] flex-1 items-center gap-2 rounded-full bg-card px-4 lg:flex">
+      {/* The ring lives on the pill, not the bare input inside it. */}
+      <label className="hidden h-9 max-w-[280px] flex-1 items-center gap-2 rounded-full bg-card px-4 focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-white/60 lg:flex">
         <Search size={15} className="shrink-0 text-faint" />
         <input
           type="search"
           placeholder="Cari mesin atau work order…"
           className="w-full bg-transparent text-[13px] text-white placeholder:text-faint focus:outline-none"
+          aria-label="Cari mesin atau work order"
         />
       </label>
 

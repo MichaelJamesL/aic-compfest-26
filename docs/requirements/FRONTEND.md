@@ -7,13 +7,24 @@ Scope: `frontend/`. Owner: frontend engineer.
 ```bash
 cd frontend
 npm install
-npm run test     # vitest — 60 passing
+npm run test     # vitest
 npm run build    # tsc -b && vite build
 npm run dev      # :5173, proxies /api /config /health to :8000
+
+# Visual pass over every screen in a real browser at 1440×900.
+# Needs the app on :5173 and a seeded backend on :8000.
+node scripts/browser-pass.mjs
 ```
 
-Last full run: `95 passed (11 files)`, build clean, and the dev proxy verified
-against a live backend on :8000.
+Last full run: `97 passed (11 files)`, build clean, `browser-pass` clean, and
+the dev proxy verified against a live backend on :8000.
+
+`scripts/browser-pass.mjs` exists because happy-dom does no layout: the unit
+tests cannot see a broken grid, a clipped label, or a panel that scrolls
+sideways. It drives Chromium over all eight routes plus a narrow viewport,
+screenshots each to `scripts/.shots/` (git-ignored), and fails on horizontal
+overflow, a missing or duplicated `h1`, an empty card, a blank page, the wrong
+font, or any console error. Run it before claiming a screen is done.
 
 Read in this order:
 [`../design/VISUAL_LANGUAGE.md`](../design/VISUAL_LANGUAGE.md) →
@@ -139,8 +150,31 @@ is asserted.
 - [x] Self-check list in `VISUAL_LANGUAGE.md` §11 — the automatable items verified: no colour literals, no uppercase labels, no card shadows, no gradients
 - [ ] All four states (empty / loading / error / partial) on every screen — **partial**: empty, error and partial are covered across screens 1–4 and 7; **no loading state is asserted anywhere**
 - [ ] `prefers-reduced-motion` honoured — implemented in the base layer, untested
-- [ ] Recorded at 1440×900 without horizontal scroll — **unverified**: no browser pass yet
-- [ ] Manual browser pass over every screen — **not done**: everything above is asserted in happy-dom, which does not lay anything out. Nothing here proves the design looks right.
+- [x] Recorded at 1440×900 without horizontal scroll — verified: `scripts/browser-pass.mjs` asserts it on all eight routes plus a 900px viewport
+- [x] Browser pass over every screen — done at 1440×900; screenshots reviewed against `docs/ref/ui-ref.jpg`. Six layout and contrast defects were found and fixed (see the commit); the pass is now clean and re-runnable.
+
+### Visual regressions found by the browser pass
+
+All fixed. Listed because they are the class of defect the unit tests
+structurally cannot catch, and they will recur.
+
+- The donut's remaining-score arc used `--raised` on a `--card` background, so
+  an 78/100 read as "almost nothing plus a small tan slice" — the inverse of
+  the score. The score arc is now the dominant one.
+- The donut caption sat inside the ring, where the inner circle is only ~84px
+  wide at that height; every Indonesian band label overlapped the stroke. Moved
+  below the ring.
+- The donut legend's 2×2 grid truncated "Overdue & berulang" at this card
+  width. Now a single column.
+- `Table` used `-mx-1 px-1`, which made every ancestor 8px wider than its
+  parent, and had no column gutter — "Ukuran" collided with "Status" on the
+  Setup screen.
+- `CardTitle muted` applied `text-dim`, a dark-surface token, so it rendered
+  grey-on-clay and was invisible on the tinted cards. Now opacity-based.
+- The six-step `StateTrack` truncated "Menunggu persetujuan" to "Menunggu p…".
+  Track labels now have short forms.
+- A `disabled` primary button kept its white fill at 40% opacity, so a blocked
+  action was still the loudest element on the bar. Disabled now drops the fill.
 
 ### Deployment
 

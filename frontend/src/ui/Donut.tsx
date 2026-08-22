@@ -21,12 +21,14 @@ export function Donut({
   value,
   suffix,
   caption,
+  captionClass,
   className,
 }: {
   segments: Segment[]
   value: string | number
   suffix?: string
   caption?: string
+  captionClass?: string
   className?: string
 }) {
   const radius = (SIZE - STROKE) / 2
@@ -68,14 +70,19 @@ export function Donut({
             ))}
           </g>
         </svg>
-        <div className="absolute inset-0 flex flex-col items-center justify-center">
+        <div className="absolute inset-0 flex items-center justify-center">
           <p className="tnum text-[30px] leading-[34px] font-semibold -tracking-[0.02em]">
             {value}
             {suffix && <span className="text-base text-faint">{suffix}</span>}
           </p>
-          {caption && <p className="mt-0.5 text-xs text-dim">{caption}</p>}
         </div>
       </div>
+
+      {/* Below the ring, not inside it: the inner circle is only ~84px wide at
+          the caption's height, and Indonesian band labels are longer. */}
+      {caption && (
+        <p className={cn('mt-3 text-center text-xs', captionClass ?? 'text-dim')}>{caption}</p>
+      )}
     </div>
   )
 }
@@ -84,7 +91,7 @@ export function Donut({
 export function DonutLegend({ segments }: { segments: Segment[] }) {
   const total = segments.reduce((sum, s) => sum + s.value, 0) || 1
   return (
-    <dl className="mt-5 grid grid-cols-2 gap-x-4 gap-y-3">
+    <dl className="mt-5 space-y-2.5">
       {segments.map((segment) => (
         <div key={segment.label} className="flex items-center gap-2">
           <span
@@ -92,7 +99,7 @@ export function DonutLegend({ segments }: { segments: Segment[] }) {
             style={{ background: segment.color }}
             aria-hidden
           />
-          <dt className="flex-1 truncate text-xs text-dim">{segment.label}</dt>
+          <dt className="flex-1 text-xs text-dim">{segment.label}</dt>
           <dd className="tnum text-xs font-medium">
             {Math.round((segment.value / total) * 100)}%
           </dd>

@@ -38,7 +38,9 @@ export function CardTitle({
   children: ReactNode
   muted?: boolean
 }) {
-  return <h3 className={cn('text-sm font-medium', muted && 'text-dim')}>{children}</h3>
+  // Opacity, not a colour token: this heading appears on both the dark cards
+  // and the tinted ones, where `text-dim` would be grey on clay.
+  return <h3 className={cn('text-sm font-medium', muted && 'opacity-65')}>{children}</h3>
 }
 
 export function SectionTitle({ children }: { children: ReactNode }) {

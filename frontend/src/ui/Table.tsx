@@ -7,7 +7,7 @@ import { cn } from '../lib/cn'
  */
 export function Table({ children, className }: { children: ReactNode; className?: string }) {
   return (
-    <div className="-mx-1 overflow-x-auto px-1">
+    <div className="overflow-x-auto">
       <table className={cn('w-full min-w-[560px] border-collapse text-left', className)}>
         {children}
       </table>
@@ -28,7 +28,7 @@ export function Th({
     <th
       scope="col"
       className={cn(
-        'pb-3 text-xs font-medium text-faint',
+        'pb-3 pr-6 text-xs font-medium text-faint last:pr-0',
         align === 'right' && 'text-right',
         className,
       )}
@@ -52,7 +52,7 @@ export function Td({
   return (
     <td
       className={cn(
-        'h-11 align-middle text-[13px]',
+        'h-11 pr-6 align-middle text-[13px] last:pr-0',
         align === 'right' && 'text-right tnum',
         tone === 'primary' && 'text-[13.5px] font-medium text-white',
         tone === 'muted' && 'text-faint',

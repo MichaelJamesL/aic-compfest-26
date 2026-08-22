@@ -1,0 +1,124 @@
+@import 'tailwindcss';
+
+/* Design tokens — extracted from docs/ref/ui-ref.jpg.
+   See docs/design/VISUAL_LANGUAGE.md. Do not add a colour that is not here. */
+@theme {
+  /* surfaces */
+  --color-page: #e5e5e5;
+  --color-shell: #ffffff;
+  --color-panel: #000000;
+  --color-card: #111111;
+  --color-raised: #1e1e1e;
+
+  /* text — dark surfaces */
+  --color-dim: #9a9a9a;
+  --color-faint: #7c7c7c;
+  /* text — light surfaces */
+  --color-ink: #111111;
+  --color-ink-dim: #5c5c5c;
+  --color-ink-faint: #767676;
+
+  /* hairlines */
+  --color-hair: rgba(255, 255, 255, 0.08);
+  --color-hair-strong: rgba(255, 255, 255, 0.16);
+  --color-hair-ink: rgba(17, 17, 17, 0.08);
+
+  /* accents */
+  --color-sage: #7f9e8c;
+  --color-apricot: #dd9251;
+  --color-clay: #b4a193;
+  --color-mint: #b7d0bd;
+  --color-teal: #5f8b8a;
+  --color-burnt: #d26e3d;
+
+  /* severity */
+  --color-ok: #7f9e8c;
+  --color-warn: #b4a193;
+  --color-high: #dd9251;
+  --color-crit: #d26e3d;
+
+  /* severity tints for pills on dark */
+  --color-ok-fill: rgba(127, 158, 140, 0.18);
+  --color-ok-text: #a9c9b6;
+  --color-warn-fill: rgba(180, 161, 147, 0.18);
+  --color-warn-text: #cbb9ac;
+  --color-high-fill: rgba(221, 146, 81, 0.18);
+  --color-high-text: #eab07a;
+  --color-crit-fill: rgba(210, 110, 61, 0.18);
+  --color-crit-text: #e8956a;
+
+  --radius-shell: 28px;
+  --radius-panel: 24px;
+  --radius-card: 20px;
+  --radius-control: 12px;
+
+  --font-sans: 'Plus Jakarta Sans', ui-sans-serif, system-ui, -apple-system,
+    'Segoe UI', Roboto, sans-serif;
+
+  --shadow-shell: 0 24px 64px -24px rgba(17, 17, 17, 0.2),
+    0 2px 8px -2px rgba(17, 17, 17, 0.06);
+  --shadow-float: 0 16px 40px -12px rgba(0, 0, 0, 0.55);
+}
+
+@layer base {
+  html {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+  body {
+    background: var(--color-page);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    font-size: 14px;
+    line-height: 22px;
+  }
+  :focus-visible {
+    outline: 2px solid currentColor;
+    outline-offset: 2px;
+  }
+  ::selection {
+    background: var(--color-apricot);
+    color: var(--color-card);
+  }
+}
+
+@utility tnum {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Glass — only for layers that float over moving content.
+   Never on a static card. VISUAL_LANGUAGE.md §6. */
+@utility glass-dark {
+  background: rgba(17, 17, 17, 0.72);
+  backdrop-filter: blur(24px) saturate(160%);
+  -webkit-backdrop-filter: blur(24px) saturate(160%);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: var(--shadow-float);
+}
+
+@utility glass-light {
+  background: rgba(255, 255, 255, 0.72);
+  backdrop-filter: blur(24px) saturate(160%);
+  -webkit-backdrop-filter: blur(24px) saturate(160%);
+  border: 1px solid rgba(17, 17, 17, 0.08);
+  box-shadow: var(--shadow-float);
+}
+
+@supports not (backdrop-filter: blur(1px)) {
+  .glass-dark {
+    background: #141414;
+  }
+  .glass-light {
+    background: #ffffff;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

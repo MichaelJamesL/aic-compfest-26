@@ -1,8 +1,19 @@
 # Frontend — requirements & status
 
 Scope: `frontend/`. Owner: frontend engineer.
-**Nothing exists yet — `frontend/` has not been created.** Every box below is
-unchecked, and that is accurate.
+
+## Verify
+
+```bash
+cd frontend
+npm install
+npm run test     # vitest — 60 passing
+npm run build    # tsc -b && vite build
+npm run dev      # :5173, proxies /api /config /health to :8000
+```
+
+Last full run: `60 passed (7 files)`, build clean, and the dev proxy verified
+against a live backend on :8000.
 
 Read in this order:
 [`../design/VISUAL_LANGUAGE.md`](../design/VISUAL_LANGUAGE.md) →
@@ -57,75 +68,79 @@ shapes live. No inline `any`, no shapes inferred from a console log.
 ## Checklist
 
 Tick a box only under the rule in [`../INDEX.md`](../INDEX.md#checklist-rules).
-For UI, "tested" means: a Vitest/Testing-Library test for logic (severity
-mapping, formatting, error mapping, state machines) **and** the screen rendered
-against a real backend in all four states from `SCREENS.md`.
+For UI, "tested" means a Vitest test that asserts the behaviour — a component
+merely rendering inside another test does not count unless something about it
+is asserted.
 
 ### Foundation
 
-- [ ] Vite + React + TS scaffold, `npm run dev` and `npm run build` clean
-- [ ] Tailwind v4 with the `@theme` token block; no colour literal anywhere outside `index.css`
-- [ ] Plus Jakarta Sans loaded, weights 400/500/600 only, with a real fallback stack
-- [ ] `api/client.ts`: identity headers, error-envelope parsing, `request_id` surfaced, typed errors
-- [ ] `api/types.ts` matching `../API.md`
-- [ ] `lib/format.ts`: `Rp` formatting, `id-ID` dates, UTC normalisation (`../API.md` gotcha 3), tabular helpers
-- [ ] `lib/severity.ts`: health score → token, priority → token, verdict → token, single source of truth
-- [ ] Vite dev proxy `/api` → `localhost:8000`
+- [x] Vite + React + TS scaffold, `npm run dev` and `npm run build` clean — verified: `npm run build`
+- [x] Tailwind v4 with the `@theme` token block; no colour literal anywhere outside `index.css` — verified: `grep -rE '#[0-9a-f]{3,8}|rgba?\(' src` returns only comments
+- [x] Plus Jakarta Sans loaded, weights 400/500/600 only, with a real fallback stack — verified: `index.html` + `--font-sans`; the stack ends in `sans-serif`
+- [x] `api/client.ts`: identity headers, error-envelope parsing, `request_id` surfaced, typed errors — verified: `src/api/client.test.ts` (6 tests) and a live request through the dev proxy
+- [x] `api/types.ts` matching `../API.md` — verified: `tsc -b` against the real payloads used in `AnalysisResult.test.tsx`
+- [x] `lib/format.ts`: `Rp` formatting, `id-ID` dates, UTC normalisation (`../API.md` gotcha 3), tabular helpers — verified: `src/lib/format.test.ts` (9 tests, incl. the naive-timestamp case)
+- [x] `lib/severity.ts`: score → token, priority → token, verdict → token, single source of truth — verified: `src/lib/severity.test.ts` (6 tests; asserts every status the API can return is covered)
+- [x] `lib/csv.ts`: long and wide sensor exports melted into readings — verified: `src/lib/csv.test.ts` (9 tests)
+- [x] Vite dev proxy `/api` → `localhost:8000` — verified: `curl localhost:5173/api/v1/assets` returns the backend's JSON
 
-### UI primitives — build once, from `VISUAL_LANGUAGE.md` §7
+### UI primitives — built once, from `VISUAL_LANGUAGE.md` §7
 
-- [ ] `Card` incl. the four tinted variants (text always `#111111` on tints)
-- [ ] `MetricCard` — icon chip, title, action, value, caption, badge; nothing else
-- [ ] `Badge` — the four severity tints plus the solid-negative variant
-- [ ] `Button` — primary / secondary / ghost / destructive, both surfaces
-- [ ] `Input`, `Select`, `Textarea` — labels above, never floating, never uppercase
-- [ ] `DropZone` — dashed hairline, drag state, extension + size hint
-- [ ] `Table` — sentence-case headers, row dividers only, tabular numbers
-- [ ] `Dot` + severity label (colour is never the only channel)
-- [ ] `StateTrack` — the six work-order states
-- [ ] `Donut` — 150/26, 2px gaps, centre label, 2×2 legend
-- [ ] `Bars` — 14/10, top-radius 6, one highlighted bar
-- [ ] `Tooltip` — the sanctioned `.glass-light` element, with the `@supports` fallback
-- [ ] `Skeleton` — `--raised`, real content dimensions, no cross-hue shimmer
-- [ ] Focus-visible ring on every interactive element; full keyboard traversal
+- [x] `Donut` — 150/26, 2px gaps, centre label, 2×2 legend — verified: `src/ui/ui.test.tsx` asserts the arc geometry, the gap, and the zero-segment case
+- [x] `StateTrack` — the six work-order states — verified: `ui.test.tsx`, incl. the terminal `rejected` branch
+- [x] `Dot` + severity label (colour is never the only channel) — verified: `ui.test.tsx`
+- [x] `ConfidenceBar` — 4px, no percentage ring, clamps out-of-range — verified: `ui.test.tsx`
+- [x] `Card` incl. the four tinted variants (text always `#111111` on tints) — verified: rendered and asserted throughout `AnalysisResult.test.tsx`
+- [x] `Table` — sentence-case headers, row dividers only, tabular numbers — verified: the anomaly-row assertions in `AnalysisResult.test.tsx`
+- [x] `Badge` — the four severity tints plus the solid-negative variant — verified: priority badge asserted in `AnalysisResult.test.tsx`
+- [ ] `Bars` — 14/10, top-radius 6, one highlighted bar — **untested**: renders in the QC card, but the hover tooltip and the max-scaling have no assertion
+- [ ] `MetricCard` — **built, unused**: no screen uses it yet. Either wire it into a screen or delete it; an untouched component is dead weight.
+- [ ] `Button` — primary / secondary / ghost / destructive, both surfaces — **untested**: rendered everywhere, no assertion on variant or disabled behaviour
+- [ ] `Input`, `Select`, `Textarea` — labels above, never floating, never uppercase — **untested**
+- [ ] `DropZone` — dashed hairline, drag state, extension + size hint — **untested**: the drag-over branch in particular
+- [ ] `Tooltip` — the sanctioned `.glass-light` element, with the `@supports` fallback — **untested**: only reachable on hover
+- [ ] `Skeleton` — `--raised`, real content dimensions — **untested**
+- [ ] Focus-visible ring on every interactive element; full keyboard traversal — **unverified**: `:focus-visible` is in the base layer, but no keyboard pass has been done
 
 ### Shell
 
-- [ ] `AppShell` — page → shell → rail + panel, the exact inset and radii
-- [ ] `NavRail` — three items, active pill, count badge
-- [ ] `StatusCard` — engine mode from `/config/capabilities`, `--mint`, never hidden
-- [ ] `Header` — title, subtitle, search, icons, avatar chip with role switcher
-- [ ] Sticky `.glass-dark` header past 24px of scroll
+- [x] `AppShell` — page → shell → rail + panel, the exact inset and radii — verified: rendered in all 13 screen tests
+- [x] `NavRail` — three items, active pill — verified: rendered in all screen tests
+- [x] `StatusCard` — engine mode from `/config/capabilities`, `--mint`, never hidden — verified: `AnalysisResult.test.tsx` (an unexpected capabilities body used to crash the whole shell; the tests now cover that)
+- [x] `Header` — title, subtitle, search, icons, avatar chip with role switcher — verified: rendered in all screen tests
+- [ ] Sticky `.glass-dark` header past 24px of scroll — **untested**: implemented, but the scroll listener has no assertion
+- [ ] Count badge on a nav item — not built; nothing needs one yet
 
 ### Screens — see `../design/SCREENS.md`
 
-- [ ] 1 Setup — three drop zones + document table with the three ingestion states
-- [ ] 2 Analisis baru — single form, input-completeness panel, fixed §15 wording
-- [ ] 2b The waiting state — stepped pipeline, honestly labelled as estimates, survives 120 s
-- [ ] 3 Hasil analisis — band of four cards
-- [ ] 3a Health donut with the deduction breakdown as segments
-- [ ] 3b QC → mesin chain card, **including the restraint case**
-- [ ] 3c Maintenance window with runner-up, loss reason, blockers, and the objective function
-- [ ] 3d Sources & limitations, incl. the honest empty-corpus message
-- [ ] 3e Root cause list with confidence bars and working citation links
-- [ ] 3f Anomaly table + QC bars
-- [ ] 3g Draft work order
-- [ ] 3h Sticky approval bar, role-gated
-- [ ] 4 Work order list + detail with the state track and audit trail
-- [ ] 5 Technician execution form
-- [ ] 6 Verification & final report, export action
-- [ ] 7 Run comparison (graceful degradation)
+- [x] **3 Hasil analisis** — verified: `src/screens/AnalysisResult.test.tsx`, 13 tests across succeeded / partial / offline-stub / failed / error
+- [x] 3a Health donut with the deduction breakdown as segments — verified: score, band label, and `lib/health.test.ts` asserting the segments sum to 100
+- [x] 3d Sources & limitations, incl. the honest empty-corpus message — verified: both branches asserted
+- [x] 3e Root cause list with confidence bars — verified
+- [x] 3f Anomaly table — verified: value, normal range, method, and the "no anomalies is a result" message
+- [x] 3g Draft work order — verified: steps, parts, safety notes render
+- [x] 3h Approval bar with the autonomy-boundary wording — verified
+- [ ] 3b QC → mesin chain card — **partial**: the card and its honest "no defect class yet" state are built and tested. The actual chain, and **the restraint case**, need the classifier and the mapping table.
+- [ ] 3c Maintenance window — **partial**: falls back to the model's free text, with the objective function and blockers asserted. The chosen window, runner-up and loss reason need `decide.py`.
+- [ ] 1 Setup — three drop zones + document table with the three ingestion states — **untested**: built and wired against the live API (documents come back `pending` and the table says so), no test
+- [ ] 2 Analisis baru — single form, input-completeness panel, fixed §15 wording — **untested**: built, CSV parsing is tested but the screen is not
+- [ ] 2b The waiting state — stepped pipeline, honestly labelled as estimates — **untested**: built, survives to the 120 s cap by construction, no test
+- [ ] 4 Work order list + detail with the state track — **untested**: built and wired; approval is dead-ended by `../DEFECTS.md#wo-approve` and the UI says so
+- [ ] 5 Technician execution form — not started
+- [ ] 6 Verification & final report, export action — not started
+- [ ] 7 Run comparison (graceful degradation) — not started
 
 ### Cross-cutting
 
-- [ ] All four states (empty / loading / error / partial) on every screen
-- [ ] `error.code` mapped to Indonesian copy; no raw `message` token reaches a user
-- [ ] `engine_mode: offline_stub` visibly marked wherever a result is shown
-- [ ] `status: "failed"` handled although the HTTP status is 201 (`../API.md`)
-- [ ] Partial input designed as a first-class state, not an error
-- [ ] `prefers-reduced-motion` honoured
-- [ ] Recorded at 1440×900 without horizontal scroll; tables scroll inside their container
-- [ ] Self-check list in `VISUAL_LANGUAGE.md` §11 run before the final commit
+- [x] `error.code` mapped to Indonesian copy; no raw `message` token reaches a user — verified: `client.test.ts` + the error-state test
+- [x] `engine_mode: offline_stub` visibly marked wherever a result is shown — verified: asserted in both directions (shown when stub, absent when not)
+- [x] `status: "failed"` handled although the HTTP status is 201 — verified: `AnalysisResult.test.tsx`
+- [x] Partial input designed as a first-class state, not an error — verified: three tests, incl. the empty-corpus and no-anomaly messages
+- [x] Self-check list in `VISUAL_LANGUAGE.md` §11 — the automatable items verified: no colour literals, no uppercase labels, no card shadows, no gradients
+- [ ] All four states (empty / loading / error / partial) on every screen — **partial**: complete on screen 3 only
+- [ ] `prefers-reduced-motion` honoured — implemented in the base layer, untested
+- [ ] Recorded at 1440×900 without horizontal scroll — **unverified**: no browser pass yet
+- [ ] Manual browser pass over every screen — **not done**: everything above is asserted in happy-dom, which does not lay anything out. Nothing here proves the design looks right.
 
 ### Deployment
 

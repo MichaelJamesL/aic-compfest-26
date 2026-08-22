@@ -10,7 +10,7 @@ live. Re-verify before trusting this file after any significant merge.
 ```
 ai-engine  uv run pytest -q                 → 11 passed, 1 skipped
 backend    pytest -q (python 3.11)          →  5 passed
-frontend   —                                → does not exist
+frontend   npm run test && npm run build     → 60 passed, build clean
 ```
 
 **States**
@@ -70,8 +70,8 @@ frontend   —                                → does not exist
 
 | # | Requirement | Area | State | Evidence / gap |
 | --- | --- | --- | --- | --- |
-| 25 | Machine health summary | backend | `probed` | API returns it; **no UI** |
-| 26 | Work order generation | backend | `done` | `test_starter_flow`; **no UI** |
+| 25 | Machine health summary | both | `done` | API `probed`; UI verified by `AnalysisResult.test.tsx` (donut, band, deduction breakdown) |
+| 26 | Work order generation | both | `done` | `test_starter_flow`; draft renders and is asserted in the UI |
 | 27 | Maintenance report | frontend | `none` | Data exists, nothing renders it |
 | 28 | Maintenance execution status | backend | `broken` | States past `pending_approval` are unreachable — `DEFECTS.md#wo-approve` |
 | 29 | Product quality report | both | `none` | Blocked on 7 and 16 |
@@ -83,7 +83,7 @@ frontend   —                                → does not exist
 | # | Requirement | Area | State | Evidence / gap |
 | --- | --- | --- | --- | --- |
 | 32 | Coordinator approval | backend | `broken` | Nothing can reach `approved`; no reject route — `DEFECTS.md#wo-approve`. The governance headline is non-functional. |
-| 33 | Partial-input analysis | both | `partial` | The engine genuinely reasons over whatever is present (that is the hard part, and it works). Nothing *states* which inputs were missing or what that cost — which is the requirement. |
+| 33 | Partial-input analysis | both | `partial` | The engine reasons over whatever is present, and the UI now names the missing inputs and what each costs (asserted in `AnalysisResult.test.tsx`). Still derived client-side from `request_snapshot`; the backend does not state it. |
 | 34 | PLC / controller integration | backend | `partial` | `MockPLC` exists with a health endpoint; `pull()` is never called by any route |
 | 35 | IoT sensor integration | backend | `partial` | Same |
 | 36 | Docker deployment | backend | `partial` | Compose starts Postgres only; `Dockerfile` does not install the ai-engine; never run from a clean clone |

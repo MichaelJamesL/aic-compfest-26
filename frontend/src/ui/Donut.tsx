@@ -33,20 +33,20 @@ export function Donut({
   const circumference = 2 * Math.PI * radius
   const total = segments.reduce((sum, s) => sum + s.value, 0) || 1
 
-  let offset = 0
-  const arcs = segments
-    .filter((s) => s.value > 0)
-    .map((segment) => {
-      const length = (segment.value / total) * circumference
-      const visible = Math.max(length - GAP, 0.5)
-      const arc = {
-        ...segment,
-        dash: `${visible} ${circumference - visible}`,
-        offset: -offset,
-      }
-      offset += length
-      return arc
+  // Cumulative offsets, built in one pass so nothing mutates across a callback.
+  const arcs: (Segment & { dash: string; offset: number })[] = []
+  let consumed = 0
+  for (const segment of segments) {
+    if (segment.value <= 0) continue
+    const length = (segment.value / total) * circumference
+    const visible = Math.max(length - GAP, 0.5)
+    arcs.push({
+      ...segment,
+      dash: `${visible} ${circumference - visible}`,
+      offset: -consumed,
     })
+    consumed += length
+  }
 
   return (
     <div className={cn('flex flex-col items-center', className)}>

@@ -1,0 +1,243 @@
+/**
+ * Wire types for the backend. Mirrors docs/API.md — that document is the
+ * source of truth and every shape there was captured from a running server.
+ * If you need a shape that is not here, add it to API.md first.
+ */
+
+export type Criticality = 'low' | 'medium' | 'high' | 'critical'
+export type Priority = 'low' | 'medium' | 'high' | 'critical'
+export type Severity = 'low' | 'medium' | 'high' | 'critical'
+
+export type WorkOrderStatus =
+  | 'draft'
+  | 'pending_approval'
+  | 'approved'
+  | 'scheduled'
+  | 'in_progress'
+  | 'blocked'
+  | 'completed'
+  | 'cancelled'
+  | 'rejected'
+
+export type IngestionStatus = 'pending' | 'ready' | 'failed'
+export type EngineMode = 'ai_engine' | 'offline_stub' | 'unavailable' | 'error'
+
+export interface Capabilities {
+  tier: string
+  capabilities: {
+    assets: boolean
+    documents: boolean
+    analysis: boolean
+    work_orders: boolean
+    mock_plc: boolean
+    ai_engine: boolean
+  }
+}
+
+export interface Asset {
+  id: string
+  factory_id: string
+  name: string
+  asset_type: string
+  criticality: Criticality
+  location: string | null
+  status: string
+  /** Read this, not `specs_json`. API.md gotcha 1: both keys are returned. */
+  specs: Record<string, unknown>
+}
+
+export interface AssetInput {
+  name: string
+  asset_type?: string
+  criticality?: Criticality
+  location?: string | null
+  specs_json?: Record<string, unknown>
+}
+
+export interface DocumentOut {
+  id: string
+  title: string
+  kind: 'sop' | 'manual' | 'log'
+  filename: string
+  size_bytes: number
+  ingestion_status: IngestionStatus
+  ingestion_error: string | null
+}
+
+export interface Reading {
+  id: string
+  tag: string
+  value: number
+  unit: string
+  recorded_at: string
+  source: string
+  external_id: string | null
+}
+
+export interface BusinessContext {
+  production_schedule: string | null
+  spareparts: string[]
+  sparepart_eta: string | null
+  technicians_available: number | null
+  operator_report: string | null
+}
+
+export interface Anomaly {
+  tag: string
+  observed: number
+  expected_range: [number, number]
+  severity: Severity
+  method: string
+}
+
+export interface DefectFinding {
+  image: string
+  subject: 'asset' | 'product'
+  score: number
+  threshold: number
+  label: 'ok' | 'defect'
+  severity: Severity
+  region: [number, number, number, number] | null
+  heatmap_path: string | null
+  method: string
+  /** Pending DEFECTS.md#defect-class — the classifier is not built yet. */
+  defect_class?: string | null
+  class_confidence?: number | null
+}
+
+export interface RootCause {
+  cause: string
+  confidence: number
+  evidence: string[]
+}
+
+export interface WorkOrderDetails {
+  title: string
+  steps: string[]
+  parts: string[]
+  est_duration_h: number | null
+  required_skills: string[]
+  safety_notes: string[]
+}
+
+/** Pending — see API.md "contract changes". decide.py does not exist yet. */
+export interface ScheduleWindow {
+  start: string
+  end: string
+  expected_cost: number | null
+  rationale?: string
+  lost_because?: string
+}
+
+export interface Schedule {
+  chosen: ScheduleWindow
+  runner_up: ScheduleWindow | null
+  blockers: string[]
+}
+
+export interface AnalysisResult {
+  health_score: number
+  health_summary: string
+  anomalies: Anomaly[]
+  defects: DefectFinding[]
+  root_causes: RootCause[]
+  recommendation: string
+  priority: Priority
+  recommended_window: string | null
+  explanation: string
+  blockers: string[]
+  work_order: WorkOrderDetails | null
+  tier: string | null
+  model: string | null
+  sources: string[]
+  schedule?: Schedule | null
+}
+
+export interface AnalysisRun {
+  id: string
+  /** HTTP is 201 even when this is "failed". API.md gotcha 5. */
+  status: 'succeeded' | 'failed'
+  result: AnalysisResult | null
+  engine_mode: EngineMode | null
+  error_code: string | null
+  error_message: string | null
+  health_score: number | null
+  priority: Priority | null
+}
+
+export interface AnalysisDetail {
+  id: string
+  status: 'succeeded' | 'failed'
+  result: AnalysisResult | null
+  request_snapshot: RequestSnapshot | null
+  error: string | null
+  engine_mode: EngineMode | null
+  error_code: string | null
+}
+
+export interface RequestSnapshot {
+  asset: { id: string; name: string; type: string; criticality: string }
+  readings: Reading[]
+  history: { id: string; performed_at: string; action: string; findings: string }[]
+  condition: string | null
+  business: BusinessContext
+  tier: string
+  trigger: string
+}
+
+export interface WorkOrder {
+  id: string
+  factory_id: string
+  asset_id: string
+  analysis_id: string
+  title: string
+  description: string
+  priority: Priority
+  status: WorkOrderStatus
+  details_json: WorkOrderDetails
+  created_at: string
+  updated_at: string
+}
+
+/** Pending — POST /work-orders/{id}/result. See docs/API.md. */
+export interface TechnicianResult {
+  steps_done: string[]
+  findings: string
+  parts_used: string[]
+  hours_spent: number | null
+}
+
+/** Pending — POST /work-orders/{id}/verify. One synchronous call, no loop. */
+export type Verdict = 'resolved' | 'partial' | 'not_resolved'
+
+export interface Verification {
+  verdict: Verdict
+  evidence: string[]
+  follow_up: string[]
+  summary: string
+}
+
+export interface MaintenanceReport {
+  problem: string
+  action: string
+  verification: Verification
+  final_state: string
+  written_back: boolean
+}
+
+export interface AnalysisInput {
+  tier?: 'starter' | 'standard' | 'professional'
+  trigger?: string
+  manual_condition?: string | null
+  include_history?: boolean
+  include_business_context?: boolean
+}
+
+export interface ApiErrorBody {
+  error: {
+    code: 'NOT_FOUND' | 'CONFLICT' | 'VALIDATION_ERROR' | string
+    message: string
+    details: { field: string; reason: string }[]
+    request_id: string
+  }
+}

@@ -27,6 +27,10 @@ export function AnalyzeScreen() {
   const [eta, setEta] = useState('')
   const [technicians, setTechnicians] = useState('')
   const [operator, setOperator] = useState('')
+  const [qcBatchId, setQcBatchId] = useState<string | null>(null)
+  const [qcCount, setQcCount] = useState(0)
+  const [qcUploading, setQcUploading] = useState(false)
+  const [qcError, setQcError] = useState<unknown>(null)
 
   const [running, setRunning] = useState(false)
   const [step, setStep] = useState(0)
@@ -34,17 +38,39 @@ export function AnalyzeScreen() {
 
   const selected = assets.data?.find((asset) => asset.id === assetId) ?? null
 
+  function selectAsset(nextAssetId: string) {
+    setAssetId(nextAssetId)
+    setQcBatchId(null)
+    setQcCount(0)
+    setQcError(null)
+  }
+
   const coverage = useMemo(() => {
     const present: Record<string, boolean> = {
       sensor: readings.length > 0,
-      qc: false,
+       qc: qcCount > 0,
       schedule: schedule.trim().length > 0,
       parts: spareparts.trim().length > 0,
       tech: technicians.trim().length > 0,
       condition: (condition || operator).trim().length > 0,
     }
     return FORM_INPUTS.map((input) => ({ ...input, present: present[input.key] }))
-  }, [readings.length, schedule, spareparts, technicians, condition, operator])
+  }, [readings.length, qcCount, schedule, spareparts, technicians, condition, operator])
+
+  async function uploadQC(files: File[]) {
+    if (!assetId) return
+    setQcUploading(true)
+    setQcError(null)
+    try {
+      const batch = await api.uploadQCBatch(assetId, files)
+      setQcBatchId(batch.id)
+      setQcCount(batch.count)
+    } catch (err) {
+      setQcError(err)
+    } finally {
+      setQcUploading(false)
+    }
+  }
 
   async function run() {
     if (!assetId) return
@@ -54,7 +80,6 @@ export function AnalyzeScreen() {
     try {
       if (readings.length) {
         setStep(1)
-        // No batch endpoint yet (docs/API.md), so one request per reading.
         for (const reading of readings) {
           await api.addReading(assetId, { ...reading, source: 'csv', external_id: null })
         }
@@ -76,6 +101,7 @@ export function AnalyzeScreen() {
       const run = await api.analyze(assetId, {
         tier: 'professional',
         manual_condition: condition.trim() || null,
+        qc_batch_id: qcBatchId,
       })
       navigate(`/analysis/${run.id}`)
     } catch (err) {
@@ -120,7 +146,7 @@ export function AnalyzeScreen() {
                 <Select
                   label="Pilih mesin"
                   value={assetId}
-                  onChange={(event) => setAssetId(event.target.value)}
+                   onChange={(event) => selectAsset(event.target.value)}
                 >
                   <option value="">— pilih —</option>
                   {assets.data.map((asset) => (
@@ -161,11 +187,19 @@ export function AnalyzeScreen() {
               <div className="mt-4">
                 <DropZone
                   label="Unggah batch citra produk"
-                  hint="Belum tersedia — backend belum menerima berkas gambar"
-                  icon={<Images size={20} />}
-                  disabled
-                  onFiles={() => {}}
-                />
+                   hint={assetId ? 'PNG/JPEG, maksimal 20 gambar per batch' : 'Pilih mesin dulu.'}
+                   icon={<Images size={20} />}
+                   accept=".png,.jpg,.jpeg"
+                   multiple
+                   disabled={!assetId || qcUploading}
+                   onFiles={uploadQC}
+                 />
+                 {qcCount > 0 && (
+                   <p className="mt-3 text-[13px] text-dim">
+                     Batch QC tersimpan — <span className="text-white">{qcCount} citra</span>
+                   </p>
+                 )}
+                 {qcError != null && <ErrorState error={qcError} />}
               </div>
             </Card>
 

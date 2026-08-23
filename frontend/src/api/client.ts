@@ -11,6 +11,10 @@ import type {
   DocumentOut,
   Reading,
   WorkOrder,
+  MaintenanceReport,
+  QCBatch,
+  TechnicianResult,
+  Verification,
 } from './types'
 
 const BASE = ''
@@ -26,15 +30,25 @@ export const ROLES = [
 export type RoleUser = (typeof ROLES)[number]['user']
 
 const IDENTITY_KEY = 'aic.identity'
+let memoryIdentity: { user: RoleUser; factory: string } = {
+  user: 'demo-engineer',
+  factory: 'demo-factory',
+}
 
 export function getIdentity(): { user: RoleUser; factory: string } {
   try {
     const raw = localStorage.getItem(IDENTITY_KEY)
-    if (raw) return JSON.parse(raw)
+    if (raw) {
+      const parsed: unknown = JSON.parse(raw)
+      if (typeof parsed === 'object' && parsed !== null && 'user' in parsed && 'factory' in parsed && typeof parsed.user === 'string' && ROLES.some((role) => role.user === parsed.user) && typeof parsed.factory === 'string' && /^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$/.test(parsed.factory)) {
+        memoryIdentity = { user: parsed.user as RoleUser, factory: parsed.factory }
+        return memoryIdentity
+      }
+    }
   } catch {
-    /* private mode, cleared storage — fall through to the default */
+    /* private mode or unavailable storage: use the session identity */
   }
-  return { user: 'demo-engineer', factory: 'demo-factory' }
+  return memoryIdentity
 }
 
 export function setIdentity(user: RoleUser) {
@@ -42,8 +56,9 @@ export function setIdentity(user: RoleUser) {
   try {
     localStorage.setItem(IDENTITY_KEY, JSON.stringify(next))
   } catch {
-    /* not fatal: the header still goes out for this session */
+    /* not fatal: retain the identity in memory for this session */
   }
+  memoryIdentity = next
   return next
 }
 
@@ -75,6 +90,14 @@ const MESSAGES: Record<string, string> = {
   empty_filename: 'Berkas tidak punya nama.',
   AI_ENGINE_UNAVAILABLE: 'Mesin analisis tidak tersedia.',
   ANALYSIS_FAILED: 'Mesin analisis gagal memproses permintaan.',
+  too_many_qc_images: 'Batch QC melebihi batas jumlah gambar.',
+  unsupported_qc_image: 'Gunakan gambar PNG atau JPEG untuk batch QC.',
+  qc_image_too_large: 'Ukuran salah satu gambar QC melebihi 5 MB.',
+  invalid_qc_image_signature: 'Salah satu berkas bukan gambar PNG atau JPEG yang valid.',
+  qc_batch_too_large: 'Ukuran total batch QC melebihi 50 MB.',
+  qc_batch_not_found: 'Batch QC tidak ditemukan.',
+  verification_failed: 'Verifikasi belum berhasil dijalankan.',
+  technician_result_required: 'Hasil pekerjaan teknisi belum dikirim.',
 }
 
 export function errorCopy(error: unknown): string {
@@ -127,6 +150,17 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   return response.json()
 }
 
+async function requestFile(path: string): Promise<Blob> {
+  const identity = getIdentity()
+  const response = await fetch(BASE + path, { headers: { 'X-Demo-User': identity.user, 'X-Factory-ID': identity.factory } })
+  if (!response.ok) {
+    let body: ApiErrorBody | null = null
+    try { body = await response.json() } catch { /* preserve the normal API error fallback */ }
+    throw new ApiError(response.status, body?.error ?? { code: 'UNKNOWN', message: `HTTP ${response.status}`, details: [], request_id: response.headers.get('X-Request-ID') ?? '—' })
+  }
+  return response.blob()
+}
+
 function json(body: unknown): RequestInit {
   return { method: 'POST', body: JSON.stringify(body) }
 }
@@ -147,7 +181,7 @@ export const api = {
   },
 
   documents: () => request<DocumentOut[]>('/api/v1/knowledge/documents'),
-  uploadDocument: (file: File, kind: 'sop' | 'manual' | 'log' = 'sop', assetId?: string) => {
+  uploadDocument: (file: File, kind: DocumentOut['kind'] = 'sop', assetId?: string) => {
     const form = new FormData()
     form.append('file', file)
     const query = new URLSearchParams({ kind })
@@ -159,10 +193,18 @@ export const api = {
   },
   reindexDocument: (id: string) =>
     request<DocumentOut>(`/api/v1/knowledge/documents/${id}/reindex`, { method: 'POST' }),
+  importMaintenanceHistory: (file: File) => {
+    const form = new FormData(); form.append('file', file)
+    return request<{ imported: number; errors: { row: number; reason: string }[] }>('/api/v1/maintenance-records/import', { method: 'POST', body: form })
+  },
 
   readings: (assetId: string) => request<Reading[]>(`/api/v1/assets/${assetId}/readings`),
   addReading: (assetId: string, body: Omit<Reading, 'id'>) =>
     request<{ id: string; quality: string }>(`/api/v1/assets/${assetId}/readings`, json(body)),
+  importReadings: (assetId: string, file: File) => {
+    const form = new FormData(); form.append('file', file)
+    return request<{ count: number; errors: { row: number; reason: string }[] }>(`/api/v1/assets/${assetId}/readings/import`, { method: 'POST', body: form })
+  },
 
   setCondition: (assetId: string, condition: string) =>
     request<unknown>(`/api/v1/assets/${assetId}/condition`, {
@@ -176,6 +218,15 @@ export const api = {
       method: 'PUT',
       body: JSON.stringify(body),
     }),
+
+  uploadQCBatch: (assetId: string, files: File[]) => {
+    const form = new FormData()
+    files.forEach((file) => form.append('files', file))
+    return request<QCBatch>(`/api/v1/assets/${assetId}/qc-batches`, {
+      method: 'POST',
+      body: form,
+    })
+  },
 
   analyze: (assetId: string, body: AnalysisInput) =>
     request<AnalysisRun>(`/api/v1/assets/${assetId}/analyses`, json(body)),
@@ -198,4 +249,14 @@ export const api = {
   /** Rejection carries a reason; the next analysis reads it. */
   rejectWorkOrder: (id: string, reason: string) =>
     request<WorkOrder>(`/api/v1/work-orders/${id}/reject`, json({ reason })),
+  submitTechnicianResult: (id: string, body: TechnicianResult) =>
+    request<{ id: string; status: string; result: TechnicianResult; result_submitted_at: string }>(
+      `/api/v1/work-orders/${id}/result`, json(body),
+    ),
+  verifyWorkOrder: (id: string) =>
+    request<{ id: string; status: string; verification: Verification; verified_at: string }>(
+      `/api/v1/work-orders/${id}/verify`, { method: 'POST' },
+    ),
+  workOrderReport: (id: string) => request<MaintenanceReport>(`/api/v1/work-orders/${id}/report`),
+  exportWorkOrder: (id: string, format: 'json' | 'csv' = 'json') => requestFile(`/api/v1/work-orders/${id}/export?format=${format}`),
 }

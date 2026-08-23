@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, screen, waitFor } from '@testing-library/react'
+import { cleanup, fireEvent, screen, waitFor } from '@testing-library/react'
 import { CAPABILITIES, renderRoute, stubRoutes } from '../test/harness'
 import { SetupScreen } from './Setup'
 
@@ -78,6 +78,29 @@ describe('Setup', () => {
   it('tells the user what to do when there are no documents', async () => {
     render([])
     expect(await screen.findByText(/Unggah SOP dan histori agar analisis punya dasar/i)).toBeTruthy()
+  })
+
+  it('imports structured maintenance history and displays row errors', async () => {
+    const view = render()
+    stubRoutes({
+      '/config/capabilities': CAPABILITIES,
+      '/api/v1/knowledge/documents': documents,
+      '/api/v1/assets': [{ id: 'a1', name: 'CNC-02' }],
+      '/api/v1/maintenance-records/import': {
+        imported: 1,
+        errors: [{ row: 3, reason: 'missing_action' }],
+      },
+    })
+    const input = view.container.querySelector('input[accept=".csv,.xlsx"]') as HTMLInputElement
+    fireEvent.change(input, { target: { files: [new File(['asset_id,action'], 'history.csv', { type: 'text/csv' })] } })
+    expect(await screen.findByText(/1 catatan histori diimpor/)).toBeTruthy()
+    expect(screen.getByText('Baris 3: missing_action')).toBeTruthy()
+  })
+
+  it('keeps a generic history document upload alongside structured import', async () => {
+    const view = render()
+    expect(view.container.querySelector('input[accept=".txt,.md,.csv,.json"]')).toBeTruthy()
+    expect(screen.getByText('Unggah berkas histori')).toBeTruthy()
   })
 
   it('surfaces a load failure with a retry', async () => {

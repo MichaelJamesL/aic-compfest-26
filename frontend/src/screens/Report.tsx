@@ -1,7 +1,8 @@
+import { useState } from 'react'
 import { Link, useParams } from 'react-router'
-import { ArrowLeft, Download, RefreshCw } from 'lucide-react'
+import { ArrowLeft, Download } from 'lucide-react'
 import { AppShell } from '../shell/AppShell'
-import { api } from '../api/client'
+import { ApiError, api } from '../api/client'
 import { useRequest } from '../lib/useRequest'
 import { VERDICT } from '../lib/severity'
 import { Card, CardTitle, SectionTitle } from '../ui/Card'
@@ -9,7 +10,7 @@ import { Badge } from '../ui/Badge'
 import { Button } from '../ui/Button'
 import { ErrorState } from '../ui/States'
 import { Skeleton } from '../ui/Skeleton'
-import type { MaintenanceReport } from '../api/types'
+import type { MaintenanceReport, WorkOrder } from '../api/types'
 
 /**
  * Verdict + evidence, then the final report. A `not_resolved` verdict offers a
@@ -18,8 +19,19 @@ import type { MaintenanceReport } from '../api/types'
  */
 export function ReportScreen() {
   const { id = '' } = useParams()
-  const { data, error, loading, reload } = useRequest(
-    () => api.workOrders().then((list) => list.find((order) => order.id === id) ?? null),
+  const { data, error, loading, reload } = useRequest<{ order: WorkOrder; report: MaintenanceReport | null }>(
+    () => api.workOrders().then(async (list) => {
+      const order = list.find((item) => item.id === id)
+      if (!order) throw new Error('not found')
+      try {
+        return { order, report: await api.workOrderReport(id) }
+      } catch (reason) {
+        if (reason instanceof ApiError && reason.status === 404) {
+          return { order, report: null }
+        }
+        throw reason
+      }
+    }),
     [id],
   )
 
@@ -51,25 +63,43 @@ export function ReportScreen() {
     )
   }
 
-  // GET /work-orders/{id}/report does not exist yet, so there is never a report
-  // to show. Say that plainly rather than rendering an empty shell.
-  const report: MaintenanceReport | null = null
+  const { order, report } = data
 
   return (
-    <AppShell title="Verifikasi & laporan" subtitle={data.title}>
+    <AppShell title="Verifikasi & laporan" subtitle={order.title}>
       <Link
-        to={`/work-orders/${data.id}`}
+        to={`/work-orders/${order.id}`}
         className="mb-3 inline-flex items-center gap-1.5 text-[13px] text-faint hover:text-white"
       >
         <ArrowLeft size={14} /> Kembali ke work order
       </Link>
 
-      {report ? <Verdict report={report} /> : <NotYetVerified />}
+      {report ? <Verdict orderId={order.id} report={report} /> : (
+         <NotYetVerified orderId={order.id} hasTechnicianResult={order.technician_result_json != null && order.status === 'in_progress'} onVerified={reload} />
+      )}
     </AppShell>
   )
 }
 
-function NotYetVerified() {
+function NotYetVerified({ orderId, hasTechnicianResult, onVerified }: {
+  orderId: string; hasTechnicianResult: boolean; onVerified: () => void
+}) {
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState(false)
+
+  async function verify() {
+    setBusy(true)
+    setError(false)
+    try {
+      await api.verifyWorkOrder(orderId)
+      onVerified()
+    } catch {
+      setError(true)
+    } finally {
+      setBusy(false)
+    }
+  }
+
   return (
     <>
       <Card>
@@ -94,19 +124,48 @@ function NotYetVerified() {
         </div>
       </Card>
 
-      <p className="mt-3 text-xs leading-5 text-faint">
-        Verifikasi belum bisa dijalankan: backend belum punya route
-        <span className="text-dim"> POST /work-orders/{'{id}'}/verify</span>, dan engine belum
-        punya <span className="text-dim">MaintenanceEngine.verify()</span>. Lihat
-        docs/requirements/AI_ENGINE.md §1.
-      </p>
+      {hasTechnicianResult ? (
+        <div className="mt-3 flex items-center gap-3">
+          <Button size="sm" variant="primary" onClick={verify} disabled={busy}>
+            {busy ? 'Memverifikasi…' : 'Jalankan verifikasi'}
+          </Button>
+          {error && <span className="text-xs text-crit-text">Verifikasi gagal dijalankan.</span>}
+        </div>
+      ) : (
+        <p className="mt-3 text-xs leading-5 text-faint">
+          Hasil pekerjaan teknisi diperlukan sebelum verifikasi dapat dijalankan. Minta teknisi
+          mengisi dan mengirim hasil pekerjaan terlebih dahulu.
+        </p>
+      )}
+
     </>
   )
 }
 
-function Verdict({ report }: { report: MaintenanceReport }) {
-  const state = VERDICT[report.verification.verdict]
-  const unresolved = report.verification.verdict !== 'resolved'
+function Verdict({ orderId, report }: { orderId: string; report: MaintenanceReport }) {
+  const [exporting, setExporting] = useState(false)
+  const [exportError, setExportError] = useState(false)
+
+  async function exportReport(format: 'json' | 'csv') {
+    setExporting(true)
+    setExportError(false)
+    try {
+      const blob = await api.exportWorkOrder(orderId, format)
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      const safeId = orderId.replace(/[^A-Za-z0-9_-]/g, '_').slice(0, 64) || 'unknown'
+      link.download = `work-order-${safeId}.${format}`
+      link.click()
+      URL.revokeObjectURL(url)
+    } catch {
+      setExportError(true)
+    } finally {
+      setExporting(false)
+    }
+  }
+  const state = VERDICT[report.verdict.verdict]
+  const unresolved = report.verdict.verdict !== 'resolved'
 
   return (
     <>
@@ -115,12 +174,12 @@ function Verdict({ report }: { report: MaintenanceReport }) {
         <p className="mt-2 text-[22px] leading-7 font-semibold -tracking-[0.015em]">
           {state.label}
         </p>
-        <p className="mt-3 max-w-prose text-[13px] leading-6">{report.verification.summary}</p>
+        <p className="mt-3 max-w-prose text-[13px] leading-6">{report.findings}</p>
 
         <div className="mt-5 border-t border-ink/10 pt-4">
           <p className="text-xs font-medium">Bukti</p>
           <ul className="mt-2 space-y-1.5">
-            {report.verification.evidence.map((item) => (
+            {report.verdict.evidence.map((item) => (
               <li key={item} className="text-[13px] leading-6">
                 {item}
               </li>
@@ -129,34 +188,35 @@ function Verdict({ report }: { report: MaintenanceReport }) {
         </div>
       </Card>
 
-      {unresolved && report.verification.follow_up.length > 0 && (
+      {unresolved && report.verdict.follow_up.length > 0 && (
         <Card className="mt-3">
           <SectionTitle>Tindak lanjut</SectionTitle>
           <ul className="mt-4 space-y-2">
-            {report.verification.follow_up.map((item) => (
+            {report.verdict.follow_up.map((item) => (
               <li key={item} className="text-[13px] text-dim">
                 {item}
               </li>
             ))}
           </ul>
           <div className="mt-5">
-            <Button icon={<RefreshCw size={14} />} size="sm">
-              Jalankan diagnosis ulang
-            </Button>
-            <p className="mt-2 text-xs text-faint">
-              Dijalankan atas permintaan pengguna, bukan otomatis.
-            </p>
+            <p className="text-xs text-faint">Diagnosis ulang belum tersedia pada API saat ini.</p>
           </div>
         </Card>
       )}
 
       <Card className="mt-3">
         <div className="flex flex-wrap items-center gap-3">
-          <SectionTitle>Laporan akhir</SectionTitle>
-          <Button size="sm" className="ml-auto" icon={<Download size={14} />}>
-            Ekspor
-          </Button>
+            <SectionTitle>Laporan akhir</SectionTitle>
+            <div className="ml-auto flex gap-2">
+              <Button size="sm" icon={<Download size={14} />} onClick={() => exportReport('json')} disabled={exporting}>
+                {exporting ? 'Menyiapkan…' : 'Ekspor JSON'}
+              </Button>
+              <Button size="sm" variant="secondary" onClick={() => exportReport('csv')} disabled={exporting}>
+                Ekspor CSV
+              </Button>
+            </div>
         </div>
+        {exportError && <p className="mt-3 text-xs text-crit-text">Ekspor gagal disiapkan.</p>}
         <dl className="mt-4 space-y-4">
           <div>
             <CardTitle muted>Masalah</CardTitle>
@@ -168,14 +228,15 @@ function Verdict({ report }: { report: MaintenanceReport }) {
           </div>
           <div>
             <CardTitle muted>Kondisi akhir mesin</CardTitle>
-            <dd className="mt-1 text-[13px] leading-6 text-dim">{report.final_state}</dd>
+            <dd className="mt-1 text-[13px] leading-6 text-dim">
+              {report.final_asset_state.status ?? 'Status tidak tersedia'}
+            </dd>
           </div>
         </dl>
 
-        {report.written_back && (
+        {report.final_asset_state.work_order_status === 'completed' && (
           <p className="mt-5 border-t border-hair pt-4 text-xs leading-5 text-faint">
-            Work order yang selesai ditulis kembali sebagai dokumen histori maintenance di
-            knowledge base, dan akan dibaca analisis berikutnya.
+            Histori maintenance tersimpan di sistem dan siap dipakai untuk tindak lanjut.
           </p>
         )}
       </Card>

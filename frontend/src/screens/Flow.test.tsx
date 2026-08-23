@@ -1,14 +1,15 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, screen, waitFor } from '@testing-library/react'
-import { CAPABILITIES, renderRoute, stubRoutes } from '../test/harness'
+import { cleanup, fireEvent, screen, waitFor } from '@testing-library/react'
+import { CAPABILITIES, calls, renderRoute, stubRoutes } from '../test/harness'
 import { ExecuteScreen } from './Execute'
 import { ReportScreen } from './Report'
 import { CompareScreen } from './Compare'
 import { setIdentity } from '../api/client'
-import type { AnalysisDetail, WorkOrder } from '../api/types'
+import type { AnalysisDetail, TechnicianResult, WorkOrder } from '../api/types'
 
 afterEach(() => {
   cleanup()
+  vi.restoreAllMocks()
   vi.unstubAllGlobals()
   setIdentity('demo-engineer')
 })
@@ -23,6 +24,10 @@ const workOrder: WorkOrder = {
     safety_notes: ['Lockout/tagout'],
   },
   created_at: '2026-08-22T20:38:09', updated_at: '2026-08-22T20:38:09',
+}
+
+const technicianResult: TechnicianResult = {
+  work_done: 'Bearing replaced', findings: 'Noise resolved', parts_used: [], evidence: [],
 }
 
 const analysis = (over: Partial<AnalysisDetail['result']> = {}, snapshot?: unknown): AnalysisDetail => ({
@@ -44,7 +49,11 @@ const analysis = (over: Partial<AnalysisDetail['result']> = {}, snapshot?: unkno
 
 describe('Execute — technician form', () => {
   function render() {
-    stubRoutes({ '/config/capabilities': CAPABILITIES, '/api/v1/work-orders': [workOrder] })
+    stubRoutes({
+      '/config/capabilities': CAPABILITIES,
+      '/api/v1/work-orders': [workOrder],
+      '/api/v1/work-orders/wo-1/result': { id: 'wo-1', status: 'in_progress', result: {}, result_submitted_at: 'now' },
+    })
     return renderRoute('/work-orders/wo-1/execute', '/work-orders/:id/execute', <ExecuteScreen />)
   }
 
@@ -55,11 +64,10 @@ describe('Execute — technician form', () => {
     expect(screen.getByText('0 dari 3 langkah ditandai selesai.')).toBeTruthy()
   })
 
-  it('collects findings, parts used and hours', async () => {
+  it('collects findings and parts used', async () => {
     render()
     expect(await screen.findByLabelText('Temuan di lapangan')).toBeTruthy()
     expect(screen.getByLabelText('Sparepart terpakai')).toBeTruthy()
-    expect(screen.getByLabelText('Waktu pengerjaan (jam)')).toBeTruthy()
   })
 
   // The autonomy boundary: submitting a result must not close the work order.
@@ -69,11 +77,16 @@ describe('Execute — technician form', () => {
     expect(screen.getByText(/bukan menyatakan selesai sendiri/i)).toBeTruthy()
   })
 
-  it('names the missing backend route instead of offering a button that 404s', async () => {
+  it('submits the technician result using the backend payload', async () => {
+    setIdentity('demo-technician')
     render()
     const submit = (await screen.findByRole('button', { name: /Kirim hasil pekerjaan/ })) as HTMLButtonElement
-    expect(submit.disabled).toBe(true)
-    expect(submit.getAttribute('title')).toMatch(/\/result belum ada/)
+    expect(submit.disabled).toBe(false)
+    fireEvent.change(screen.getByLabelText('Temuan di lapangan'), { target: { value: 'Noise resolved' } })
+    fireEvent.click(submit)
+    await waitFor(() => expect(calls.find((call) => call.url.endsWith('/result'))?.body).toEqual({
+      work_done: '', findings: 'Noise resolved', parts_used: [], evidence: [],
+    }))
   })
 
   it('tells a non-technician to switch roles', async () => {
@@ -84,21 +97,97 @@ describe('Execute — technician form', () => {
 
 describe('Report — verification', () => {
   function render() {
-    stubRoutes({ '/config/capabilities': CAPABILITIES, '/api/v1/work-orders': [workOrder] })
+    stubRoutes({
+      '/config/capabilities': CAPABILITIES,
+      '/api/v1/work-orders': [workOrder],
+      '/api/v1/work-orders/wo-1/report': {
+        ok: false,
+        status: 404,
+        headers: new Headers(),
+        json: async () => ({ error: { code: 'NOT_FOUND', message: 'report_not_found', details: [], request_id: 'req-0' } }),
+      },
+    })
     return renderRoute('/work-orders/wo-1/report', '/work-orders/:id/report', <ReportScreen />)
   }
 
-  it('explains the three verdicts rather than showing an empty shell', async () => {
+  it('calls the report route and shows the three verdicts before verification', async () => {
     render()
     expect(await screen.findByText('Masalah terselesaikan')).toBeTruthy()
     expect(screen.getByText('Sebagian terselesaikan')).toBeTruthy()
     expect(screen.getByText('Belum terselesaikan')).toBeTruthy()
   })
 
-  it('names both missing pieces — the route and the engine method', async () => {
+  it('offers synchronous verification from the report screen', async () => {
+    stubRoutes({
+      '/config/capabilities': CAPABILITIES,
+      '/api/v1/work-orders': [{ ...workOrder, technician_result_json: technicianResult }],
+      '/api/v1/work-orders/wo-1/report': {
+        ok: false, status: 404, headers: new Headers(),
+        json: async () => ({ error: { code: 'NOT_FOUND', message: 'report_not_found', details: [], request_id: 'req-0' } }),
+      },
+    })
+    renderRoute('/work-orders/wo-1/report', '/work-orders/:id/report', <ReportScreen />)
+    fireEvent.click(await screen.findByRole('button', { name: 'Jalankan verifikasi' }))
+    await waitFor(() => expect(calls.some((call) => call.url.endsWith('/verify') && call.method === 'POST')).toBe(true))
+  })
+
+  it('requires a submitted technician result before offering verification', async () => {
     render()
-    expect(await screen.findByText(/\/verify/)).toBeTruthy()
-    expect(screen.getByText(/MaintenanceEngine\.verify\(\)/)).toBeTruthy()
+    expect(await screen.findByText(/hasil pekerjaan teknisi diperlukan/i)).toBeTruthy()
+    expect(screen.queryByRole('button', { name: 'Jalankan verifikasi' })).toBeNull()
+    expect(calls.some((call) => call.url.endsWith('/verify'))).toBe(false)
+  })
+
+  it('renders the backend report payload after verification', async () => {
+    stubRoutes({
+      '/config/capabilities': CAPABILITIES,
+      '/api/v1/work-orders': [workOrder],
+      '/api/v1/work-orders/wo-1/report': {
+        work_order_id: 'wo-1', asset_id: 'a1', problem: 'Bearing noise', action: 'Bearing replaced',
+        findings: 'Noise resolved',
+        verdict: { verdict: 'resolved', evidence: ['photo-1'], follow_up: [] },
+        final_asset_state: { status: 'active', work_order_status: 'completed' },
+      },
+    })
+    renderRoute('/work-orders/wo-1/report', '/work-orders/:id/report', <ReportScreen />)
+    expect(await screen.findByText('Masalah terselesaikan')).toBeTruthy()
+    expect(screen.getByText('Bearing replaced')).toBeTruthy()
+    expect(screen.getByText('Noise resolved')).toBeTruthy()
+  })
+
+  it('offers JSON and CSV exports with safe format-specific filenames', async () => {
+    const blob = new Blob(['export'], { type: 'text/csv' })
+    stubRoutes({
+      '/config/capabilities': CAPABILITIES,
+      '/api/v1/work-orders': [workOrder],
+      '/api/v1/work-orders/wo-1/report': {
+        work_order_id: 'wo-1', asset_id: 'a1', problem: 'Bearing noise', action: 'Bearing replaced',
+        findings: 'Noise resolved', verdict: { verdict: 'resolved', evidence: [], follow_up: [] },
+        final_asset_state: { status: 'active', work_order_status: 'completed' },
+      },
+      '/api/v1/work-orders/wo-1/export?format=json': {
+        ok: true, status: 200, headers: new Headers(), json: async () => ({}), blob: async () => blob,
+      },
+      '/api/v1/work-orders/wo-1/export?format=csv': {
+        ok: true, status: 200, headers: new Headers(), json: async () => ({}), blob: async () => blob,
+      },
+    })
+    const createObjectURL = vi.fn(() => 'blob:test')
+    vi.stubGlobal('URL', { createObjectURL, revokeObjectURL: vi.fn() })
+    const downloads: string[] = []
+    const click = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(function (this: HTMLAnchorElement) {
+      downloads.push(this.download)
+    })
+    renderRoute('/work-orders/wo-1/report', '/work-orders/:id/report', <ReportScreen />)
+    fireEvent.click(await screen.findByRole('button', { name: 'Ekspor JSON' }))
+    await waitFor(() => expect(calls.some((call) => call.url.includes('format=json'))).toBe(true))
+    await waitFor(() => expect(downloads).toContain('work-order-wo-1.json'))
+    fireEvent.click(screen.getByRole('button', { name: 'Ekspor CSV' }))
+    await waitFor(() => expect(calls.some((call) => call.url.includes('format=csv'))).toBe(true))
+    expect(createObjectURL).toHaveBeenCalledWith(blob)
+    expect(click).toHaveBeenCalled()
+    expect(downloads).toContain('work-order-wo-1.csv')
+    expect(click).toHaveBeenCalledTimes(2)
   })
 })
 

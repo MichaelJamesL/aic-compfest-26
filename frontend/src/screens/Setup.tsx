@@ -18,12 +18,14 @@ export function SetupScreen() {
   const documents = useRequest(() => api.documents(), [])
   const [busy, setBusy] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
+  const [importErrors, setImportErrors] = useState<{ row: number; reason: string }[]>([])
   const [error, setError] = useState<unknown>(null)
 
   async function guard(key: string, work: () => Promise<string>) {
     setBusy(key)
     setError(null)
     setNotice(null)
+    setImportErrors([])
     try {
       setNotice(await work())
     } catch (err) {
@@ -90,26 +92,46 @@ export function SetupScreen() {
           <p className="mt-2 text-xs text-faint">Dibaca sebagai referensi kegagalan berulang.</p>
           <div className="mt-4">
             <DropZone
-              label="Unggah histori"
-              hint=".csv .txt .md · maks 10 MB"
+              label="Impor histori terstruktur"
+              hint="CSV atau XLSX · asset_id / asset_external_id, action"
               icon={<History size={20} />}
-              accept=".txt,.md,.csv,.json"
-              multiple
+              accept=".csv,.xlsx"
               disabled={busy === 'log'}
-              onFiles={(files) =>
-                guard('log', async () => {
+              onFiles={([file]) => guard('log', async () => {
+                const result = await api.importMaintenanceHistory(file)
+                setImportErrors(result.errors)
+                return `${result.imported} catatan histori diimpor${result.errors.length ? `, ${result.errors.length} baris perlu diperbaiki` : ''}.`
+              })}
+            />
+            <div className="mt-3">
+              <DropZone
+                label="Unggah berkas histori"
+                hint="TXT, MD, CSV, atau JSON · dokumen pengetahuan umum"
+                icon={<FileText size={20} />}
+                accept=".txt,.md,.csv,.json"
+                multiple
+                disabled={busy === 'history-document'}
+                onFiles={(files) => guard('history-document', async () => {
                   for (const file of files) await api.uploadDocument(file, 'log')
                   documents.reload()
-                  return `${files.length} berkas histori diunggah.`
-                })
-              }
-            />
+                  return `${files.length} berkas histori diunggah. Klik "Indeks" agar bisa dikutip.`
+                })}
+              />
+            </div>
           </div>
         </Card>
       </div>
 
       {notice && <p className="mt-3 text-[13px] text-ok-text">{notice}</p>}
       {error != null && <p className="mt-3 text-[13px] text-crit-text">{errorCopy(error)}</p>}
+      {importErrors.length > 0 && (
+        <div className="mt-3 rounded-control border border-crit/40 bg-crit/10 p-3 text-xs text-crit-text">
+          <p className="font-medium">Baris yang tidak diimpor</p>
+          <ul className="mt-2 space-y-1">
+            {importErrors.map((item) => <li key={`${item.row}-${item.reason}`}>Baris {item.row}: {item.reason}</li>)}
+          </ul>
+        </div>
+      )}
 
       <Card className="mt-3">
         <SectionTitle>Dokumen</SectionTitle>

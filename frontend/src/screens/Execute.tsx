@@ -63,7 +63,7 @@ export function ExecuteScreen() {
     <AppShell title={data.title} subtitle="Kirim hasil pekerjaan untuk diverifikasi.">
       <Link
         to={`/work-orders/${data.id}`}
-        className="mb-3 inline-flex items-center gap-1.5 text-[13px] text-faint hover:text-white"
+        className="mb-3 inline-flex items-center gap-1.5 text-[13px] text-content-3 hover:text-content"
       >
         <ArrowLeft size={14} /> Kembali ke work order
       </Link>
@@ -75,7 +75,7 @@ export function ExecuteScreen() {
             <ul className="mt-4 space-y-1">
               {steps.map((step) => (
                 <li key={step}>
-                  <label className="flex cursor-pointer items-start gap-3 rounded-control px-2 py-2 text-[13px] text-dim hover:bg-raised">
+                  <label className="flex cursor-pointer items-start gap-3 rounded-control px-2 py-2 text-[13px] text-content-2 hover:bg-surface-raised">
                     <input
                       type="checkbox"
                       className="mt-1 size-3.5 shrink-0 accent-white"
@@ -88,12 +88,12 @@ export function ExecuteScreen() {
                         )
                       }
                     />
-                    <span className={done.includes(step) ? 'text-white' : undefined}>{step}</span>
+                    <span className={done.includes(step) ? 'text-content' : undefined}>{step}</span>
                   </label>
                 </li>
               ))}
             </ul>
-            <p className="mt-3 text-xs text-faint">
+            <p className="mt-3 text-xs text-content-3">
               {done.length} dari {steps.length} langkah ditandai selesai.
             </p>
           </Card>
@@ -159,8 +159,8 @@ export function ExecuteScreen() {
       </div>
 
       <div className="sticky bottom-4 z-20 mt-3">
-        <div className="glass-dark flex flex-wrap items-center gap-3 rounded-card px-5 py-3.5">
-          <p className="flex-1 text-[13px] text-dim">
+        <div className="glass-light flex flex-wrap items-center gap-3 rounded-card px-5 py-3.5">
+          <p className="flex-1 text-[13px] text-content-2">
             {isTechnician
               ? 'Kirim hasil untuk diverifikasi.'
               : 'Form ini diisi oleh teknisi — ganti peran di pojok kanan atas.'}
@@ -177,9 +177,9 @@ export function ExecuteScreen() {
         </div>
       </div>
 
-      <p className="mt-3 text-xs leading-5 text-faint">
+      <p className="mt-3 text-xs leading-5 text-content-3">
         Pengiriman hasil belum bisa diselesaikan: backend belum punya route
-        <span className="text-dim"> POST /work-orders/{'{id}'}/result</span>. Lihat
+        <span className="text-content-2"> POST /work-orders/{'{id}'}/result</span>. Lihat
         docs/API.md bagian “Routes that must exist and do not”.
       </p>
     </AppShell>

@@ -86,7 +86,7 @@ function Result({ detail, onReload }: { detail: AnalysisDetail; onReload: () => 
                   ? 'Mesin analisis tidak tersedia saat permintaan dijalankan.'
                   : 'Mesin analisis gagal memproses permintaan ini.'}
               </p>
-              <p className="mt-1 text-xs text-faint">
+              <p className="mt-1 text-xs text-content-3">
                 {detail.error_code ?? 'UNKNOWN'} · Analysis ID {detail.id}
               </p>
             </div>
@@ -126,7 +126,7 @@ function Result({ detail, onReload }: { detail: AnalysisDetail; onReload: () => 
         <Badge tone={priorityTone(result.priority)}>
           Prioritas {priorityLabel(result.priority)}
         </Badge>
-        <span className="text-xs text-faint">
+        <span className="text-xs text-content-3">
           {result.model ?? 'model tidak diketahui'} · tier {result.tier ?? '—'}
         </span>
         <div className="ml-auto flex gap-2">
@@ -186,7 +186,7 @@ function Result({ detail, onReload }: { detail: AnalysisDetail; onReload: () => 
             .sort((a, b) => b.confidence - a.confidence)
             .slice(0, 4)
             .map((cause) => (
-              <li key={cause.cause} className="border-t border-hair pt-4 first:border-0 first:pt-0">
+              <li key={cause.cause} className="border-t border-line pt-4 first:border-0 first:pt-0">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <p className="text-[15px] font-medium">{cause.cause}</p>
                   <ConfidenceBar value={cause.confidence} />
@@ -196,7 +196,7 @@ function Result({ detail, onReload }: { detail: AnalysisDetail; onReload: () => 
                     {cause.evidence.map((item) => (
                       <li
                         key={item}
-                        className="rounded-lg bg-raised px-2 py-1 text-xs text-dim"
+                        className="rounded-lg bg-surface-raised px-2 py-1 text-xs text-content-2"
                       >
                         {item}
                       </li>
@@ -206,15 +206,15 @@ function Result({ detail, onReload }: { detail: AnalysisDetail; onReload: () => 
               </li>
             ))}
           {result.root_causes.length === 0 && (
-            <li className="text-[13px] text-faint">
+            <li className="text-[13px] text-content-3">
               Tidak ada penyebab yang bisa disimpulkan dari input yang tersedia.
             </li>
           )}
         </ul>
 
-        <div className="mt-5 border-t border-hair pt-4">
+        <div className="mt-5 border-t border-line pt-4">
           <CardTitle muted>Penjelasan</CardTitle>
-          <p className="mt-2 max-w-prose text-[13px] leading-6 text-dim">{result.explanation}</p>
+          <p className="mt-2 max-w-prose text-[13px] leading-6 text-content-2">{result.explanation}</p>
         </div>
       </Card>
 
@@ -223,7 +223,7 @@ function Result({ detail, onReload }: { detail: AnalysisDetail; onReload: () => 
         <Card className="col-span-12 xl:col-span-8">
           <SectionTitle>Anomali sensor</SectionTitle>
           {result.anomalies.length === 0 ? (
-            <p className="mt-4 text-[13px] text-dim">
+            <p className="mt-4 text-[13px] text-content-2">
               Tidak ada anomali di luar rentang normal.
             </p>
           ) : (
@@ -272,8 +272,8 @@ function Result({ detail, onReload }: { detail: AnalysisDetail; onReload: () => 
 
       {/* The autonomy boundary, made literal. */}
       <div className="sticky bottom-4 z-20 mt-3">
-        <div className="glass-dark flex flex-wrap items-center gap-3 rounded-card px-5 py-3.5">
-          <p className="flex-1 text-[13px] text-dim">
+        <div className="glass-light flex flex-wrap items-center gap-3 rounded-card px-5 py-3.5">
+          <p className="flex-1 text-[13px] text-content-2">
             AI mengusulkan dan menyiapkan; coordinator menyetujui.
           </p>
           <Button size="sm" variant="ghost" disabled title="Butuh work order aktif">
@@ -461,7 +461,7 @@ function QcResultCard({ result }: { result: AnalysisResult }) {
           <p className="tnum mt-4 text-[30px] leading-[34px] font-semibold -tracking-[0.02em]">
             {formatPercent(defective / total)}
           </p>
-          <p className="mt-1 text-xs text-faint">
+          <p className="mt-1 text-xs text-content-3">
             {defective} dari {total} citra ditandai defect
           </p>
           <div className="mt-5">
@@ -498,8 +498,8 @@ function WorkOrderDraft({ result }: { result: AnalysisResult }) {
           <CardTitle muted>Langkah</CardTitle>
           <ol className="mt-2.5 space-y-2">
             {order.steps.map((step, index) => (
-              <li key={step} className="flex gap-3 text-[13px] text-dim">
-                <span className="tnum shrink-0 text-faint">{index + 1}.</span>
+              <li key={step} className="flex gap-3 text-[13px] text-content-2">
+                <span className="tnum shrink-0 text-content-3">{index + 1}.</span>
                 {step}
               </li>
             ))}
@@ -508,20 +508,20 @@ function WorkOrderDraft({ result }: { result: AnalysisResult }) {
 
         <dl className="space-y-4 lg:col-span-5">
           <div>
-            <dt className="text-xs text-faint">Sparepart</dt>
-            <dd className="mt-1 text-[13px] text-dim">
+            <dt className="text-xs text-content-3">Sparepart</dt>
+            <dd className="mt-1 text-[13px] text-content-2">
               {order.parts.length ? order.parts.join(', ') : 'Tidak ada'}
             </dd>
           </div>
           <div>
-            <dt className="text-xs text-faint">Skill yang dibutuhkan</dt>
-            <dd className="mt-1 text-[13px] text-dim">
+            <dt className="text-xs text-content-3">Skill yang dibutuhkan</dt>
+            <dd className="mt-1 text-[13px] text-content-2">
               {order.required_skills.length ? order.required_skills.join(', ') : '—'}
             </dd>
           </div>
           <div>
-            <dt className="text-xs text-faint">Estimasi durasi</dt>
-            <dd className="tnum mt-1 text-[13px] text-dim">
+            <dt className="text-xs text-content-3">Estimasi durasi</dt>
+            <dd className="tnum mt-1 text-[13px] text-content-2">
               {formatDuration(order.est_duration_h)}
             </dd>
           </div>
@@ -535,7 +535,7 @@ function WorkOrderDraft({ result }: { result: AnalysisResult }) {
           </p>
           <ul className="mt-2 space-y-1">
             {order.safety_notes.map((note) => (
-              <li key={note} className="text-[13px] text-dim">
+              <li key={note} className="text-[13px] text-content-2">
                 {note}
               </li>
             ))}

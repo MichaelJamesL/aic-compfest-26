@@ -28,7 +28,7 @@ export function Th({
     <th
       scope="col"
       className={cn(
-        'pb-3 pr-6 text-xs font-medium text-faint last:pr-0',
+        'pb-3 pr-6 text-xs font-medium text-content-3 last:pr-0',
         align === 'right' && 'text-right',
         className,
       )}
@@ -54,9 +54,9 @@ export function Td({
       className={cn(
         'h-11 pr-6 align-middle text-[13px] last:pr-0',
         align === 'right' && 'text-right tnum',
-        tone === 'primary' && 'text-[13.5px] font-medium text-white',
-        tone === 'muted' && 'text-faint',
-        tone === 'default' && 'text-dim',
+        tone === 'primary' && 'text-[13.5px] font-medium text-content',
+        tone === 'muted' && 'text-content-3',
+        tone === 'default' && 'text-content-2',
         className,
       )}
     >
@@ -66,5 +66,5 @@ export function Td({
 }
 
 export function Tr({ children }: { children: ReactNode }) {
-  return <tr className="border-t border-hair">{children}</tr>
+  return <tr className="border-t border-line">{children}</tr>
 }

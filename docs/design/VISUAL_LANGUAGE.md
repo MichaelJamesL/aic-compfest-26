@@ -10,15 +10,25 @@ Read this before writing any UI code. It is not a suggestion.
 
 ## 1. What the reference actually is
 
-A white shell fills the window. Inside it: a white navigation rail on the left,
-and a **near-black work surface** filling the rest. On that black surface sit
-cards — some black, some in muted earth tones.
+A **dark navigation rail** runs down the left edge, full height and full bleed.
+The rest is a **light work surface**, inset 12px and rounded. On that light
+surface sit cards — most white, some in muted earth tones.
 
-> **Deviation from the reference, on purpose.** `ui-ref.jpg` frames its shell as
-> a floating card on a light-grey page — that is a marketing mockup's device
-> framing, not an application layout. Ours is full-bleed: the white chrome
-> reaches every edge, there is no outer gutter, and the shell casts no shadow.
-> Everything else below is taken from the reference unchanged.
+> **Two deliberate deviations from the reference.**
+>
+> 1. **Full bleed.** `ui-ref.jpg` frames its shell as a floating card on a
+>    light-grey page — a marketing mockup's device framing, not an application
+>    layout. The rail reaches every edge and casts no shadow.
+> 2. **Inverted.** The reference puts white chrome around a dark canvas; ours is
+>    the other way round. The rail is the constant furniture and recedes; the
+>    work — long, text-heavy, read for minutes at a time — sits on light.
+>
+> Everything else below is taken from the reference unchanged: the palette, the
+> card rhythm, the type scale, the restraint about colour.
+
+The tokens are named by **role**, not by colour: `--surface*` and `--content*`
+for the work surface, `--rail*` for the navigation. Inverting the two again is
+an edit to those values, not a sweep through every component.
 
 Four structural ideas carry the whole design. Copy these, not the invoice data:
 
@@ -47,18 +57,36 @@ donut-with-social-networks. Take the system, not the content.
 
 | Token | Value | Sampled from | Use |
 | --- | --- | --- | --- |
-| `--page` | `#E5E5E5` | page background | reserved; the shell is full-bleed, so nothing renders it today |
-| `--shell` | `#FFFFFF` | sidebar | shell, nav rail, light cards |
-| `--panel` | `#000000` | dark canvas | the work surface |
-| `--card` | `#111111` | metric card, invoices card, search field | cards and inputs on the panel |
-| `--raised` | `#1E1E1E` | icon circle inside a metric card | icon chips, inputs, hover, chart gridlines |
-| `--hairline` | `rgba(255,255,255,.08)` | card and row edges | 1px separation on dark |
-| `--hairline-ink` | `rgba(17,17,17,.08)` | — | 1px separation on light |
+**The work surface (light).**
 
-Pure black is safe here specifically because it is inset inside the white
-shell, with a 12px margin on every side. Do not use `--panel` as the outermost
-background — without the white chrome around it, it reads as harsh and the whole
-depth model collapses.
+| Token | Value | Use |
+| --- | --- | --- |
+| `--surface` | `#E5E5E5` | the panel base |
+| `--surface-card` | `#FFFFFF` | cards |
+| `--surface-raised` | `#F1F1F1` | icon chips, inputs, hover |
+| `--content` | `#111111` | primary text |
+| `--content-2` | `#5C5C5C` | labels, secondary rows |
+| `--content-3` | `#616161` | captions, timestamps |
+| `--line` | `rgba(17,17,17,.10)` | 1px separation |
+| `--line-strong` | `rgba(17,17,17,.22)` | button borders, drop zones |
+
+**The navigation rail (dark).**
+
+| Token | Value | Use |
+| --- | --- | --- |
+| `--rail` | `#111111` | the rail, and the frame around the panel |
+| `--rail-raised` | `#1E1E1E` | hover, chips |
+| `--rail-content` | `#FFFFFF` | brand, active item |
+| `--rail-content-2` | `#9A9A9A` | inactive item |
+| `--rail-content-3` | `#7C7C7C` | inactive icon |
+| `--rail-line` | `rgba(255,255,255,.10)` | 1px separation on the rail |
+
+`--card` `#111111` is kept: the tinted accent cards set their text with it.
+
+`--content-3` is `#616161`, not `#767676`. It appears on both the `#E5E5E5`
+panel base and on white cards, and the lighter value clears 4.5:1 only on the
+card — it measured **3.61:1** on the panel. Calibrate a token against the
+darkest surface it lands on.
 
 ### Text
 
@@ -68,7 +96,7 @@ depth model collapses.
 | `--text-2` | `#9A9A9A` | `#5C5C5C` | 6.7:1 / 6.7:1 | labels, table headers, secondary rows |
 | `--text-3` | `#7C7C7C` | `#767676` | 4.5:1 / 4.5:1 | captions, timestamps — the floor, never go lighter |
 
-All three pass WCAG AA at 14px **on `--card` and on `--shell`**. There is no
+All three pass WCAG AA at 14px on every surface they appear on. There is no
 fourth, dimmer step; if text needs to be quieter than `--text-3`, it needs to be
 smaller or removed.
 
@@ -135,11 +163,15 @@ Coloured **text** on `#111111` needs a lighter tint than the card version.
 Tints for pills and labels:
 
 ```
---ok-fill:   rgba(127,158,140,.18)   --ok-text:   #A9C9B6
---warn-fill: rgba(180,161,147,.18)   --warn-text: #CBB9AC
---high-fill: rgba(221,146,81,.18)    --high-text: #EAB07A
---crit-fill: #D26E3D  (solid)        --crit-text: #111111
+--ok-fill:   rgba(127,158,140,.24)   --ok-text:   #33564A
+--warn-fill: rgba(180,161,147,.30)   --warn-text: #55443A
+--high-fill: rgba(221,146,81,.28)    --high-text: #6D3F10
+--crit-fill: rgba(210,110,61,.24)    --crit-text: #7D340F
+--crit:      #D26E3D  (solid)        text: #111111
 ```
+
+These are the light-surface values. The previous set was light-on-dark and is
+unreadable here — a tint is calibrated for one surface, never both.
 
 Note the asymmetry, taken straight from the reference: the negative badge is a
 **solid** orange with dark text while the positive one is a soft tint. Bad news
@@ -224,11 +256,11 @@ inner box looks like a mistake. Card 20 → inner 12 is correct.
 
 ## 5. Depth
 
-| Layer | Light side | Dark side |
+| Layer | Rail (dark) | Work surface (light) |
 | --- | --- | --- |
-| Base | `--shell` (fills the window) | `--panel` (inset 12) |
-| Container | `--shell`, hairline-ink | `--card` + hairline |
-| Raised | `--shell`, hairline-ink | `--raised` + hairline |
+| Base | `--rail` (fills the window) | `--surface` (inset 12) |
+| Container | — | `--surface-card` + `--line` |
+| Raised | `--rail-raised` | `--surface-raised` + `--line` |
 | Floating | glass (§6) | glass (§6) |
 
 ```css
@@ -262,12 +294,14 @@ dropdowns, the modal surface and its scrim, chart tooltips, toasts.
   border: 1px solid rgba(255,255,255,.10);
   box-shadow: var(--shadow-float);
 }
+/* Higher opacity than the dark variant: a light panel floating over a light
+   surface has little to separate it, and .72 let body text bleed through the
+   approval bar. */
 .glass-light {
-  background: rgba(255,255,255,.72);
+  background: rgba(255,255,255,.88);
   backdrop-filter: blur(24px) saturate(160%);
-  -webkit-backdrop-filter: blur(24px) saturate(160%);
-  border: 1px solid rgba(17,17,17,.08);
-  box-shadow: var(--shadow-float);
+  border: 1px solid rgba(17,17,17,.14);
+  box-shadow: 0 12px 32px -10px rgba(17,17,17,.22);
 }
 @supports not (backdrop-filter: blur(1px)) {
   .glass-dark  { background: #141414; }
@@ -293,13 +327,17 @@ Rules, in order of how often they are broken:
 ## 7. Components
 
 ### Nav rail
-White, 232 wide, radius `--r-shell` on the outer corners. Brand at the top: a
-20px mark plus the product name at 15/600. Items are 40 tall, radius
-`--r-control`, 12px gap between icon and label, 14/500.
-Active: background `#111111`, label and icon `#FFFFFF`.
-Inactive: label `--text-2` (light), icon `#8A8A8A`, hover
-`rgba(17,17,17,.05)`.
-Count badge: 20×20, radius 6, `--apricot`, 11.5/600 dark text.
+Dark (`--rail`), 232 wide, unrounded, full bleed. **Sticky and full height** —
+`sticky top-0 h-screen overflow-y-auto` — so a long results page never scrolls
+the navigation away. Below 1024 it collapses to a 64px icon strip; it is never
+removed, and each item keeps an accessible name via `title` once its label is
+hidden.
+
+Brand at the top: a 20px mark plus the product name at 15/600.
+Items are 40 tall, radius `--r-control`, 12px gap between icon and label,
+14/500. Active: background `--rail-content`, label and icon `--rail`.
+Inactive: label `--rail-content-2`, icon `--rail-content-3`, hover
+`rgba(255,255,255,.05)`.
 
 ### Card
 `--card` fill, radius `--r-card`, padding 20, no shadow. Optional hairline —
@@ -479,6 +517,8 @@ Font, self-hosted or from Google Fonts:
 8. Does every severity read correctly in greyscale?
 8b. Has `browser-pass` been run against the **production bundle**, not just the
     dev server? They are not the same CSS.
+8c. Does every token still pass contrast on the *darkest* surface it appears on,
+    not just the lightest?
 9. Is any state (empty, loading, error, partial input) unstyled?
 10. Would this screenshot be indistinguishable from a hundred other AI-built
     dashboards? If yes, the reference was not followed.

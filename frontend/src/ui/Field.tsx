@@ -21,11 +21,11 @@ export function Field({
 }) {
   return (
     <div className="space-y-1.5">
-      <label htmlFor={htmlFor} className="block text-[13px] font-medium text-dim">
+      <label htmlFor={htmlFor} className="block text-[13px] font-medium text-content-2">
         {label}
       </label>
       {children}
-      {hint && <p className="text-xs text-faint">{hint}</p>}
+      {hint && <p className="text-xs text-content-3">{hint}</p>}
     </div>
   )
 }
@@ -35,9 +35,9 @@ export function Field({
 // lose the caret entirely. The base `:focus-visible` rule in index.css handles
 // this correctly for every control.
 const CONTROL =
-  'w-full rounded-control bg-card px-3.5 text-sm text-white placeholder:text-faint ' +
-  'border border-hair transition-colors duration-100 hover:border-hair-strong ' +
-  'focus:border-hair-strong'
+  'w-full rounded-control bg-surface-card px-3.5 text-sm text-content placeholder:text-content-3 ' +
+  'border border-line transition-colors duration-100 hover:border-line-strong ' +
+  'focus:border-line-strong'
 
 export function TextInput({
   label,
@@ -92,7 +92,7 @@ export function Select({
   const wrapped = (
     <div className="relative">
       {select}
-      <span className="pointer-events-none absolute top-1/2 right-3.5 -translate-y-1/2 text-faint">
+      <span className="pointer-events-none absolute top-1/2 right-3.5 -translate-y-1/2 text-content-3">
         ▾
       </span>
     </div>

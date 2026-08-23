@@ -187,13 +187,15 @@ async function visit(page, name, path) {
   if (!probe.font.includes('Plus Jakarta Sans')) report('fail', path, `wrong font: ${probe.font}`)
   // The shell is full-bleed, so the body must match it — a stray page-grey
   // gutter appearing on overscroll is a regression.
-  if (probe.bodyBg !== 'rgb(255, 255, 255)') {
-    report('warn', path, `body background ${probe.bodyBg}, expected the shell white`)
+  if (probe.bodyBg !== 'rgb(17, 17, 17)') {
+    report('warn', path, `body background ${probe.bodyBg}, expected the rail ink`)
   }
   if (probe.shellGutter) {
     report('fail', path, `shell does not reach the window edge (${probe.shellGutter})`)
   }
-  if (probe.panelBg && probe.panelBg !== 'rgb(0, 0, 0)') report('warn', path, `panel background ${probe.panelBg}, expected #000000`)
+  if (probe.panelBg && probe.panelBg !== 'rgb(229, 229, 229)') {
+    report('warn', path, `panel background ${probe.panelBg}, expected the work surface #E5E5E5`)
+  }
 
   for (const error of errors) report('fail', path, `console: ${error.slice(0, 140)}`)
   for (const item of noise.slice(0, 2)) {
@@ -256,6 +258,18 @@ async function interactions(browser, { analysisId }) {
     await page.goto(BASE + route, { waitUntil: 'networkidle' })
     await keyboardWalk(page, route)
   }
+
+  // The rail must not scroll away on a long page.
+  await page.goto(BASE + result, { waitUntil: 'networkidle' })
+  const railTop = () => page.evaluate(() => Math.round(document.querySelector('nav').getBoundingClientRect().top))
+  const restingTop = await railTop()
+  await page.evaluate(() => window.scrollTo(0, 600))
+  await page.waitForTimeout(200)
+  const scrolledTop = await railTop()
+  if (scrolledTop !== restingTop) {
+    report('fail', result, `rail scrolled away (top ${restingTop} → ${scrolledTop})`)
+  }
+  await page.evaluate(() => window.scrollTo(0, 0))
 
   // The header turns to glass only once the page scrolls past 24px.
   await page.goto(BASE + result, { waitUntil: 'networkidle' })

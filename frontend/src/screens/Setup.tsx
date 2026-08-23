@@ -41,7 +41,7 @@ export function SetupScreen() {
       <div className="grid grid-cols-12 gap-3">
         <Card className="col-span-12 md:col-span-4">
           <SectionTitle>Daftar mesin</SectionTitle>
-          <p className="mt-2 text-xs text-faint">
+          <p className="mt-2 text-xs text-content-3">
             {assets.data ? `${assets.data.length} mesin terdaftar` : 'Memuat…'}
           </p>
           <div className="mt-4">
@@ -65,7 +65,7 @@ export function SetupScreen() {
 
         <Card className="col-span-12 md:col-span-4">
           <SectionTitle>SOP & manual</SectionTitle>
-          <p className="mt-2 text-xs text-faint">Masuk ke knowledge base sebagai rujukan.</p>
+          <p className="mt-2 text-xs text-content-3">Masuk ke knowledge base sebagai rujukan.</p>
           <div className="mt-4">
             <DropZone
               label="Unggah SOP"
@@ -87,7 +87,7 @@ export function SetupScreen() {
 
         <Card className="col-span-12 md:col-span-4">
           <SectionTitle>Histori maintenance</SectionTitle>
-          <p className="mt-2 text-xs text-faint">Dibaca sebagai referensi kegagalan berulang.</p>
+          <p className="mt-2 text-xs text-content-3">Dibaca sebagai referensi kegagalan berulang.</p>
           <div className="mt-4">
             <DropZone
               label="Unggah histori"
@@ -178,7 +178,7 @@ export function SetupScreen() {
               </tbody>
             </Table>
 
-            <p className="mt-4 text-xs leading-5 text-faint">
+            <p className="mt-4 text-xs leading-5 text-content-3">
               Dokumen berstatus “Belum diindeks” belum masuk knowledge base dan tidak akan
               muncul pada daftar sumber di hasil analisis.
             </p>

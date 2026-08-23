@@ -1,13 +1,13 @@
 import type { ButtonHTMLAttributes, ReactNode } from 'react'
 import { cn } from '../lib/cn'
 
-type Variant = 'primary' | 'primary-light' | 'secondary' | 'ghost' | 'destructive'
+type Variant = 'primary' | 'secondary' | 'ghost' | 'destructive'
 
+// One fill per row of the hierarchy, on the light work surface.
 const VARIANT: Record<Variant, string> = {
-  primary: 'bg-white text-card hover:bg-white/90',
-  'primary-light': 'bg-ink text-white hover:bg-ink/90',
-  secondary: 'border border-hair-strong text-white hover:bg-raised',
-  ghost: 'text-dim hover:text-white',
+  primary: 'bg-content text-surface-card hover:bg-content/90',
+  secondary: 'border border-line-strong text-content hover:bg-surface-raised',
+  ghost: 'text-content-2 hover:text-content',
   destructive: 'bg-crit text-card hover:bg-crit/90',
 }
 
@@ -33,8 +33,8 @@ export function Button({
         'transition-colors duration-100 ease-out',
         // A blocked action must not stay the loudest element: disabled drops
         // the fill entirely rather than just fading it.
-        'disabled:pointer-events-none disabled:border disabled:border-hair',
-        'disabled:bg-transparent disabled:text-faint disabled:shadow-none',
+        'disabled:pointer-events-none disabled:border disabled:border-line',
+        'disabled:bg-transparent disabled:text-content-3 disabled:shadow-none',
         size === 'md' ? 'h-10 px-[18px] text-sm' : 'h-8 px-3 text-[13px]',
         VARIANT[variant],
         className,
@@ -58,8 +58,8 @@ export function IconButton({
       {...rest}
       aria-label={label}
       className={cn(
-        'grid size-7 shrink-0 place-items-center rounded-full border border-hair',
-        'text-dim transition-colors duration-100 hover:text-white hover:border-hair-strong',
+        'grid size-7 shrink-0 place-items-center rounded-full border border-line',
+        'text-content-2 transition-colors duration-100 hover:text-content hover:border-line-strong',
         className,
       )}
     >

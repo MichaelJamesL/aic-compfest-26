@@ -147,8 +147,8 @@ export function AnalyzeScreen() {
                   }}
                 />
                 {readings.length > 0 && (
-                  <p className="mt-3 text-[13px] text-dim">
-                    <span className="text-white">{csvName}</span> — {readings.length} pembacaan,{' '}
+                  <p className="mt-3 text-[13px] text-content-2">
+                    <span className="text-content">{csvName}</span> — {readings.length} pembacaan,{' '}
                     {new Set(readings.map((r) => r.tag)).size} tag terdeteksi
                     {readings.length === 500 && ' (dibatasi 500 baris)'}
                   </p>
@@ -212,7 +212,7 @@ export function AnalyzeScreen() {
 
             <Card>
               <SectionTitle>Kondisi manual</SectionTitle>
-              <p className="mt-2 text-[13px] text-faint">
+              <p className="mt-2 text-[13px] text-content-3">
                 Selalu tersedia. Ini yang membuat analisis tetap jalan pada pabrik tanpa
                 sensor sama sekali.
               </p>
@@ -240,7 +240,7 @@ export function AnalyzeScreen() {
               >
                 Jalankan analisis
               </Button>
-              <p className="text-xs text-faint">
+              <p className="text-xs text-content-3">
                 {assetId ? 'Proses sinkron, bisa memakan waktu hingga 2 menit.' : 'Pilih mesin dulu.'}
               </p>
             </div>
@@ -255,8 +255,8 @@ export function AnalyzeScreen() {
                     <span
                       className={
                         item.present
-                          ? 'size-2 rounded-full bg-ink'
-                          : 'size-2 rounded-full border border-ink/30'
+                          ? 'size-2 rounded-full bg-card'
+                          : 'size-2 rounded-full border border-card/30'
                       }
                       aria-hidden
                     />

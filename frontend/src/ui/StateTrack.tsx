@@ -24,10 +24,10 @@ export function StateTrack({ status }: { status: WorkOrderStatus }) {
               <span
                 className={cn(
                   'size-2 rounded-full',
-                  ended && 'bg-raised',
+                  ended && 'bg-surface-raised',
                   past && 'bg-dim',
                   current && 'bg-white',
-                  !ended && !past && !current && 'border border-hair-strong',
+                  !ended && !past && !current && 'border border-line-strong',
                 )}
                 aria-hidden
               />
@@ -35,7 +35,7 @@ export function StateTrack({ status }: { status: WorkOrderStatus }) {
             <span
               className={cn(
                 'flex-1 text-[11.5px] whitespace-nowrap',
-                current ? 'font-medium text-white' : 'text-faint',
+                current ? 'font-medium text-content' : 'text-content-3',
               )}
             >
               {WORK_ORDER[step].short}

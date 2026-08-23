@@ -28,7 +28,7 @@ export function MetricCard({
   return (
     <Card className="flex flex-col justify-between">
       <div className="flex items-center gap-3">
-        <span className="grid size-9 shrink-0 place-items-center rounded-full bg-raised text-dim">
+        <span className="grid size-9 shrink-0 place-items-center rounded-full bg-surface-raised text-content-2">
           {icon}
         </span>
         <h3 className="flex-1 text-sm font-medium">{title}</h3>
@@ -45,7 +45,7 @@ export function MetricCard({
 
       {(caption || badge) && (
         <div className="mt-2 flex items-center justify-between gap-3">
-          <span className="text-xs text-faint">{caption}</span>
+          <span className="text-xs text-content-3">{caption}</span>
           {badge}
         </div>
       )}

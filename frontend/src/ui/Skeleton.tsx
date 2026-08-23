@@ -6,7 +6,7 @@ export function Skeleton({ className, label }: { className?: string; label?: str
     <div
       role="status"
       aria-label={label ?? 'Memuat'}
-      className={cn('animate-pulse rounded-control bg-raised', className)}
+      className={cn('animate-pulse rounded-control bg-surface-raised', className)}
     />
   )
 }
@@ -17,7 +17,7 @@ export function SkeletonText({ lines = 3 }: { lines?: number }) {
       {Array.from({ length: lines }, (_, i) => (
         <div
           key={i}
-          className={cn('animate-pulse rounded-control bg-raised h-3', i === lines - 1 ? 'w-2/3' : 'w-full')}
+          className={cn('animate-pulse rounded-control bg-surface-raised h-3', i === lines - 1 ? 'w-2/3' : 'w-full')}
         />
       ))}
     </div>

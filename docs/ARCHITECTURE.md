@@ -18,9 +18,9 @@ aic-compfest-26/
 │   ├── app/            config, db, models, schemas, auth, errors, repositories,
 │   │                   services, adapters, main
 │   └── tests/          pytest + TestClient, SQLite in-memory
-├── frontend/           NOT YET CREATED — see docs/requirements/FRONTEND.md
+├── frontend/           Vite + React application, served by nginx in Compose
 ├── docs/               see docs/INDEX.md
-└── docker-compose.yml  currently starts Postgres/pgvector only
+└── docker-compose.yml  Postgres/pgvector, backend, and web services
 ```
 
 ## Process topology
@@ -77,7 +77,7 @@ AnalysisRequest
    ├─ signals.detect_anomalies(readings)      deterministic  (IQR fence per tag)
    ├─ vision.inspect(asset_id, images)        deterministic  (PatchCore, optional extra)
    ├─ signals.health_score(...)               deterministic  (weighted deductions from 100)
-   ├─ knowledge.search(query, asset_id, k=5)  deterministic  (pgvector cosine)
+   ├─ knowledge.search(query, asset_id, factory_id, k=5)  deterministic  (pgvector cosine)
    └─ context.select_context(...)             packs the above into a ContextBundle
                                               under a token budget, stable ordering
    │
@@ -190,8 +190,9 @@ roadmap list (`FR.md`) because the rulebook excludes it. It exists so
 
 ## Deployment
 
-`docker-compose.yml` starts **only** Postgres/pgvector today. The rulebook
-requires a compose file the judges can run to get the whole app, so it needs a
-`backend` service and a `web` service. `backend/Dockerfile` exists and copies
-both packages but does not install `ai-engine`. Tracked in
-`requirements/BACKEND.md`.
+`docker-compose.yml` starts Postgres/pgvector, the backend, and the web app.
+Copy the root `.env.example` to `.env` before running Compose. Compose requires
+explicit database URLs and credentials; `backend/.env.example` remains for
+SQLite-based local development and must not be used inside the containers.
+The backend image installs both packages and runs as the unprivileged
+`appuser` with a writable storage volume.

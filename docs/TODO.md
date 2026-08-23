@@ -23,21 +23,21 @@ sama kerasnya dengan underbuilt (`DECISIONS.md` D0).
 
 ---
 
-## BLOK 0 — sekarang, 2–3 jam, backend sendirian
+## BLOK 0 — selesai
 
 Semua track lain menunggu ini. Seluruhnya di `backend/app/main.py`, sekali duduk.
 
 | # | Tugas | Ref | Buka jalan untuk |
 | --- | --- | --- | --- |
-| 0.1 | Route `approve` → `approved` dan `reject` → `rejected`; rename yang lama jadi `submit` | `DEFECTS.md#wo-approve` | demo langkah 10–13, seluruh screen 4–6 |
-| 0.2 | Hapus route `documents` duplikat + `transition`/`TRANSITIONS` yang dobel di `main.py` | `#duplicate-doc-route`, `#transition-shadowed` | state machine yang benar-benar diuji |
-| 0.3 | Perbaiki `reindex_document` (`Document` tidak ter-import) | `#reindex-nameerror` | **semua klaim grounding & sitasi** |
-| 0.4 | Tiga one-liner: `data.specs_json`, `request: Request` di `progress`, urutan argumen `JSONResponse` | `#patch-asset-specs`, `#progress-nameerror`, `#ready-jsonresponse-args` | — |
-| 0.5 | Pisah `AIENGINE_DATABASE_URL` dari `DATABASE_URL` | `#env-database-url` | apa pun yang jalan di atas Postgres |
-| 0.6 | Test: lifecycle work order penuh, transisi ilegal → 409, isolasi `factory_id` | `requirements/BACKEND.md` | — |
+| 0.1 | ~~Route `approve` → `approved` dan `reject` → `rejected`; rename yang lama jadi `submit`~~ | `DEFECTS.md#wo-approve` | **done**; demo langkah 10–13, seluruh screen 4–6 |
+| 0.2 | ~~Hapus route `documents` duplikat + `transition`/`TRANSITIONS` yang dobel di `main.py`~~ | `#duplicate-doc-route`, `#transition-shadowed` | **done**; state machine diuji |
+| 0.3 | ~~Perbaiki `reindex_document` (`Document` tidak ter-import)~~ | `#reindex-nameerror` | **done**; grounding & sitasi dapat berjalan |
+| 0.4 | ~~Tiga one-liner: `data.specs_json`, `request: Request` di `progress`, urutan argumen `JSONResponse`~~ | `#patch-asset-specs`, `#progress-nameerror`, `#ready-jsonresponse-args` | **done** |
+| 0.5 | ~~Pisah `AIENGINE_DATABASE_URL` dari `DATABASE_URL`~~ | `#env-database-url` | **done** |
+| 0.6 | ~~Test: lifecycle work order penuh, transisi ilegal → 409, isolasi `factory_id`~~ | `requirements/BACKEND.md` | **done** |
 
-**Selesai kalau:** `draft → pending_approval → approved → scheduled → in_progress
-→ completed` hijau di test, dan satu dokumen benar-benar `ready` di pgvector.
+**Hasil:** lifecycle `draft → pending_approval → approved → scheduled → in_progress
+→ completed` hijau di test, dan document ingestion/re-index sudah diuji terhadap pgvector.
 
 ---
 
@@ -52,20 +52,20 @@ Semua track lain menunggu ini. Seluruhnya di `backend/app/main.py`, sekali duduk
 | A3 | `mapping/qc_failure_modes.yaml` + loader + langkah koroborasi | 4j | Isi filenya sudah jadi di `FINAL_IDEA.md` §7.2 — salin, jangan karang ulang. **Termasuk jalur menahan diri** saat sinyal tidak mendukung. |
 | A4 | `defect_class` + `class_confidence` di `DefectFinding`; wire classifier ke pipeline | 2j | Ubah kontrak → update `API.md` + tipe frontend serentak. `DEFECTS.md#defect-class` |
 | A5 | `decide.py` — kandidat jendela, filter infeasible, skor, **runner-up + alasan kalah** | 4j | Tanpa LLM. Ini yang mengubah "optimal" jadi angka yang bisa dibantah. |
-| A6 | `engine.verify()` → verdict + bukti | 2j | Satu panggilan sinkron. Tidak ada loop. |
-| A7 | Perbaiki `detect_anomalies` sisi bawah + baseline per aset yang dibekukan | 2j | `#signals-low-outlier-crash`. Baseline beku juga syarat rulebook. |
+| A6 | ~~`engine.verify()` → verdict + bukti~~ | 2j | **Selesai.** Satu panggilan sinkron. Tidak ada loop. |
+| A7 | `detect_anomalies` baseline per aset yang dibekukan | 2j | Sisi bawah sudah diperbaiki dan diuji; baseline beku tetap syarat rulebook. |
 | A8 | `scripts/gen_synthetic.py` — jadwal produksi, stok+ETA, roster teknisi, korpus SOP | 2j | Asumsi generator ditulis; dipakai di proposal §metodologi. |
 
 ### Track Backend — setelah Blok 0
 
 | # | Tugas | Est | Catatan |
 | --- | --- | --- | --- |
-| B1 | `POST /assets/{id}/qc-batches` — upload batch citra | 3j | `#no-image-upload`. Tanpa ini pembeda utama tidak punya jalan masuk. |
-| B2 | `POST /assets/{id}/readings:batch` — CSV sensor sekali request | 1j | `ReadingBatchIn` sudah ada, belum dipakai. |
-| B3 | `POST /assets/{id}/ingest/plc` + `/ingest/iot` | 1j | `MockPLC.pull()` sekarang tidak pernah dipanggil siapa pun. Dua baris FR Primary. |
-| B4 | `POST /work-orders/{id}/result`, `/verify`, `GET /report` | 3j | Menunggu A6. |
+| B1 | ~~`POST /assets/{id}/qc-batches` — upload batch citra~~ | 3j | **done**; classifier dan mapping tetap tersisa di track AI |
+| B2 | `POST /assets/{id}/readings/import` — CSV sensor sekali request | 1j | Implemented and covered by backend API tests. |
+| B3 | ~~`POST /assets/{id}/ingest/plc` + `/ingest/iot`~~ | 1j | **done**; mock adapters persist readings |
+| B4 | ~~`POST /work-orders/{id}/result`, `/verify`, `GET /report`~~ | 3j | **done**; synchronous verification workflow, frontend gating covered separately |
 | B5 | Ekspor work order + laporan CSV/JSON | 2j | Pengganti jujur untuk integrasi ERP. |
-| B6 | **`docker-compose.yml` full-stack + Dockerfile pasang `ai-engine` + uji dari clone bersih** | 3j | **Jangan ditunda ke hari terakhir.** Cara paling murah untuk gugur. |
+| B6 | **`docker-compose.yml` full-stack + Dockerfile pasang `ai-engine` + uji dari clone bersih** | 3j | build and existing-stack smoke pass; isolated clean-clone run remains |
 | B7 | Seed script data demo (2 mesin, SOP, histori, batch QC) | 2j | Dikunci sebelum dry run; jangan diubah setelah itu. |
 
 ### Track Frontend — mulai sekarang juga, jangan menunggu backend

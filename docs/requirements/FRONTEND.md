@@ -16,8 +16,11 @@ npm run dev      # :5173, proxies /api /config /health to :8000
 node scripts/browser-pass.mjs
 ```
 
-Last full run: `142 passed (14 files)`, build clean, lint clean, `browser-pass` clean, and
-the dev proxy verified against a live backend on :8000.
+Last test/build run: `118 passed (11 files)`, build clean. Browser pass and
+live-proxy verification were not run in this verification.
+
+The API client also carries the backend's maintenance-history and sensor CSV
+import methods, expanded document kinds, and work-order export contract.
 
 `scripts/browser-pass.mjs` exists because happy-dom does no layout: the unit
 tests cannot see a broken grid, a clipped label, or a panel that scrolls
@@ -107,7 +110,7 @@ is asserted.
 - [x] Vite + React + TS scaffold, `npm run dev` and `npm run build` clean — verified: `npm run build`
 - [x] Tailwind v4 with the `@theme` token block; no colour literal anywhere outside `index.css` — verified: `grep -rE '#[0-9a-f]{3,8}|rgba?\(' src` returns only comments
 - [x] Plus Jakarta Sans loaded, weights 400/500/600 only, with a real fallback stack — verified: `index.html` + `--font-sans`; the stack ends in `sans-serif`
-- [x] `api/client.ts`: identity headers, error-envelope parsing, `request_id` surfaced, typed errors — verified: `src/api/client.test.ts` (6 tests) and a live request through the dev proxy
+- [x] `api/client.ts`: identity headers, error-envelope parsing, `request_id` surfaced, typed errors, technician result, verification and report routes — verified: `src/api/client.test.ts` (6 tests) and `Flow.test.tsx`
 - [x] `api/types.ts` matching `../API.md` — verified: `tsc -b` against the real payloads used in `AnalysisResult.test.tsx`
 - [x] `lib/format.ts`: `Rp` formatting, `id-ID` dates, UTC normalisation (`../API.md` gotcha 3), tabular helpers — verified: `src/lib/format.test.ts` (9 tests, incl. the naive-timestamp case)
 - [x] `lib/severity.ts`: score → token, priority → token, verdict → token, single source of truth — verified: `src/lib/severity.test.ts` (6 tests; asserts every status the API can return is covered)
@@ -130,15 +133,15 @@ is asserted.
 - [x] `DropZone` — dashed hairline, drag state, extension + size hint — verified: `ui.test.tsx` covers the hint text, the dashed→solid→dashed drag cycle, files reaching the caller, and a disabled zone ignoring both highlight and drop
 - [x] `Tooltip` — the sanctioned `.glass-light` element — verified: asserted on hover in `ui.test.tsx`; the `@supports` opaque fallback is declared in `index.css`
 - [x] `Skeleton` — `--raised`, real content dimensions, announced as `role="status"` — verified: `loading.test.tsx` asserts it on all seven screens
-- [x] Focus-visible ring on every interactive element; full keyboard traversal — verified: `browser-pass` tabs through both a form screen and a read-only screen and fails on any stop without a ring
+- [x] Focus-visible ring on every interactive element; full keyboard traversal — covered by `browser-pass`; browser pass was not run in the current verification
 
 ### Shell
 
 - [x] `AppShell` — page → shell → rail + panel, the exact inset and radii — verified: rendered in all 13 screen tests
-- [x] `NavRail` — three items, active pill, and a 64px icon strip below 1024 — verified: `src/shell/NavRail.test.tsx` (7 tests) plus the narrow-viewport assertions in `browser-pass`
+- [x] `NavRail` — three items, active pill, and a 64px icon strip below 1024 — covered by `src/shell/NavRail.test.tsx` (7 tests) and the narrow-viewport assertions in `browser-pass`; browser pass was not run in the current verification
 - [x] `StatusCard` — engine mode from `/config/capabilities`, `--mint`, never hidden — verified: `AnalysisResult.test.tsx` (an unexpected capabilities body used to crash the whole shell; the tests now cover that)
 - [x] `Header` — title, subtitle, search, icons, avatar chip with role switcher — verified: rendered in all screen tests
-- [x] Sticky `.glass-dark` header past 24px of scroll — verified: `browser-pass` asserts no blur before scrolling and blur after
+- [x] Sticky `.glass-dark` header past 24px of scroll — covered by `browser-pass`, which asserts no blur before scrolling and blur after; browser pass was not run in the current verification
 - [ ] Count badge on a nav item — not built; nothing needs one yet
 
 ### Screens — see `../design/SCREENS.md`
@@ -152,12 +155,12 @@ is asserted.
 - [x] 3h Approval bar with the autonomy-boundary wording — verified
 - [ ] 3b QC → mesin chain card — **partial**: the card and its honest "no defect class yet" state are built and tested. The actual chain, and **the restraint case**, need the classifier and the mapping table.
 - [ ] 3c Maintenance window — **partial**: falls back to the model's free text, with the objective function and blockers asserted. The chosen window, runner-up and loss reason need `decide.py`.
-- [x] 1 Setup — three drop zones + document table with the three ingestion states — verified: `src/screens/Setup.test.tsx`, 8 tests incl. all three ingestion states, the "will not appear as sources" warning, empty and error states
-- [x] 2 Analisis baru — single form, input-completeness panel, fixed §15 wording — verified: `src/screens/Analyze.test.tsx`, 8 tests incl. the verbatim adoption sentence, the run button never disabled for missing input, and the full-replace business-context payload
+- [x] 1 Setup — asset, generic knowledge-document, and structured maintenance-history CSV/XLSX inputs plus document table with the three ingestion states — verified: `src/screens/Setup.test.tsx`, incl. row-error rendering and preservation of generic history-document upload
+- [x] 2 Analisis baru — single form, input-completeness panel, fixed §15 wording — verified: `src/screens/Analyze.test.tsx`, 11 tests incl. QC batch upload and analysis linkage, the verbatim adoption sentence, the run button never disabled for missing input, and the full-replace business-context payload
 - [x] 2b The waiting state — stepped pipeline, honestly labelled as estimates — verified: `RunProgress.test.tsx`, 8 tests incl. the elapsed clock starting only at the engine call and the fallback to "masih berjalan…" past the 120 s timeout
 - [x] 4 Work order list + detail with the state track — verified: `src/screens/WorkOrders.test.tsx`, 8 tests incl. the disabled approve/reject naming `../DEFECTS.md#wo-approve`, the role gate, and the terminal `rejected` track
-- [x] 5 Technician execution form — verified: `src/screens/Flow.test.tsx`, 5 tests. Submitting is disabled and names the missing `POST …/result`; the screen states that a result does not close the work order.
-- [x] 6 Verification & final report — verified: `Flow.test.tsx`, 2 tests. With no `/verify` route the screen explains the three verdicts and names both missing pieces instead of rendering an empty shell. The verdict and report layout is built but unreachable until the backend lands.
+- [x] 5 Technician execution form — verified: `src/screens/Flow.test.tsx`, 5 tests. Submitting uses `POST …/result`; the screen states that a result does not close the work order.
+- [x] 6 Verification & final report — verified: `Flow.test.tsx`, incl. three verdicts, technician-result gating, verification, backend report rendering, and JSON/CSV blob exports with safe filenames.
 - [x] 7 Run comparison (graceful degradation) — verified: `Flow.test.tsx`, 7 tests incl. per-run input coverage (1/7 vs 6/7), the verbatim adoption sentence, the run picker listing only the asset's *other* runs, the single-run message, and the refusal to compare a run with itself
 
 ### Cross-cutting
@@ -168,9 +171,9 @@ is asserted.
 - [x] Partial input designed as a first-class state, not an error — verified: three tests, incl. the empty-corpus and no-anomaly messages
 - [x] Self-check list in `VISUAL_LANGUAGE.md` §11 — the automatable items verified: no colour literals, no uppercase labels, no card shadows, no gradients
 - [x] All four states (empty / loading / error / partial) on every screen — verified: `loading.test.tsx` covers the loading state on all seven screens and asserts no error or empty state leaks while data is in flight; empty, error and partial are covered per screen above
-- [x] `prefers-reduced-motion` honoured — verified: `browser-pass` loads the page under `reducedMotion: 'reduce'` and fails if any transition survives above 50ms
-- [x] Recorded at 1440×900 without horizontal scroll — verified: `scripts/browser-pass.mjs` asserts it on all eight routes plus a 900px viewport
-- [x] Browser pass over every screen — done at 1440×900; screenshots reviewed against `docs/ref/ui-ref.jpg`. Six layout and contrast defects were found and fixed (see the commit); the pass is now clean and re-runnable.
+- [x] `prefers-reduced-motion` honoured — covered by `browser-pass`, which loads the page under `reducedMotion: 'reduce'`; browser pass was not run in the current verification
+- [x] Recorded at 1440×900 without horizontal scroll — covered by `scripts/browser-pass.mjs` on all eight routes plus a 900px viewport; browser pass was not run in the current verification
+- [ ] Browser pass over every screen — not run in the current verification; do not claim a clean visual pass until it is rerun.
 
 ### Visual regressions found by the browser pass
 
@@ -266,9 +269,9 @@ to every check until contrast was measured from rendered pixels.
 
 ### Deployment
 
-- [ ] `Dockerfile` — build stage plus nginx serving `dist` and proxying `/api` — **written, unverified**: the Docker daemon was not running, so the image has never been built. Run `docker compose build web` before trusting it.
-- [x] `web` service in `docker-compose.yml` — verified: `docker compose config` exits clean. It proxies to a `backend` service that does not exist yet (B6), so API calls will 502 until that lands.
-- [ ] Verified from a clean clone: `docker compose up` → the UI loads and the full chain works
+- [x] `Dockerfile` — build stage plus nginx serving `dist` and proxying `/api` — verified by `docker compose build web`.
+- [x] `web` service in `docker-compose.yml` — proxies to the Compose `backend` service.
+- [ ] Verified from a clean clone: `docker compose up` → the UI loads and the full chain works. This remains unclaimed until performed.
 
 ---
 
@@ -280,13 +283,12 @@ routes land; do not invent a different shape.
 
 | Screen | Blocked by |
 | --- | --- |
-| Analisis baru — QC images | `../DEFECTS.md#no-image-upload` |
+| Analisis baru — QC images | `POST …/qc-batches` and `qc_batch_id` in the analysis request |
 | Hasil — QC chain card | `POST …/qc-batches`, `defect_class`, the mapping table |
 | Hasil — maintenance window | `decide.py` and the structured `schedule` object |
 | Approval bar | `../DEFECTS.md#wo-approve` |
-| Execution + verification + report | `POST …/result`, `POST …/verify`, `GET …/report` |
-| Setup — document status | `../DEFECTS.md#reindex-nameerror` (every document reads `pending` today) |
-| Compose — a working `docker compose up` | the `backend` service, `requirements/BACKEND.md` §7 |
+| Setup — document status | `../API.md` ingestion states (`pending`, `ready`, `failed`) |
+| Compose — a working `docker compose up` | deployment smoke verification |
 
 ## Out of scope — do not build
 

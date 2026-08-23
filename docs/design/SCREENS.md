@@ -98,7 +98,7 @@ Action column: "Indeks" button for `pending`, "Ulangi" for `failed`.
 
 This distinction is load-bearing, not cosmetic: a `pending` document contributes
 nothing to `sources`, and today **every** document is stuck there
-(`../DEFECTS.md#reindex-nameerror`). The UI must make that visible rather than
+(`../API.md` ingestion states). The UI must make that visible rather than
 implying the corpus is loaded.
 
 **Empty state:** one line — "Belum ada dokumen. Unggah SOP dan histori agar

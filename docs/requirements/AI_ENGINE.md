@@ -14,7 +14,7 @@ uv run python -m src.demo         # end-to-end; needs DEEPSEEK_API_KEY + pgvecto
 uv run python eval/run_eval.py    # priority accuracy / root-cause hit rate / retry rate
 ```
 
-Last full run: `11 passed, 1 skipped` (the skip is
+Last full run: `22 passed, 2 skipped` (the skips are
 `test_fit_inspect_round_trip`, which needs the `[vision]` extra).
 
 Tick a box only under the rule in [`../INDEX.md`](../INDEX.md#checklist-rules).
@@ -24,19 +24,20 @@ Tick a box only under the rule in [`../INDEX.md`](../INDEX.md#checklist-rules).
 ## 1. Contract & facade
 
 - [x] `AnalysisRequest` / `AnalysisResult` pydantic contract, optional-everything — verified: `uv run pytest tests/test_engine.py`
+- [x] `Document.kind` accepts `sop`, `manual`, `log`, `qc_standard`, and `maintenance_history` for backend-ingested retrieval documents.
 - [x] `MaintenanceEngine.analyze()` routes request → context → agent → result with `tier` preserved — verified: `test_analyze_returns_valid_result_with_tier_preserved` (uses `pydantic_ai` `TestModel`, no network)
 - [x] Engine overwrites `health_score`, `anomalies`, `defects`, `sources`, `tier`, `model` on the model's output — verified: same test asserts the deterministic fields survive the model
 - [ ] `MaintenanceEngine.ask()` plain-text grounded Q&A — **untested**: the code path is exercised only through the backend's offline stub. No unit test with `TestModel`, and `src.demo` was not run in this session. One `TestModel` test closes this.
-- [ ] `MaintenanceEngine.verify(work_order, technician_result)` → verdict + evidence — not started. Required by `FR.md` *Maintenance result verification* and demo step 12 (`DECISIONS.md` D4). One synchronous call, no loop, no retraining.
+- [x] Typed `TechnicianResult` / `VerificationResult` and `MaintenanceEngine.verify(work_order, technician_result)` — verified: `uv run pytest -q` (`test_verify_returns_typed_result_with_one_agent_call`). Named pydantic_ai Agent, structured output, one synchronous call.
 - [ ] `defect_class` + `class_confidence` on `DefectFinding` — **broken by design**: see `../DEFECTS.md#defect-class`. Contract change; update `API.md` and frontend types together.
 - [ ] Structured `schedule` object replacing free-text `recommended_window` — not started; shape is in `API.md`.
 
 ## 2. Deterministic signals
 
-- [x] Per-tag IQR fence anomaly detection — verified: `test_clean_series_has_no_anomalies`, `test_planted_spike_is_flagged`, `test_too_few_points_returns_empty`
-- [x] Weighted-deduction health score (anomalies, defects, overdue, repeat) — verified: `test_health_score_falls_as_anomalies_worsen`, `test_overdue_maintenance_deducts`, `test_health_score_falls_as_defect_severity_rises`
+- [x] Per-tag IQR fence anomaly detection — verified: `test_clean_series_has_no_anomalies`, `test_planted_spike_is_flagged`, `test_low_only_outlier_is_flagged`, `test_both_side_outliers_choose_the_most_extreme_fence_distance`, `test_too_few_points_returns_empty`
+- [x] Weighted-deduction health score (anomalies, defects, overdue, repeat) — verified: `test_health_score_falls_as_anomalies_worsen`, `test_overdue_maintenance_deducts`, `test_naive_sqlite_maintenance_timestamp_is_treated_as_utc`, `test_naive_and_aware_history_can_be_compared`, `test_health_score_falls_as_defect_severity_rises`
 - [x] Severity mapping from fence multiples — verified: `test_severity_mapping`
-- [ ] Low-side outliers — **broken**: `../DEFECTS.md#signals-low-outlier-crash`. Crashes the whole analysis. Fix and add all three cases (low-only, high-only, both).
+- [x] Low-side outliers — verified: `test_low_only_outlier_is_flagged` and `test_both_side_outliers_choose_the_most_extreme_fence_distance`; high-only is covered by `test_planted_spike_is_flagged`
 - [ ] Per-asset baselines fitted from a nominal period (median, IQR, p90/p95) and **frozen** — not started. `FINAL_IDEA.md` §8.3 promises it and the rulebook requires static parameters at demo time. Today every call recomputes the fence from the request's own readings, which means a slow drift becomes the new normal and stops being flagged.
 - [ ] Trend rules (`trend_up over last 50 cycles`, `variance > 2x baseline`) needed by the mapping corroboration step — not started.
 
@@ -80,13 +81,13 @@ The objective function is fixed wording; use it verbatim from `FINAL_IDEA.md`
 
 ## 6. Retrieval / knowledge base
 
-- [ ] pgvector schema + HNSW cosine index, 1024-dim — **untested**: implemented, but every path needs a live Postgres and none was run here. Nothing in `tests/` touches `knowledge.py`.
+- [x] pgvector schema + HNSW cosine index, 1024-dim — `test_knowledge.py` covers bootstrap with mocks and live upload/reindex/query smoke covered the existing-volume upgrade.
 - [ ] Local `fastembed` `intfloat/multilingual-e5-large` embeddings — **untested**: same. A test that embeds two strings and asserts 1024 dimensions needs no DB and would cover it.
 - [x] Token-budgeted, stably-ordered context packing — verified: `test_engine.py` drives `select_context` through `analyze` (`uv run pytest tests/test_engine.py`)
 - [x] `sources` audit trail built from the chunks actually used — verified: `test_analyze_returns_valid_result_with_tier_preserved`
-- [ ] `ContextDoc.distance` actually holds a similarity — `../DEFECTS.md#knowledge-distance-name`
+- [x] `ContextDoc.similarity` holds cosine similarity and retrieval is factory-scoped — `test_knowledge.py`
 - [ ] Chunking heuristic splits on real headings only — `../DEFECTS.md#chunk-heading-heuristic`
-- [ ] Completed work orders written back as new maintenance-history documents — not started. This is the *only* form of "learning" allowed in this round: knowledge, not weights (`DECISIONS.md` D4).
+- [x] Completed work orders written back as new maintenance-history documents — backend commits relational history first, then best-effort ingests the same document into pgvector with honest retryable status. This is the *only* form of "learning" allowed in this round: knowledge, not weights (`DECISIONS.md` D4).
 
 ## 7. Prompting & model
 

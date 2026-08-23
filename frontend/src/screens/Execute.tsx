@@ -1,13 +1,12 @@
 import { useState } from 'react'
 import { useParams } from 'react-router'
-import { Camera, Send } from 'lucide-react'
+import { Send } from 'lucide-react'
 import { AppShell } from '../shell/AppShell'
 import { api, getIdentity } from '../api/client'
 import { useRequest } from '../lib/useRequest'
 import { Card, CardTitle, SectionTitle } from '../ui/Card'
 import { BackLink, Button, LinkButton } from '../ui/Button'
 import { TextArea, TextInput } from '../ui/Field'
-import { DropZone } from '../ui/DropZone'
 import { ErrorState } from '../ui/States'
 import { Skeleton } from '../ui/Skeleton'
 
@@ -26,7 +25,9 @@ export function ExecuteScreen() {
   const [done, setDone] = useState<string[]>([])
   const [findings, setFindings] = useState('')
   const [parts, setParts] = useState('')
-  const [hours, setHours] = useState('')
+  const [evidence, setEvidence] = useState('')
+  const [submitting, setSubmitting] = useState(false)
+  const [submitError, setSubmitError] = useState<unknown>(null)
 
   if (loading) {
     return (
@@ -54,6 +55,23 @@ export function ExecuteScreen() {
 
   const steps = data.details_json.steps ?? []
   const isTechnician = getIdentity().user === 'demo-technician'
+
+  async function submit() {
+    setSubmitting(true)
+    setSubmitError(null)
+    try {
+      await api.submitTechnicianResult(id, {
+        work_done: done.join('; '),
+        findings,
+        parts_used: parts.split(',').map((part) => part.trim()).filter(Boolean),
+        evidence: evidence.split(',').map((item) => item.trim()).filter(Boolean),
+      })
+    } catch (err) {
+      setSubmitError(err)
+    } finally {
+      setSubmitting(false)
+    }
+  }
 
   return (
     <AppShell title={data.title} subtitle="Kirim hasil pekerjaan untuk diverifikasi.">
@@ -107,15 +125,6 @@ export function ExecuteScreen() {
                   value={parts}
                   onChange={(event) => setParts(event.target.value)}
                 />
-                <TextInput
-                  label="Waktu pengerjaan (jam)"
-                  type="number"
-                  min={0}
-                  step={0.5}
-                  placeholder="3"
-                  value={hours}
-                  onChange={(event) => setHours(event.target.value)}
-                />
               </div>
             </div>
           </Card>
@@ -123,12 +132,12 @@ export function ExecuteScreen() {
           <Card>
             <SectionTitle>Bukti</SectionTitle>
             <div className="mt-4">
-              <DropZone
-                label="Unggah foto hasil pekerjaan"
-                hint="Belum tersedia — backend belum menerima berkas gambar"
-                icon={<Camera size={20} />}
-                disabled
-                onFiles={() => {}}
+              <TextInput
+                label="Bukti pekerjaan"
+                hint="Pisahkan dengan koma"
+                placeholder="Foto runout, pembacaan 0.01 mm"
+                value={evidence}
+                onChange={(event) => setEvidence(event.target.value)}
               />
             </div>
           </Card>
@@ -160,19 +169,15 @@ export function ExecuteScreen() {
             size="sm"
             variant="primary"
             icon={<Send size={14} />}
-            disabled
-            title="Route POST /work-orders/{id}/result belum ada di backend"
+            disabled={!isTechnician || submitting}
+            onClick={submit}
           >
-            Kirim hasil pekerjaan
+            {submitting ? 'Mengirim…' : 'Kirim hasil pekerjaan'}
           </Button>
         </div>
       </div>
 
-      <p className="mt-3 text-xs leading-5 text-content-3">
-        Pengiriman hasil belum bisa diselesaikan: backend belum punya route
-        <span className="text-content-2"> POST /work-orders/{'{id}'}/result</span>. Lihat
-        docs/API.md bagian “Routes that must exist and do not”.
-      </p>
+      {submitError != null && <p className="mt-3 text-xs text-crit-text">Gagal mengirim hasil.</p>}
     </AppShell>
   )
 }

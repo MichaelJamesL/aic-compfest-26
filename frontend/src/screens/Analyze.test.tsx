@@ -17,7 +17,8 @@ function render(list: unknown = assets) {
     '/config/capabilities': CAPABILITIES,
     '/api/v1/assets': list,
     '/business-context': (init: RequestInit | undefined) => JSON.parse(String(init?.body)),
-    '/analyses': { id: 'run-1', status: 'succeeded', result: null, engine_mode: 'offline_stub', error_code: null, error_message: null, health_score: 78, priority: 'medium' },
+     '/api/v1/assets/a1/qc-batches': { id: 'qc-1', asset_id: 'a1', factory_id: 'f', count: 2, defect_count: 0, defect_rate: 0, images: [], created_at: '2026-08-23T00:00:00' },
+     '/analyses': { id: 'run-1', status: 'succeeded', result: null, engine_mode: 'offline_stub', error_code: null, error_message: null, health_score: 78, priority: 'medium' },
   })
   return renderRoute('/analyze', '/analyze', <AnalyzeScreen />)
 }
@@ -61,11 +62,34 @@ describe('Analyze — the single input form', () => {
     expect((button as HTMLButtonElement).disabled).toBe(false)
   })
 
-  it('marks QC upload as unavailable rather than pretending it works', async () => {
+  it('keeps QC upload disabled until a machine is chosen', async () => {
     render()
     const zone = await screen.findByText(/Unggah batch citra produk/)
-    expect(screen.getByText(/backend belum menerima berkas gambar/)).toBeTruthy()
     expect(zone.closest('button')?.disabled).toBe(true)
+
+    fireEvent.change(screen.getByLabelText('Pilih mesin'), { target: { value: 'a1' } })
+    expect(zone.closest('button')?.disabled).toBe(false)
+  })
+
+  it('uploads QC images and includes the returned batch in analysis', async () => {
+    render()
+    fireEvent.change(await screen.findByLabelText('Pilih mesin'), { target: { value: 'a1' } })
+    const zone = screen.getByText(/Unggah batch citra produk/)
+    const input = zone.parentElement!.parentElement!.querySelector('input[type="file"]')!
+    fireEvent.change(input, {
+      target: { files: [new File(['image'], 'part.png', { type: 'image/png' })] },
+    })
+
+    await waitFor(() => expect(calls.some((call) => call.url.includes('/qc-batches'))).toBe(true))
+    const upload = calls.find((call) => call.url.includes('/qc-batches'))!
+    expect(upload.method).toBe('POST')
+    expect(upload.body).toBeInstanceOf(FormData)
+    expect(await screen.findByText(/Batch QC tersimpan/)).toBeTruthy()
+
+    fireEvent.click(screen.getByRole('button', { name: /Jalankan analisis/ }))
+    await waitFor(() => expect(calls.some((call) => call.url.includes('/analyses'))).toBe(true))
+    const analysis = calls.find((call) => call.url.includes('/analyses'))!.body as Record<string, unknown>
+    expect(analysis.qc_batch_id).toBe('qc-1')
   })
 
   it('states what each missing input costs, specifically', async () => {

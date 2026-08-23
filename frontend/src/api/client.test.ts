@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { ApiError, errorCopy } from './client'
+import { ApiError, errorCopy, getIdentity, setIdentity } from './client'
 
 function apiError(code: string, message: string, details: { field: string; reason: string }[] = []) {
   return new ApiError(400, { code, message, details, request_id: 'req-1' })
@@ -38,5 +38,22 @@ describe('errorCopy', () => {
 
   it('keeps the request id for the error state to show', () => {
     expect(apiError('NOT_FOUND', 'asset_not_found').requestId).toBe('req-1')
+  })
+})
+
+describe('identity', () => {
+  it('keeps role changes working when localStorage is unavailable', () => {
+    const storage = globalThis.localStorage
+    Object.defineProperty(globalThis, 'localStorage', {
+      configurable: true,
+      value: { getItem: () => { throw new Error('blocked') }, setItem: () => { throw new Error('blocked') } },
+    })
+    try {
+      expect(setIdentity('demo-manager').user).toBe('demo-manager')
+      expect(getIdentity().user).toBe('demo-manager')
+    } finally {
+      Object.defineProperty(globalThis, 'localStorage', { configurable: true, value: storage })
+      setIdentity('demo-engineer')
+    }
   })
 })

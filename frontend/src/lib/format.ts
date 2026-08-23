@@ -1,10 +1,4 @@
 /** Formatting. All numbers that reach the screen come through here. */
-
-/**
- * The backend returns naive timestamps on SQLite ("2026-08-20T10:00:00") even
- * though the columns are timezone-aware. Treat every timestamp as UTC.
- * docs/API.md gotcha 3.
- */
 export function parseUtc(raw: string | null | undefined): Date | null {
   if (!raw) return null
   const hasZone = /(?:Z|[+-]\d{2}:?\d{2})$/.test(raw)
@@ -12,17 +6,8 @@ export function parseUtc(raw: string | null | undefined): Date | null {
   return Number.isNaN(date.getTime()) ? null : date
 }
 
-const dateTime = new Intl.DateTimeFormat('id-ID', {
-  day: 'numeric',
-  month: 'short',
-  hour: '2-digit',
-  minute: '2-digit',
-})
-const dateOnly = new Intl.DateTimeFormat('id-ID', {
-  day: 'numeric',
-  month: 'short',
-  year: 'numeric',
-})
+const dateTime = new Intl.DateTimeFormat('id-ID', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', timeZone: 'UTC' })
+const dateOnly = new Intl.DateTimeFormat('id-ID', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' })
 
 export function formatDateTime(raw: string | null | undefined): string {
   const date = parseUtc(raw)
@@ -45,18 +30,15 @@ export function formatRelative(raw: string | null | undefined): string {
   return `${Math.round(hours / 24)} hari lalu`
 }
 
-/** Indonesian currency, non-breaking space after Rp. */
 export function formatRupiah(value: number | null | undefined): string {
   if (value == null) return '—'
-  if (value >= 1_000_000_000) return `Rp ${(value / 1_000_000_000).toFixed(1)} M`
-  if (value >= 1_000_000) return `Rp ${(value / 1_000_000).toFixed(1)} jt`
-  return `Rp ${new Intl.NumberFormat('id-ID').format(value)}`
+  if (value >= 1_000_000_000) return `Rp\u00a0${(value / 1_000_000_000).toFixed(1)} M`
+  if (value >= 1_000_000) return `Rp\u00a0${(value / 1_000_000).toFixed(1)} jt`
+  return `Rp\u00a0${new Intl.NumberFormat('id-ID').format(value)}`
 }
 
 export function formatNumber(value: number, digits = 1): string {
-  return new Intl.NumberFormat('id-ID', {
-    maximumFractionDigits: digits,
-  }).format(value)
+  return new Intl.NumberFormat('id-ID', { maximumFractionDigits: digits }).format(value)
 }
 
 export function formatPercent(fraction: number, digits = 0): string {
@@ -66,7 +48,8 @@ export function formatPercent(fraction: number, digits = 0): string {
 export function formatBytes(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`
-  return `${(bytes / 1024 / 1024).toFixed(1)} MB`
+  if (bytes < 1024 * 1024 * 1024) return `${(bytes / 1024 / 1024).toFixed(1)} MB`
+  return `${(bytes / 1024 / 1024 / 1024).toFixed(1)} GB`
 }
 
 export function formatDuration(hours: number | null | undefined): string {

@@ -24,7 +24,7 @@ export function stubRoutes(routes: RouteStub, options: { status?: number } = {})
     'fetch',
     vi.fn(async (url: string, init?: RequestInit) => {
       const method = init?.method ?? 'GET'
-      let body: unknown = null
+       let body: unknown = init?.body ?? null
       if (typeof init?.body === 'string') {
         try {
           body = JSON.parse(init.body)
@@ -47,8 +47,11 @@ export function stubRoutes(routes: RouteStub, options: { status?: number } = {})
       }
 
       const handler = routes[match]
-      const payload = typeof handler === 'function' ? (handler as (i?: RequestInit) => unknown)(init) : handler
-      const status = options.status ?? 200
+       const payload = typeof handler === 'function' ? (handler as (i?: RequestInit) => unknown)(init) : handler
+       if (typeof payload === 'object' && payload !== null && 'ok' in payload && 'status' in payload && 'json' in payload) {
+         return payload
+       }
+       const status = options.status ?? 200
       return {
         ok: status < 400,
         status,

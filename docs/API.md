@@ -19,7 +19,8 @@ X-Factory-ID: demo-factory      # → tenant scope (default)
 Roles: `demo-viewer`, `demo-technician`, `demo-manager`, `demo-admin`; anything
 else is `engineer`. `X-Factory-ID` must match `[A-Za-z0-9][A-Za-z0-9_-]{0,63}`
 or the request 400s. A `X-Request-ID` header is echoed back on every response,
-and is the `request_id` in error bodies — surface it in the UI's error state.
+truncated to 36 characters when longer, and is the `request_id` in error bodies —
+surface it in the UI's error state.
 
 ## Error envelope
 
@@ -81,7 +82,7 @@ Verified working unless annotated.
 | Method | Path | Response |
 | --- | --- | --- |
 | GET | `/health/live` | `{"status":"ok"}` |
-| GET | `/health/ready` | `{"status":"ready","database":"ok","storage":"ok"}` — failure branch broken, `DEFECTS.md#ready-jsonresponse-args` |
+| GET | `/health/ready` | `{"status":"ready","database":"ok","storage":"ok"}`; returns 503 with component statuses when not ready |
 | GET | `/config/capabilities` | `{"tier":"starter","capabilities":{"assets":true,"documents":true,"analysis":true,"work_orders":true,"mock_plc":true,"ai_engine":false}}` |
 
 `capabilities.ai_engine` tells the UI whether answers come from the real engine
@@ -101,7 +102,7 @@ POST /api/v1/assets            201
 | GET | `/api/v1/assets` | `AssetOut[]`, ordered by name |
 | POST | `/api/v1/assets` | 201, audited |
 | GET | `/api/v1/assets/{asset_id}` | 404 `asset_not_found` |
-| PATCH | `/api/v1/assets/{asset_id}` | **broken** — `DEFECTS.md#patch-asset-specs` |
+| PATCH | `/api/v1/assets/{asset_id}` | updates asset fields and returns `AssetOut` |
 | POST | `/api/v1/assets/import` | multipart `file` (`.csv` or `.json`) → `{"imported":1,"errors":[]}`. Columns: `name` (required), `asset_type`, `criticality`, `external_id` (idempotency key). Bad rows are reported, not fatal. |
 
 `criticality` ∈ `low | medium | high | critical`. `asset_type` is free text.
@@ -110,9 +111,9 @@ POST /api/v1/assets            201
 
 | Method | Path | Notes |
 | --- | --- | --- |
-| POST | `/api/v1/knowledge/documents` | multipart `file` + query `kind` (`sop` default, `manual`, `log`) + optional `asset_id`. 201 `DocumentOut`. Max 10 MB. Extensions: `.txt .md .csv .json .pdf` — **no images**, `DEFECTS.md#no-image-upload`. Declared twice in source, `DEFECTS.md#duplicate-doc-route` |
+| POST | `/api/v1/knowledge/documents` | multipart `file` + query `kind` (`sop` default, `manual`, `log`, `qc_standard`, `maintenance_history`) + optional `asset_id`. 201 `DocumentOut`. Max `MAX_UPLOAD_BYTES` (default 10 MB). Extensions: `.txt .md .csv .json .pdf` — `.xlsx` is only supported by maintenance-history import; images use the separate QC batch route. Text PDFs are extracted with bounded pages/text; malformed or over-limit PDFs return validation errors. |
 | GET | `/api/v1/knowledge/documents` | `DocumentOut[]` where `status="active"` |
-| POST | `/api/v1/knowledge/documents/{doc_id}/reindex` | **always fails** — `DEFECTS.md#reindex-nameerror` |
+| POST | `/api/v1/knowledge/documents/{doc_id}/reindex` | tenant-scoped, idempotently replaces that document's chunks when ai-engine and pgvector are available; otherwise records `failed` with an error |
 
 ```jsonc
 // DocumentOut
@@ -130,14 +131,26 @@ a `pending` document is **not** in the RAG corpus and will not appear in
 | Method | Path | Body → Response |
 | --- | --- | --- |
 | POST | `/api/v1/assets/{asset_id}/readings` | `{"tag","value","unit","recorded_at","source","external_id"}` → `{"id","quality"}`. Idempotent on `external_id`: a repeat returns the existing row. |
+| POST | `/api/v1/assets/{asset_id}/readings:batch` | JSON `{"readings":[ReadingIn,…]}` (1–5000) → `{"count","readings":[{"id","quality"},…]}`. Each row reuses single-reading idempotency. |
+| POST | `/api/v1/assets/{asset_id}/readings/import` | multipart CSV with `tag,value,unit,recorded_at,source,external_id` → count, row errors and reading results. Each row reuses single-reading idempotency. |
 | GET | `/api/v1/assets/{asset_id}/readings` | raw rows, newest first |
 | PUT | `/api/v1/assets/{asset_id}/condition` | `{"condition":"chatter noise"}` → echo. Writes `business_context.operator_report`. |
 | PUT | `/api/v1/assets/{asset_id}/business-context` | `{"production_schedule","spareparts":[],"sparepart_eta","technicians_available","operator_report"}` → echo. **Full replace.** |
 | POST | `/api/v1/assets/{asset_id}/maintenance-records` | `{"performed_at","action","findings","parts_used":[]}` → `{"id"}` |
+| POST | `/api/v1/maintenance-records/import` | multipart `.csv` or `.xlsx`; rows use `asset_id` or tenant-local `asset_external_id`, plus `performed_at`, `action`, optional `findings`, comma-separated `parts_used`, and optional tenant-scoped `external_id`. Repeating an external id creates no duplicate and returns a row error. |
 
-There is **no batch reading endpoint**, so a sensor CSV must be posted row by
-row today. `ReadingBatchIn` exists in `schemas.py` unused — see
-`requirements/BACKEND.md`.
+Batch readings are accepted in one request, with the same `external_id`
+idempotency semantics as the single-reading route.
+
+### Quality control batches
+
+| Method | Path | Notes |
+| --- | --- | --- |
+| POST | `/api/v1/assets/{asset_id}/qc-batches` | multipart `files` with PNG/JPEG images. The server decodes images, enforces per-image (5 MB), aggregate (50 MB), and count (20) limits, stores generated safe keys, and returns the batch plus images. |
+| GET | `/api/v1/qc-batches/{id}` | tenant-scoped batch with image metadata, `defect_count`, and `defect_rate` |
+
+QC images can be selected for analysis with `qc_batch_id`; their resolved
+storage paths are passed to the engine and recorded in `request_snapshot`.
 
 ### Analysis
 
@@ -146,8 +159,9 @@ POST /api/v1/assets/{asset_id}/analyses           201
 {"tier":"professional","trigger":"manual","manual_condition":"chatter",
  "include_history":true,"include_business_context":true}
 → {"id","status":"succeeded","result":{…AnalysisResult…},
-   "engine_mode":"offline_stub","error_code":null,"error_message":null,
-   "health_score":78,"priority":"medium"}
+   "engine_mode":"offline_stub","error":null,"error_code":null,"error_message":null,
+    "health_score":78,"priority":"medium",
+    "input_disclosure":{"available":["manual_condition"],"missing":["readings","history","business_context","qc_images"],"limitations":[{"token":"readings","reason":"no_readings"},{"token":"history","reason":"not_in_snapshot"},{"token":"business_context","reason":"not_in_snapshot"},{"token":"qc_images","reason":"no_qc_images"}]}}
 ```
 
 `status` ∈ `succeeded | failed`. On failure `result` is `null` and
@@ -155,6 +169,33 @@ POST /api/v1/assets/{asset_id}/analyses           201
 still 201, so **check `status`, not the status code.**
 
 `engine_mode` ∈ `ai_engine | offline_stub | unavailable | error`.
+
+Both analysis responses include the same `status`, `error`, `error_code`,
+`health_score`, `priority`, and `input_disclosure` fields. POST also retains
+`error_message` for existing clients; GET additionally includes
+`request_snapshot`. `input_disclosure` is derived only from the immutable
+request snapshot:
+
+```jsonc
+{
+  "available": ["readings", "history", "business_context", "manual_condition", "qc_images"],
+  "missing": ["readings", "history", "business_context", "manual_condition", "qc_images"],
+  "limitations": [
+    {"token": "readings", "reason": "no_readings"},
+    {"token": "history", "reason": "not_in_snapshot"},
+    {"token": "business_context", "reason": "not_in_snapshot"},
+    {"token": "qc_images", "reason": "no_qc_images"}
+  ]
+}
+```
+
+The five stable tokens are `readings`, `history`, `business_context`,
+`manual_condition`, and `qc_images`. A token occurs in exactly one of
+`available` or `missing`. `limitations` contains one object for each missing
+token, with machine-token reasons such as `no_readings`, `not_in_snapshot`,
+`no_manual_condition`, and `no_qc_images`. The disclosure does not add to or
+modify `request_snapshot`; excluded history or business context therefore
+appears as missing with `not_in_snapshot`.
 
 `result` is the engine's `AnalysisResult`:
 
@@ -191,7 +232,8 @@ still 201, so **check `status`, not the status code.**
 ```http
 POST /api/v1/analyses/{analysis_id}/work-orders   201
 → {"id","title","description","priority","status":"draft","details_json":{…work_order…},
-   "asset_id","analysis_id","factory_id","created_at","updated_at"}
+   "asset_id","analysis_id","factory_id","technician_result_json":null,
+   "result_submitted_at":null,"created_at","updated_at"}
 ```
 
 | Method | Path | Transition | Role |
@@ -203,7 +245,7 @@ POST /api/v1/analyses/{analysis_id}/work-orders   201
 | POST | `/api/v1/work-orders/{id}/schedule` | `approved → scheduled` | any |
 | POST | `/api/v1/work-orders/{id}/start` | `scheduled → in_progress` | any |
 | POST | `/api/v1/work-orders/{id}/block` | `in_progress → blocked` | any |
-| POST | `/api/v1/work-orders/{id}/complete` | `in_progress → completed` | any |
+| POST | `/api/v1/work-orders/{id}/complete` | rejected; completion requires resolved verification | any |
 | POST | `/api/v1/work-orders/{id}/cancel` | → `cancelled` | any |
 | POST | `/api/v1/work-orders/{id}/progress` | records progress; **never completes** | any |
 
@@ -212,13 +254,18 @@ a coordinator decides. A non-coordinator gets 403 with code `FORBIDDEN`.
 `progress` records a note and a percentage and deliberately does **not** close
 the work order — completion goes through verification.
 
+`POST /api/v1/work-orders/{id}/result` accepts `{"work_done":"…","findings":"…","parts_used":[],"evidence":[]}` and is technician-only. The same payload retry returns the stored result; a conflicting retry returns 409. `POST /api/v1/work-orders/{id}/verify` is synchronous and tenant-scoped for any role, returning `{"id":"…","status":"completed|in_progress","verification":{"verdict":"resolved|partial|not_resolved","evidence":[],"follow_up":[],"ingestion":{"status":"ready|failed","error":null}},"verified_at":"…"}`. The app transaction commits the completed work order, relational maintenance record, and history document before best-effort vector ingestion. Repeated verification creates no duplicates and retries failed ingestion. Only `resolved` changes `in_progress` to `completed`; the other verdicts remain `in_progress`. Verification success is independent of best-effort knowledge ingestion. `GET /api/v1/work-orders/{id}/report` is tenant-scoped and any role.
+
+`GET /api/v1/work-orders/{id}/export?format=json|csv` returns a tenant-scoped attachment containing the work order and, when available, its report. JSON uses `application/json`; CSV uses `text/csv` and both include `Content-Disposition`. Each export also calls the deterministic `MockERP.push()` adapter and writes a `work_order.exported` audit event containing the requested format and accepted ERP result. This is the scoped ERP substitute described by `FR.md`, not a real ERP integration.
+
 State machine (the intended one):
 
 ```
 draft → pending_approval → approved → scheduled → in_progress → completed
              │                 │          │            │
-             ├→ rejected       └──────────┴────────────┴→ cancelled
-             │                                     in_progress ⇄ blocked
+              ├→ rejected       └──────────┴────────────┴→ cancelled
+              │                                     in_progress ⇄ blocked
+              │                                     resolved verification → completed
 ```
 
 `completed`, `cancelled`, `rejected` are terminal. An illegal transition is
@@ -231,25 +278,20 @@ draft → pending_approval → approved → scheduled → in_progress → comple
 | GET | `/api/v1/dashboard/summary` | `{"assets":n,"open_work_orders":n,"analyses":n}` |
 | GET | `/api/v1/integrations/health` | `{"plc":"mock","iot":"mock","erp":{"status":"ok","adapter":"mock-erp"}}` |
 
+| POST | `/api/v1/assets/{id}/ingest/plc` | pulls from `MockPLC` and persists the returned readings |
+| POST | `/api/v1/assets/{id}/ingest/iot` | pulls from `MockIoT` and persists the returned readings |
+
 ---
 
-## Routes that must exist and do not
+## Routes that remain open
 
-Required by `FR.md` rows or by the locked demo chain (`DECISIONS.md` D11), with
-no implementation today. Frontend: build against these shapes; backend: these
-are the open work items.
+Required by `FR.md` rows or by the locked demo chain (`DECISIONS.md` D11). The
+remaining backend work is listed below; frontend: build against the verified
+shapes above.
 
 | Method | Path | For | FR row |
 | --- | --- | --- | --- |
-| POST | `/api/v1/assets/{id}/readings:batch` | sensor CSV in one request | Machine condition input |
-| POST | `/api/v1/assets/{id}/qc-batches` | multipart QC images → `{"batch_id","images":[…],"count"}` | Product QC input |
-| GET | `/api/v1/qc-batches/{id}` | per-image `defect_class` + confidence, batch defect rate, per-class trend | Product quality report |
-| POST | `/api/v1/work-orders/{id}/result` | technician submits work done, findings, parts used, photos | Maintenance progress input |
-| POST | `/api/v1/work-orders/{id}/verify` | one synchronous `engine.verify()` → `{"verdict":"resolved\|partial\|not_resolved","evidence":[],"follow_up":[]}` | Maintenance result verification |
-| GET | `/api/v1/work-orders/{id}/report` | final report: problem, action, verdict, final asset state | Post maintenance report |
-| GET | `/api/v1/work-orders/{id}/export?format=csv\|json` | export for the customer's own system | Work order & report export |
-| POST | `/api/v1/assets/{id}/ingest/plc` | pull one sync batch from `adapters.MockPLC` | PLC / Controller integration |
-| POST | `/api/v1/assets/{id}/ingest/iot` | same via `MockIoT` | IoT sensor integration |
+No required backend routes remain open in this batch. Future contract changes are listed below.
 
 Two contract changes land with these:
 

@@ -57,7 +57,7 @@ export interface AssetInput {
 export interface DocumentOut {
   id: string
   title: string
-  kind: 'sop' | 'manual' | 'log'
+  kind: 'sop' | 'manual' | 'log' | 'qc_standard' | 'maintenance_history'
   filename: string
   size_bytes: number
   ingestion_status: IngestionStatus
@@ -80,6 +80,24 @@ export interface BusinessContext {
   sparepart_eta: string | null
   technicians_available: number | null
   operator_report: string | null
+}
+
+export interface QCBatch {
+  id: string
+  asset_id: string
+  factory_id: string
+  count: number
+  defect_count: number
+  defect_rate: number
+  images: {
+    id: string
+    filename: string
+    mime_type: string
+    size_bytes: number
+    defect_class: string | null
+    class_confidence: number | null
+  }[]
+  created_at: string
 }
 
 export interface Anomaly {
@@ -185,6 +203,8 @@ export interface RequestSnapshot {
   business: BusinessContext
   tier: string
   trigger: string
+  qc_batch_id?: string | null
+  images?: string[]
 }
 
 /** Row shape of GET /assets/{id}/analyses — the raw table row, per API.md. */
@@ -209,16 +229,17 @@ export interface WorkOrder {
   priority: Priority
   status: WorkOrderStatus
   details_json: WorkOrderDetails
+  technician_result_json?: TechnicianResult | null
+  result_submitted_at?: string | null
   created_at: string
   updated_at: string
 }
 
-/** Pending — POST /work-orders/{id}/result. See docs/API.md. */
 export interface TechnicianResult {
-  steps_done: string[]
+  work_done: string
   findings: string
   parts_used: string[]
-  hours_spent: number | null
+  evidence: string[]
 }
 
 /** Pending — POST /work-orders/{id}/verify. One synchronous call, no loop. */
@@ -228,15 +249,17 @@ export interface Verification {
   verdict: Verdict
   evidence: string[]
   follow_up: string[]
-  summary: string
+  ingestion?: { status: 'ready' | 'failed' | 'not_attempted'; error: string | null }
 }
 
 export interface MaintenanceReport {
+  work_order_id: string
+  asset_id: string
   problem: string
   action: string
-  verification: Verification
-  final_state: string
-  written_back: boolean
+  findings: string
+  verdict: Verification
+  final_asset_state: { status: string | null; work_order_status: WorkOrderStatus }
 }
 
 export interface AnalysisInput {
@@ -245,6 +268,7 @@ export interface AnalysisInput {
   manual_condition?: string | null
   include_history?: boolean
   include_business_context?: boolean
+  qc_batch_id?: string | null
 }
 
 export interface ApiErrorBody {

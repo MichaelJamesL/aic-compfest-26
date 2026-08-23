@@ -1,33 +1,76 @@
 services:
   db:
     image: pgvector/pgvector:pg16
-    container_name: aic26-db
     environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: aic26
+      POSTGRES_USER: ${POSTGRES_USER:-appuser}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change-me}
+      POSTGRES_DB: ${POSTGRES_DB:-postgres}
+      APP_DATABASE: ${APP_DATABASE:-app}
+      AI_DATABASE: ${AI_DATABASE:-ai}
     ports:
       - "5433:5432"
     volumes:
       - db_data:/var/lib/postgresql/data
+      - ./docker/postgres-init:/docker-entrypoint-initdb.d:ro
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d aic26"]
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
       interval: 5s
       timeout: 5s
       retries: 5
 
-  # The frontend. Serves the built SPA and proxies /api, /config and /health
-  # to the backend service, which does not exist yet — see
-  # docs/requirements/BACKEND.md §7 (B6). Until it does, `web` starts and
-  # serves the UI, but every request to the API returns 502.
+  db-bootstrap:
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-appuser}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change-me}
+      POSTGRES_DB: ${POSTGRES_DB:-postgres}
+      APP_DATABASE: ${APP_DATABASE:-app}
+      AI_DATABASE: ${AI_DATABASE:-ai}
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - ./docker/postgres-bootstrap:/usr/local/bin/postgres-bootstrap:ro
+    entrypoint: ["/usr/local/bin/postgres-bootstrap"]
+
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      DATABASE_URL: ${DATABASE_URL:-postgresql+psycopg://${POSTGRES_USER:-appuser}:${POSTGRES_PASSWORD:-change-me}@db:5432/${APP_DATABASE:-app}}
+      AIENGINE_DATABASE_URL: ${AIENGINE_DATABASE_URL:-postgresql://${POSTGRES_USER:-appuser}:${POSTGRES_PASSWORD:-change-me}@db:5432/${AI_DATABASE:-ai}}
+      APP_ENV: ${APP_ENV:-demo}
+      AI_ENGINE_ENABLED: ${AI_ENGINE_ENABLED:-false}
+      AIENGINE_TIMEOUT: ${AIENGINE_TIMEOUT:-120}
+      DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY:-}
+      STORAGE_PATH: /app/storage
+      DEPLOYMENT_TIER: ${DEPLOYMENT_TIER:-starter}
+    depends_on:
+      db:
+        condition: service_healthy
+      db-bootstrap:
+        condition: service_completed_successfully
+    volumes:
+      - backend_storage:/app/storage
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health/ready', timeout=3)"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
   web:
     build:
       context: ./frontend
-    container_name: aic26-web
     ports:
       - "5173:80"
     depends_on:
-      - db
+      backend:
+        condition: service_healthy
 
 volumes:
   db_data:
+  backend_storage:

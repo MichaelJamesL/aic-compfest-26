@@ -33,6 +33,18 @@ collapses transitions; and at 900px checks the rail is still there, still has
 three destinations, and still shows the engine mode. Run it before claiming a
 screen is done.
 
+It also audits **contrast from rendered pixels** — resolving each element's
+effective foreground and backdrop, blending opacity rather than exempting it,
+and failing below 4.5:1 (3:1 for large text).
+
+Run it against the production bundle too, which is not the same CSS as dev:
+
+```bash
+npm run build
+npm run serve:dist &          # mirrors nginx.conf: static, SPA fallback, /api proxy
+npm run browser-pass http://localhost:4173
+```
+
 Read in this order:
 [`../design/VISUAL_LANGUAGE.md`](../design/VISUAL_LANGUAGE.md) →
 [`../design/SCREENS.md`](../design/SCREENS.md) →
@@ -182,6 +194,29 @@ structurally cannot catch, and they will recur.
   Track labels now have short forms.
 - A `disabled` primary button kept its white fill at 40% opacity, so a blocked
   action was still the loudest element on the bar. Disabled now drops the fill.
+
+### Defects found by the production-bundle pass
+
+The dev server and the built bundle are not the same CSS, and only the bundle
+ships. Everything below passed in dev and failed in production, or was invisible
+to every check until contrast was measured from rendered pixels.
+
+- **The minifier dropped the standard `backdrop-filter` property**, keeping only
+  `-webkit-backdrop-filter`. Hand-writing the prefix pair let Lightning CSS
+  collapse them to whatever its (undeclared) targets implied. Chromium still
+  blurred, so it looked fine — but Firefox does not support the `-webkit-` form,
+  so every glass surface would have been a flat panel there. Fixed by declaring
+  the standard property only and adding a `browserslist`, so prefixes are
+  generated deliberately.
+- **`text-ink-dim` on all four tinted cards**, as low as **2.28:1** on sage.
+  `--ink-dim` is calibrated against white. 18 elements across five files. Now
+  `text-soft`.
+- **`CardTitle muted` at 65% opacity measured 3.89:1** on clay — the earlier fix
+  for the grey-on-clay heading was a guess that happened to look better without
+  actually passing. Now 80%, measured.
+- One checker bug of my own: the contrast audit skipped elements below 0.95
+  opacity, which would have exempted exactly the muted text it exists to check.
+  Opacity is now blended into the measurement.
 
 ### Defects found by the responsive pass
 

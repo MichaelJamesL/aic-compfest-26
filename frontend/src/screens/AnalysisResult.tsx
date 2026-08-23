@@ -299,7 +299,7 @@ function QcChainCard({ result }: { result: AnalysisResult }) {
           {classified.slice(0, 1).map((defect) => (
             <li key={defect.image} className="space-y-3">
               <p className="font-medium">{defect.defect_class}</p>
-              <p className="text-ink-dim">
+              <p className="text-soft">
                 Kandidat failure mode belum dipetakan — tabel mapping belum ada di engine.
               </p>
             </li>
@@ -307,19 +307,19 @@ function QcChainCard({ result }: { result: AnalysisResult }) {
         </ol>
       ) : (
         <div className="mt-4 space-y-3">
-          <p className="text-[13px] leading-6 text-ink-dim">
+          <p className="text-[13px] leading-6 text-soft">
             {defects.length > 0
               ? 'Defect terdeteksi, tetapi belum ada kelas defect sehingga kandidat failure mode tidak bisa ditarik.'
               : 'Rantai ini bermula dari kelas defect produk. Belum ada batch citra pada analisis ini, sehingga tidak ada kandidat failure mode yang bisa ditarik.'}
           </p>
-          <p className="text-xs leading-5 text-ink-dim">
+          <p className="text-xs leading-5 text-soft">
             Rantai lengkap membutuhkan classifier defect dan tabel
             <span className="font-medium"> qc_failure_modes.yaml</span> di ai-engine.
           </p>
         </div>
       )}
 
-      <p className="mt-5 border-t border-ink/10 pt-3 text-xs leading-5 text-ink-dim">
+      <p className="mt-5 border-t border-ink/10 pt-3 text-xs leading-5 text-soft">
         Prioritas hanya naik bila sinyal mesin mengonfirmasi. Bila tidak, sistem menyatakan
         kemungkinan penyebabnya di luar mesin.
       </p>
@@ -338,14 +338,14 @@ function ScheduleCard({ result }: { result: AnalysisResult }) {
       {schedule ? (
         <dl className="mt-4 space-y-3 text-[13px]">
           <div>
-            <dt className="text-ink-dim">Terpilih</dt>
+            <dt className="text-soft">Terpilih</dt>
             <dd className="text-[17px] leading-6 font-semibold">{schedule.chosen.start}</dd>
           </div>
           {schedule.runner_up && (
             <div>
-              <dt className="text-ink-dim">Runner-up</dt>
+              <dt className="text-soft">Runner-up</dt>
               <dd>{schedule.runner_up.start}</dd>
-              <dd className="text-xs text-ink-dim">kalah: {schedule.runner_up.lost_because}</dd>
+              <dd className="text-xs text-soft">kalah: {schedule.runner_up.lost_because}</dd>
             </div>
           )}
         </dl>
@@ -354,7 +354,7 @@ function ScheduleCard({ result }: { result: AnalysisResult }) {
           <p className="text-[17px] leading-6 font-semibold">
             {result.recommended_window ?? 'Belum ditentukan'}
           </p>
-          <p className="text-xs leading-5 text-ink-dim">
+          <p className="text-xs leading-5 text-soft">
             Masih berupa teks dari model. Jendela terhitung beserta runner-up dan alasan
             kalahnya membutuhkan <span className="font-medium">decide.py</span>.
           </p>
@@ -372,7 +372,7 @@ function ScheduleCard({ result }: { result: AnalysisResult }) {
         </ul>
       )}
 
-      <p className="mt-5 border-t border-ink/10 pt-3 text-xs leading-5 text-ink-dim">
+      <p className="mt-5 border-t border-ink/10 pt-3 text-xs leading-5 text-soft">
         Optimal = meminimalkan ekspektasi biaya downtime tak terencana dan scrap, dengan
         constraint jadwal produksi, ETA sparepart, ketersediaan teknisi, dan batasan
         keselamatan pada SOP.
@@ -405,7 +405,7 @@ function SourcesCard({
             ))}
           </ul>
         ) : (
-          <p className="text-[13px] leading-6 text-ink-dim">
+          <p className="text-[13px] leading-6 text-soft">
             Tidak ada dokumen terindeks; analisis tidak memiliki dasar dokumen yang bisa
             dikutip.
           </p>
@@ -415,11 +415,11 @@ function SourcesCard({
       <div className="mt-5 border-t border-ink/10 pt-3">
         <p className="text-xs font-medium">Input yang tidak tersedia</p>
         {missing.length === 0 ? (
-          <p className="mt-1.5 text-xs text-ink-dim">Seluruh input tersedia.</p>
+          <p className="mt-1.5 text-xs text-soft">Seluruh input tersedia.</p>
         ) : (
           <ul className="mt-1.5 space-y-1">
             {missing.map((item) => (
-              <li key={item.key} className="text-xs leading-5 text-ink-dim">
+              <li key={item.key} className="text-xs leading-5 text-soft">
                 <span className="font-medium">{item.label}</span> — {item.cost}
               </li>
             ))}

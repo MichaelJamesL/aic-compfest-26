@@ -260,7 +260,7 @@ export function AnalyzeScreen() {
                       }
                       aria-hidden
                     />
-                    <span className={item.present ? '' : 'text-ink-dim'}>{item.label}</span>
+                    <span className={item.present ? '' : 'text-soft'}>{item.label}</span>
                   </li>
                 ))}
               </ul>
@@ -276,12 +276,12 @@ export function AnalyzeScreen() {
                   {coverage
                     .filter((item) => !item.present)
                     .map((item) => (
-                      <li key={item.key} className="text-xs leading-5 text-ink-dim">
+                      <li key={item.key} className="text-xs leading-5 text-soft">
                         <span className="font-medium">{item.label}</span> — {item.cost}
                       </li>
                     ))}
                   {coverage.every((item) => item.present) && (
-                    <li className="text-xs text-ink-dim">Seluruh input tersedia.</li>
+                    <li className="text-xs text-soft">Seluruh input tersedia.</li>
                   )}
                 </ul>
               </div>

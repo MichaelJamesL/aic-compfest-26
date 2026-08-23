@@ -138,7 +138,7 @@ export function ExecuteScreen() {
               Hasil ini tidak menutup work order. AI memverifikasi bukti dan mengeluarkan
               verdict — bukan menyatakan selesai sendiri.
             </p>
-            <p className="mt-4 border-t border-ink/10 pt-4 text-xs leading-5 text-ink-dim">
+            <p className="mt-4 border-t border-ink/10 pt-4 text-xs leading-5 text-soft">
               Verifikasi berjalan satu kali, sinkron, atas permintaan. Tidak ada loop umpan
               balik otomatis.
             </p>

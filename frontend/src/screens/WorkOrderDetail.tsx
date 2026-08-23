@@ -7,6 +7,7 @@ import { useRequest } from '../lib/useRequest'
 import { formatDateTime, formatDuration } from '../lib/format'
 import { WORK_ORDER, priorityLabel, priorityTone } from '../lib/severity'
 import { Card, CardTitle, SectionTitle } from '../ui/Card'
+import { TextArea } from '../ui/Field'
 import { Badge } from '../ui/Badge'
 import { Button } from '../ui/Button'
 import { StateTrack } from '../ui/StateTrack'
@@ -58,6 +59,8 @@ export function WorkOrderDetailScreen() {
 function Detail({ order, onChange }: { order: WorkOrder; onChange: (o: WorkOrder) => void }) {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<unknown>(null)
+  const [rejecting, setRejecting] = useState(false)
+  const [reason, setReason] = useState('')
   const canApprove = APPROVERS.includes(getIdentity().user)
   const state = WORK_ORDER[order.status]
   const details = order.details_json
@@ -67,6 +70,20 @@ function Detail({ order, onChange }: { order: WorkOrder; onChange: (o: WorkOrder
     setError(null)
     try {
       onChange(await api.transition(order.id, action))
+    } catch (err) {
+      setError(err)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function reject() {
+    setBusy(true)
+    setError(null)
+    try {
+      onChange(await api.rejectWorkOrder(order.id, reason.trim()))
+      setRejecting(false)
+      setReason('')
     } catch (err) {
       setError(err)
     } finally {
@@ -173,7 +190,7 @@ function Detail({ order, onChange }: { order: WorkOrder; onChange: (o: WorkOrder
           </Link>
 
           {order.status === 'draft' && (
-            <Button size="sm" variant="primary" disabled={busy} onClick={() => act('approve')}>
+            <Button size="sm" variant="primary" disabled={busy} onClick={() => act('submit')}>
               Ajukan persetujuan
             </Button>
           )}
@@ -183,34 +200,74 @@ function Detail({ order, onChange }: { order: WorkOrder; onChange: (o: WorkOrder
               <Button
                 size="sm"
                 variant="ghost"
-                disabled
-                title="Route reject belum ada di backend — DEFECTS.md#wo-approve"
+                disabled={busy || !canApprove}
+                title={canApprove ? undefined : 'Hanya coordinator yang bisa menolak'}
+                onClick={() => setRejecting(true)}
               >
                 Tolak
               </Button>
               <Button
                 size="sm"
                 variant="primary"
-                disabled
-                title={
-                  canApprove
-                    ? 'Route approve → approved belum ada di backend — DEFECTS.md#wo-approve'
-                    : 'Hanya coordinator yang bisa menyetujui'
-                }
+                disabled={busy || !canApprove}
+                title={canApprove ? undefined : 'Hanya coordinator yang bisa menyetujui'}
+                onClick={() => act('approve')}
               >
                 Setujui
               </Button>
             </>
           )}
+
+          {order.status === 'approved' && (
+            <Button size="sm" variant="primary" disabled={busy} onClick={() => act('schedule')}>
+              Jadwalkan
+            </Button>
+          )}
+          {order.status === 'scheduled' && (
+            <Button size="sm" variant="primary" disabled={busy} onClick={() => act('start')}>
+              Mulai kerjakan
+            </Button>
+          )}
         </div>
       </div>
 
-      {order.status === 'pending_approval' && (
-        <p className="mt-3 text-xs leading-5 text-faint">
-          Persetujuan belum bisa diselesaikan: backend belum punya transisi
-          <span className="text-dim"> pending_approval → approved</span> maupun route tolak.
-          Lihat docs/DEFECTS.md#wo-approve.
-        </p>
+      {rejecting && (
+        <Card className="mt-3">
+          <SectionTitle>Alasan penolakan</SectionTitle>
+          <p className="mt-2 text-[13px] text-faint">
+            Alasan disimpan pada work order dan dibaca analisis berikutnya.
+          </p>
+          <div className="mt-4">
+            <TextArea
+              label="Alasan"
+              placeholder="Sparepart belum datang; tunda sampai insert tiba."
+              value={reason}
+              onChange={(event) => setReason(event.target.value)}
+            />
+          </div>
+          <div className="mt-4 flex gap-2">
+            <Button size="sm" variant="ghost" onClick={() => setRejecting(false)}>
+              Batal
+            </Button>
+            <Button
+              size="sm"
+              variant="destructive"
+              disabled={busy || reason.trim().length === 0}
+              onClick={reject}
+            >
+              Tolak work order
+            </Button>
+          </div>
+        </Card>
+      )}
+
+      {order.status === 'rejected' && order.details_json.rejection_reason && (
+        <Card className="mt-3">
+          <SectionTitle>Alasan penolakan</SectionTitle>
+          <p className="mt-2 text-[13px] leading-6 text-dim">
+            {order.details_json.rejection_reason}
+          </p>
+        </Card>
       )}
     </AppShell>
   )

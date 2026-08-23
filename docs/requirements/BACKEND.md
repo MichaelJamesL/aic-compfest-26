@@ -14,7 +14,7 @@ uv run --no-project --python 3.11 \
   --with python-multipart --with pytest --with httpx pytest -q
 ```
 
-Last full run: `5 passed`. **Python 3.11+ is required** — the models use
+Last full run: `14 passed`. **Python 3.11+ is required** — the models use
 `str | None` at class scope, which is a `TypeError` on 3.9. If pytest collection
 fails with `unsupported operand type(s) for |`, you are on the wrong interpreter.
 
@@ -35,15 +35,15 @@ Tick a box only under the rule in [`../INDEX.md`](../INDEX.md#checklist-rules).
 - [x] Offline `StubEngine` so the app runs with no API key — verified: `test_offline_engine_contract_shape`
 - [x] `factory_id` isolation across tenants — verified: probed live; factory B reading factory A's asset gets 404, and a malformed `X-Factory-ID` (`../etc`) gets 400. Needs a committed test, listed below.
 - [ ] Stub health score that is not nonsense — **broken**: `../DEFECTS.md#stub-health-inverted`. It is the default engine and the fallback on camera.
-- [ ] `main.py` reduced to routing; one state machine in `services.py` — **broken**: `../DEFECTS.md#transition-shadowed`, `../DEFECTS.md#duplicate-doc-route`
-- [ ] Role enforcement actually applied — `auth.require_roles` exists but is used by no route. Either wire it to approval (coordinator) and result submission (technician), or delete it.
+- [x] `main.py` reduced to routing; one state machine in `services.py` — verified: the duplicate `transition`/`TRANSITIONS` and the dead second `documents` route are gone; `test_illegal_transitions_are_refused_with_the_pair_named` now exercises the live table
+- [x] Role enforcement actually applied — verified: `require_role` gates approve and reject; `test_approval_is_the_coordinators_alone` asserts 403 for engineer and technician, 200 for manager
 
 ## 2. Knowledge setup — FR *Knowledge setup*
 
 - [x] Document upload with extension allow-list, 10 MB cap, original file retained, metadata row created — verified: `test_import_and_document`
 - [x] Asset list import from CSV/JSON, idempotent on `external_id`, per-row error reporting — verified: `test_import_and_document`
 - [x] Maintenance-history record endpoint — verified: probed live (`POST …/maintenance-records` → `{"id"}`)
-- [ ] Documents actually ingested into pgvector — **broken**: `../DEFECTS.md#reindex-nameerror`. Every document stays `pending`, so the RAG corpus is empty and `sources` comes back empty. This silently guts every grounding claim.
+- [ ] Documents actually ingested into pgvector — **partial**: the swallowed `NameError` is fixed and the endpoint now reports honestly (missing text, ai-engine absent, or the real ingest error) instead of always saying `failed`. **Untested against a live pgvector** — needs `AI_ENGINE_ENABLED=true` and a running database.
 - [ ] PDF text extraction — `.pdf` is accepted but `extracted_text` is only filled for text-like types, so a PDF SOP ingests as an empty document.
 - [ ] Maintenance history CSV/Excel import (bulk) — only single-record POST exists. FR says upload.
 - [ ] QC standard / product specification upload — no distinct `kind`; treat as a document kind and make it retrievable.
@@ -55,7 +55,7 @@ Tick a box only under the rule in [`../INDEX.md`](../INDEX.md#checklist-rules).
 - [x] Business context (schedule, spareparts, ETA, technicians, operator report) — verified: probed live. Note it is a **full replace**; document it in the UI layer.
 - [ ] Sensor CSV batch ingest — not started. `ReadingBatchIn` is defined and unused; a CSV of a few hundred rows currently needs a request per row.
 - [ ] QC image batch upload — **broken/missing**: `../DEFECTS.md#no-image-upload`. Blocks the differentiator end to end.
-- [ ] Maintenance progress input from the technician — **broken**: `../DEFECTS.md#progress-nameerror`, and unreachable behind `#wo-approve`.
+- [x] Maintenance progress input from the technician — verified: `test_progress_records_without_completing`. Recording progress no longer closes the work order, so completion still goes through verification.
 - [ ] Technician *result* submission (work done, findings, parts used, evidence) as a distinct thing from progress — not started; it is the input to verification.
 
 ## 4. Analysis — FR *AI Analysis*
@@ -76,9 +76,9 @@ currently **broken at the first step**.
 
 - [x] Draft work order generated from an analysis result, carrying steps/parts/skills/safety — verified: `test_starter_flow` + live probe
 - [x] Work-order list — verified: probed live
-- [ ] Transitions are audited and irreversible past terminal states — **tests the wrong table**: `test_work_order_state_machine_is_not_reversible` imports `services.TRANSITIONS`, which the routes do not use (`../DEFECTS.md#transition-shadowed`). The live state machine is entirely uncovered.
-- [ ] `approve` → `approved` and `reject` → `rejected` with a reason — **broken**: `../DEFECTS.md#wo-approve`. **Fix this first**; everything downstream is unreachable.
-- [ ] Work order becomes active only after approval, enforced server-side — blocked on the above
+- [x] Transitions are audited and irreversible past terminal states — verified: the lifecycle test walks all six states and asserts a completed order refuses `cancel`; rejection is terminal too
+- [x] `approve` → `approved` and `reject` → `rejected` with a reason — verified: `test_full_work_order_lifecycle`, `test_rejection_records_its_reason`. `submit` is now the draft hand-off; `approve` is the coordinator's decision.
+- [x] Work order becomes active only after approval, enforced server-side — verified: `schedule`/`start`/`complete` all 409 until `approved`, asserted in the lifecycle test
 - [ ] Verification endpoint calling `engine.verify()` once, returning verdict + evidence — not started (needs the engine method too)
 - [ ] Post-maintenance report — not started
 - [ ] Completed work order written back to the knowledge base as history — not started; the loop-closing step of the demo chain
@@ -100,28 +100,25 @@ clean clone. This is a hard requirement and it is not met.
 - [ ] `web` service in compose — blocked on the frontend existing
 - [ ] `backend/Dockerfile` installs the ai-engine — it copies `ai-engine/` but only runs `pip install ./backend`, so `from src import MaintenanceEngine` fails inside the image
 - [ ] Verified from a clean clone: `git clone && docker compose up` → working app — not started. Do this early, not on the last day.
-- [ ] `.env.example` covering both `DATABASE_URL`s and `DEEPSEEK_API_KEY` — incomplete; see `../DEFECTS.md#env-database-url`
+- [x] `.env.example` covering both databases and `DEEPSEEK_API_KEY` — verified: the engine reads `AIENGINE_DATABASE_URL` and no longer picks up the backend's SQLite URL
 - [ ] README paragraph quoting the MVP scope limits and stating compliance — not started (`DECISIONS.md` D4: free points, ten seconds of a judge's time)
 
 ## 8. Fixes queued from `../DEFECTS.md`
 
-Ordered by what unblocks the most.
+Blok 0 is done — eight entries deleted from `DEFECTS.md`, tests 5 → 14. What
+remains, in order:
 
-1. `#wo-approve` — approve/reject routes. Unblocks the entire second half of the demo.
-2. `#no-image-upload` — QC image intake. Unblocks the differentiator.
-3. `#reindex-nameerror` — document ingestion. Unblocks grounding and `sources`.
-4. `#transition-shadowed` + `#duplicate-doc-route` — remove the duplicated logic in `main.py`.
-5. `#patch-asset-specs`, `#progress-nameerror`, `#ready-jsonresponse-args` — three one-line fixes, each with a test.
-6. `#stub-health-inverted` — make the offline path defensible on camera.
-7. `#env-database-url` — before anything runs against Postgres.
+1. `#no-image-upload` — QC image intake. Unblocks the differentiator.
+2. `#stub-health-inverted` — make the offline path defensible on camera.
+3. Document ingestion verified against a live pgvector, not just the error paths.
 
 ## Test coverage gaps
 
 The 5 passing tests cover a happy path only. Missing, in priority order:
 
-- [ ] Full work-order lifecycle through every legal transition
-- [ ] Every illegal transition returns 409 with the right message
-- [ ] `factory_id` isolation: factory A cannot read or mutate factory B's rows — behaviour confirmed by probe, but no committed test
-- [ ] Upload rejections: oversized file, bad extension, empty filename
+- [x] Full work-order lifecycle through every legal transition — verified: `test_full_work_order_lifecycle`
+- [x] Every illegal transition returns 409 with the right message — verified: `test_illegal_transitions_are_refused_with_the_pair_named`
+- [x] `factory_id` isolation: factory A cannot read or mutate factory B's rows — verified: `test_factory_scoping_hides_other_tenants`
+- [x] Upload rejections: oversized file and bad extension — verified: `test_upload_rejections`
 - [ ] Analysis failure path: engine raises → run stored as `failed` with an error code, HTTP still 201
-- [ ] Error envelope shape asserted for 404 / 409 / 422
+- [x] Error envelope shape asserted for 404 / 409 / 422 / 403 / 400 — verified: `test_error_envelope_shape`. FastAPI's own `HTTPException` is wrapped too, so a 403 never arrives as `{"detail": …}`.

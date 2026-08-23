@@ -20,36 +20,13 @@ cd ai-engine && uv sync --extra dev && uv run pytest -q
 
 ---
 
+> **Blok 0 landed.** Eight entries were deleted from this file when their fixes
+> merged with tests: the approval chain, the shadowed state machine, the dead
+> document route, the swallowed re-index NameError, the `PATCH /assets` crash,
+> the `progress` NameError, the readiness-branch argument order, and the
+> colliding `DATABASE_URL`. `backend/tests` went from 5 to 14.
+
 ## Blocking
-
-### `#wo-approve` — a work order can never be approved {#wo-approve}
-
-**Where:** [backend/app/main.py](../backend/app/main.py) — the `approve` route
-and the `for _path,_target in (…)` loop below it.
-
-`POST /work-orders/{id}/approve` transitions `draft → pending_approval`. The
-route loop then registers `schedule`, `start`, `block`, `complete`, `cancel` —
-but **no route targets `approved`, and there is no reject route at all**. The
-state machine requires `pending_approval → approved → scheduled`, so every work
-order dead-ends at `pending_approval`.
-
-```
-approve   200 pending_approval
-schedule  409 invalid_transition:pending_approval->scheduled
-start     409 invalid_transition:pending_approval->in_progress
-```
-
-This breaks the entire human-in-the-loop chain — the autonomy boundary that
-`FINAL_IDEA.md` §5 and `DECISIONS.md` D9 make a headline claim, and steps 10–13
-of the locked demo chain (D11). Nothing downstream of approval is reachable.
-
-**Fix:** rename the current route to `submit` (`draft → pending_approval`), add
-`POST /work-orders/{id}/approve` → `approved` and `POST /work-orders/{id}/reject`
-→ `rejected`, both carrying the approver identity into the audit event. Add a
-test that walks `draft → pending_approval → approved → scheduled → in_progress →
-completed`.
-
----
 
 ### `#no-image-upload` — QC images cannot be uploaded {#no-image-upload}
 
@@ -127,135 +104,7 @@ high-only outlier, and both-sides.
 
 ---
 
-### `#transition-shadowed` — two state machines, tests check the unused one {#transition-shadowed}
-
-**Where:** [backend/app/main.py](../backend/app/main.py) imports
-`from .services import run_analysis, transition`, then **redefines** both
-`TRANSITIONS` and `transition` further down the same file. The local definitions
-win for every route.
-
-The two tables also disagree: `services.TRANSITIONS["draft"]` is
-`{"pending_approval", "cancelled"}`, `main.TRANSITIONS["draft"]` is
-`{"pending_approval"}`. `tests/test_unit.py` imports from `services`, so the
-state machine the app actually runs is untested.
-
-**Fix:** delete the copy in `main.py` and the now-unused import shadowing; keep
-one table in `services.py`. Point the test at the live one.
-
----
-
-### `#patch-asset-specs` — PATCH /assets/{id} always 500s {#patch-asset-specs}
-
-**Where:** [backend/app/main.py](../backend/app/main.py) `update_asset`.
-
-```python
-a.specs_json = data.specs      # AssetIn has `specs_json`, not `specs`
-# AttributeError: 'AssetIn' object has no attribute 'specs'
-```
-
-`AssetOut` aliases `specs_json → specs` for output; `AssetIn` does not. The
-route is unreachable in the current tests.
-
-**Fix:** `a.specs_json = data.specs_json`, and add the round-trip to
-`test_api.py`. While there, decide one name for the field across `AssetIn`,
-`AssetOut`, and the frontend, and record it in `API.md`.
-
----
-
-### `#reindex-nameerror` — document re-index can never succeed {#reindex-nameerror}
-
-**Where:** [backend/app/main.py](../backend/app/main.py) `reindex_document`.
-
-The handler calls `knowledge.ingest(Document(...))`, but `Document` is not
-imported — `from .schemas import *` exports `DocumentOut`, not `Document` (the
-engine's `Document` lives in `src.schemas`). The resulting `NameError` is
-swallowed by the `except Exception` and written to the row, so the endpoint
-returns **200 with `ingestion_status: "failed"`** every time — a silent failure
-that looks like a working endpoint.
-
-```
-POST /api/v1/knowledge/documents/{id}/reindex
-200 {"ingestion_status":"failed","ingestion_error":"No module named 'src'"}
-```
-
-(The message differs when `src` is installed; the outcome does not.)
-
-**Fix:** `from src import Document as EngineDocument` inside the handler, next
-to the `knowledge` import. Narrow the `except` so an unexpected error is not
-recorded as an ingestion failure. Test with `AI_ENGINE_ENABLED=true` against a
-live pgvector.
-
----
-
 ## Medium
-
-### `#duplicate-doc-route` — the same route is declared twice {#duplicate-doc-route}
-
-`POST /api/v1/knowledge/documents` is registered twice in
-[backend/app/main.py](../backend/app/main.py), by two functions both named
-`document`. Starlette matches the **first**, so the validated version (with
-`_check_file` and the size limit) is the live one and the second is dead code —
-but the file reads as if the unvalidated one were in effect, and a reorder would
-silently drop file validation.
-
-```python
-len([r for r in app.routes if r.path == "/api/v1/knowledge/documents" and "POST" in r.methods])  # 2
-```
-
-**Fix:** delete the second definition, along with the stray mid-file
-`import re` / `from pydantic import validator` (the latter is a deprecated
-pydantic v1 import and is unused).
-
----
-
-### `#progress-nameerror` — technician progress raises NameError *(by inspection)* {#progress-nameerror}
-
-**Where:** [backend/app/main.py](../backend/app/main.py) `progress`.
-
-The handler calls `audit(db, identity, request.state.request_id, …)` but has no
-`request: Request` parameter, and no module-level `request` exists. Both
-branches touch it, so every successful call raises `NameError` → 500.
-
-Currently unreachable: a work order cannot reach `in_progress`
-(see `#wo-approve`), so the status guard rejects the call first with 409.
-
-**Fix:** add `request: Request` to the signature. Then reconsider the design —
-`percentage == 100` silently completing the work order bypasses the verification
-step the autonomy boundary requires. Progress should record progress; completion
-should go through verification.
-
----
-
-### `#ready-jsonresponse-args` — the readiness failure branch is itself broken *(by inspection)* {#ready-jsonresponse-args}
-
-**Where:** [backend/app/main.py](../backend/app/main.py) `ready`.
-
-```python
-return JSONResponse(503, {"status": "not_ready", "database": "error"})
-```
-
-`JSONResponse(content, status_code=…)` — the arguments are swapped, so the
-degraded path returns `content=503` with a dict as the status code and raises.
-The healthy path returns 200 correctly, which is why tests pass.
-
-**Fix:** `JSONResponse(status_code=503, content={...})`. Test by pointing
-`DATABASE_URL` at a dead host.
-
----
-
-### `#env-database-url` — one env var, two different databases {#env-database-url}
-
-`backend/app/config.py` reads `DATABASE_URL` for the application database
-(SQLite by default). `ai-engine/src/config.py` reads `DATABASE_URL` for the
-pgvector knowledge base. They run **in the same process**. Setting one to a
-Postgres URL points the other at the same server; leaving the backend on SQLite
-means the engine tries to open a SQLite URL with `psycopg` and fails.
-
-**Fix:** rename the engine's variable to `AIENGINE_DATABASE_URL` (keeping
-`DATABASE_URL` as a fallback for standalone use), and document both in
-`.env.example`. Cheap now, painful during a recorded demo.
-
----
 
 ### `#defect-class` — DefectFinding has no defect class {#defect-class}
 

@@ -53,7 +53,9 @@ describe('Work order detail', () => {
   function render(status: WorkOrder['status'] = 'draft') {
     stubRoutes({
       '/config/capabilities': CAPABILITIES,
-      '/api/v1/work-orders/wo-1/approve': order({ status: 'pending_approval' }),
+      '/api/v1/work-orders/wo-1/submit': order({ status: 'pending_approval' }),
+      '/api/v1/work-orders/wo-1/approve': order({ status: 'approved' }),
+      '/api/v1/work-orders/wo-1/reject': order({ status: 'rejected' }),
       '/api/v1/work-orders': [order({ status })],
     })
     return renderRoute('/work-orders/wo-1', '/work-orders/:id', <WorkOrderDetailScreen />)
@@ -77,31 +79,69 @@ describe('Work order detail', () => {
     ).toBeTruthy()
   })
 
+  // The AI proposes; a human decides. `submit` puts the draft in front of a
+  // coordinator, and only then can it be approved.
   it('submits a draft for approval', async () => {
     render('draft')
     fireEvent.click(await screen.findByRole('button', { name: 'Ajukan persetujuan' }))
+    await waitFor(() =>
+      expect(calls.some((c) => c.url.endsWith('/submit') && c.method === 'POST')).toBe(true),
+    )
+    // Submitting is not approving.
+    expect(calls.some((c) => c.url.endsWith('/approve'))).toBe(false)
+  })
+
+  it('lets a coordinator approve a pending work order', async () => {
+    setIdentity('demo-manager')
+    render('pending_approval')
+    fireEvent.click(await screen.findByRole('button', { name: 'Setujui' }))
     await waitFor(() =>
       expect(calls.some((c) => c.url.endsWith('/approve') && c.method === 'POST')).toBe(true),
     )
   })
 
-  // DEFECTS.md#wo-approve: nothing can reach `approved`. The UI must say why
-  // rather than offering a button that silently 409s.
-  it('disables approve and reject at pending_approval and names the backend gap', async () => {
+  it('requires a reason before a rejection can be sent', async () => {
+    setIdentity('demo-manager')
+    render('pending_approval')
+    fireEvent.click(await screen.findByRole('button', { name: 'Tolak' }))
+
+    const send = screen.getByRole('button', { name: 'Tolak work order' }) as HTMLButtonElement
+    expect(send.disabled).toBe(true)
+
+    fireEvent.change(screen.getByLabelText('Alasan'), {
+      target: { value: 'Sparepart belum datang.' },
+    })
+    expect((screen.getByRole('button', { name: 'Tolak work order' }) as HTMLButtonElement).disabled).toBe(false)
+    fireEvent.click(screen.getByRole('button', { name: 'Tolak work order' }))
+
+    await waitFor(() => {
+      const call = calls.find((c) => c.url.endsWith('/reject'))
+      expect(call?.body).toEqual({ reason: 'Sparepart belum datang.' })
+    })
+  })
+
+  it('tells a non-coordinator that the decision is not theirs to make', async () => {
+    setIdentity('demo-technician')
     render('pending_approval')
     const approve = (await screen.findByRole('button', { name: 'Setujui' })) as HTMLButtonElement
     const reject = screen.getByRole('button', { name: 'Tolak' }) as HTMLButtonElement
     expect(approve.disabled).toBe(true)
     expect(reject.disabled).toBe(true)
-    expect(screen.getByText(/pending_approval → approved/)).toBeTruthy()
-    expect(screen.getByText(/DEFECTS.md#wo-approve/)).toBeTruthy()
+    expect(approve.getAttribute('title')).toMatch(/Hanya coordinator/)
   })
 
-  it('tells a non-coordinator that approval is not theirs to give', async () => {
-    setIdentity('demo-technician')
-    render('pending_approval')
-    const approve = await screen.findByRole('button', { name: 'Setujui' })
-    expect(approve.getAttribute('title')).toMatch(/Hanya coordinator/)
+  it('shows why a rejected work order was rejected', async () => {
+    stubRoutes({
+      '/config/capabilities': CAPABILITIES,
+      '/api/v1/work-orders': [
+        order({
+          status: 'rejected',
+          details_json: { ...order().details_json, rejection_reason: 'Sparepart belum datang.' },
+        }),
+      ],
+    })
+    renderRoute('/work-orders/wo-1', '/work-orders/:id', <WorkOrderDetailScreen />)
+    expect(await screen.findByText('Sparepart belum datang.')).toBeTruthy()
   })
 
   it('marks a rejected order as terminal on the state track', async () => {

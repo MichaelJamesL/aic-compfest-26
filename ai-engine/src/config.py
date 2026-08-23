@@ -23,8 +23,13 @@ MODEL: str = os.getenv("AIENGINE_MODEL", "deepseek-chat")
 REASONER_MODEL: str = os.getenv("AIENGINE_REASONER_MODEL", "deepseek-reasoner")
 
 # --- Knowledge base ---------------------------------------------------------
+# Deliberately NOT `DATABASE_URL`: the backend imports this package into its own
+# process and uses that name for the application database (SQLite by default).
+# Sharing the name pointed one of them at the wrong store. `DATABASE_URL` is
+# still honoured as a fallback so the package works standalone.
 DATABASE_URL: str = os.getenv(
-    "DATABASE_URL", "postgresql://postgres:postgres@localhost:5433/aic26"
+    "AIENGINE_DATABASE_URL",
+    os.getenv("DATABASE_URL", "postgresql://postgres:postgres@localhost:5433/aic26"),
 )
 
 # --- Budgets ----------------------------------------------------------------

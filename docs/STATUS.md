@@ -9,8 +9,9 @@ live. Re-verify before trusting this file after any significant merge.
 
 ```
 ai-engine  uv run pytest -q                 → 11 passed, 1 skipped
-backend    pytest -q (python 3.11)          →  5 passed
-frontend   npm run test && npm run build     → 60 passed, build clean
+backend    pytest -q (python 3.11)          → 14 passed
+frontend   npm run test && npm run build     → 144 passed, build clean
+           node scripts/browser-pass.mjs      → clean (dev and production bundle)
 ```
 
 **States**
@@ -31,7 +32,7 @@ frontend   npm run test && npm run build     → 60 passed, build clean
 
 | # | Requirement | Area | State | Evidence / gap |
 | --- | --- | --- | --- | --- |
-| 1 | Document upload | backend | `partial` | Upload, validation and storage work (`test_import_and_document`). Ingestion into pgvector never succeeds — `DEFECTS.md#reindex-nameerror`. PDFs store empty text. |
+| 1 | Document upload | backend | `partial` | Upload, validation and storage work. Re-index no longer swallows a `NameError` and reports honestly, but has never run against a live pgvector. PDFs still store empty text. |
 | 2 | Maintenance history upload | backend | `partial` | Single-record POST is `probed`. No bulk CSV/Excel import, which is what "upload" means here. |
 | 3 | Asset information upload | backend | `done` | CSV/JSON import, idempotent on `external_id` — `test_import_and_document` |
 | 4 | QC standard / product spec upload | backend | `none` | No document `kind` for it, not retrievable |
@@ -43,7 +44,7 @@ frontend   npm run test && npm run build     → 60 passed, build clean
 | 5 | Machine condition input | backend | `partial` | Single reading (`probed`, idempotent) and manual condition (`done`). No CSV batch ingest — `ReadingBatchIn` is defined and unused. |
 | 6 | Business context input | backend | `probed` | Full replace semantics; documented in `API.md` |
 | 7 | Product QC input | backend | `broken` | No image extension accepted, no QC endpoint — `DEFECTS.md#no-image-upload` |
-| 8 | Maintenance progress input | backend | `broken` | `DEFECTS.md#progress-nameerror`, and unreachable behind `#wo-approve` |
+| 8 | Maintenance progress input | backend | `done` | `test_progress_records_without_completing`; recording progress no longer closes the work order |
 
 ### AI analysis
 
@@ -73,7 +74,7 @@ frontend   npm run test && npm run build     → 60 passed, build clean
 | 25 | Machine health summary | both | `done` | API `probed`; UI verified by `AnalysisResult.test.tsx` (donut, band, deduction breakdown) |
 | 26 | Work order generation | both | `done` | `test_starter_flow`; draft renders and is asserted in the UI |
 | 27 | Maintenance report | frontend | `none` | Data exists, nothing renders it |
-| 28 | Maintenance execution status | backend | `broken` | States past `pending_approval` are unreachable — `DEFECTS.md#wo-approve` |
+| 28 | Maintenance execution status | both | `done` | Full lifecycle green in `test_full_work_order_lifecycle`; the UI renders the six-state track |
 | 29 | Product quality report | both | `none` | Blocked on 7 and 16 |
 | 30 | Post maintenance report | both | `none` | Blocked on 22 |
 | 31 | Work order & report export | backend | `none` | CSV/JSON export not implemented |
@@ -82,7 +83,7 @@ frontend   npm run test && npm run build     → 60 passed, build clean
 
 | # | Requirement | Area | State | Evidence / gap |
 | --- | --- | --- | --- | --- |
-| 32 | Coordinator approval | backend | `broken` | Nothing can reach `approved`; no reject route — `DEFECTS.md#wo-approve`. The governance headline is non-functional. |
+| 32 | Coordinator approval | both | `done` | `submit` → `approve`/`reject`, role-gated to manager/admin, rejection carries a required reason. Asserted on both sides. |
 | 33 | Partial-input analysis | both | `partial` | The engine reasons over whatever is present, and the UI now names the missing inputs and what each costs (asserted in `AnalysisResult.test.tsx`). Still derived client-side from `request_snapshot`; the backend does not state it. |
 | 34 | PLC / controller integration | backend | `partial` | `MockPLC` exists with a health endpoint; `pull()` is never called by any route |
 | 35 | IoT sensor integration | backend | `partial` | Same |
@@ -92,18 +93,17 @@ frontend   npm run test && npm run build     → 60 passed, build clean
 
 | State | Count |
 | --- | --- |
-| `done` | 5 |
+| `done` | 8 |
 | `probed` | 2 |
 | `partial` | 12 |
-| `broken` | 4 |
+| `broken` | 1 |
 | `none` | 13 |
 
 Two readings of this table, both worth holding:
 
-- **The four `broken` rows matter more than the thirteen `none` rows.** Rows 7,
-  8, 28 and 32 are one chain — QC intake → approval → execution → status — and
-  that chain is the entire second half of the demo. Unbuilt work is a schedule
-  problem; a broken chain is a demo that cannot be recorded.
+- **The broken chain is down to one link.** Rows 8, 28 and 32 — approval,
+  execution, status — went green with Blok 0. Row 7, QC image intake, is the
+  last one, and it is the one the differentiator runs through.
 - **The `partial` rows are where the claims live.** Rows 11, 12, 13, 24 and 33
   are each implemented far enough to look finished in a code review and not far
   enough to support what the proposal says about them: constraints are narrated
@@ -119,11 +119,11 @@ Two readings of this table, both worth holding:
 Ordered by what unblocks the most, not by what is easiest. Rationale for each is
 in the linked checklist.
 
-1. **`DEFECTS.md#wo-approve`** — approve/reject routes. One afternoon. Unblocks
-   FR 8, 28, 32 and demo steps 10–13. Nothing else in the second half of the
-   demo can be built or recorded until this works.
-2. **`DEFECTS.md#reindex-nameerror`** — document ingestion. Every grounding and
-   citation claim in the proposal currently has an empty corpus behind it.
+1. ~~Approve/reject routes~~ — **done.** FR 8, 28 and 32 are green and demo
+   steps 10–13 are reachable.
+2. **Document ingestion against a live pgvector.** The error paths are fixed and
+   tested; the success path has never run. Every grounding and citation claim in
+   the proposal still has an unproven corpus behind it.
 3. **`DEFECTS.md#compliance-finetune`** — the QC classifier. The rulebook
    requires a fine-tuned model; there is none. Highest cost, hard deadline,
    cannot be substituted.

@@ -41,6 +41,11 @@ Every error uses one shape. Never render a raw FastAPI error.
 | 404 | `NOT_FOUND` | message ends in `_not_found` (`asset_not_found`, `analysis_not_ready`, …) |
 | 409 | `CONFLICT` | `invalid_transition:<from>-><to>` — an illegal work-order state change |
 | 422 | `VALIDATION_ERROR` | pydantic body/query validation, and file-upload rejections |
+| 403 | `FORBIDDEN` | the role may not perform this action (approval, rejection) |
+| 400 | `VALIDATION_ERROR` | malformed `X-Factory-ID` |
+
+FastAPI's own `HTTPException` is wrapped in the same envelope, so a 403 never
+arrives as `{"detail": …}`.
 
 `message` is a machine-ish token, not user copy. The frontend maps it to
 Indonesian copy; it must never be printed raw.
@@ -189,16 +194,23 @@ POST /api/v1/analyses/{analysis_id}/work-orders   201
    "asset_id","analysis_id","factory_id","created_at","updated_at"}
 ```
 
-| Method | Path | Transition | State |
+| Method | Path | Transition | Role |
 | --- | --- | --- | --- |
-| GET | `/api/v1/work-orders` | — | works |
-| POST | `/api/v1/work-orders/{id}/approve` | `draft → pending_approval` | **misnamed; nothing reaches `approved`** — `DEFECTS.md#wo-approve` |
-| POST | `/api/v1/work-orders/{id}/schedule` | `approved → scheduled` | unreachable |
-| POST | `/api/v1/work-orders/{id}/start` | `scheduled → in_progress` | unreachable |
-| POST | `/api/v1/work-orders/{id}/block` | `in_progress → blocked` | unreachable |
-| POST | `/api/v1/work-orders/{id}/complete` | `in_progress → completed` | unreachable |
-| POST | `/api/v1/work-orders/{id}/cancel` | → `cancelled` | works from `pending_approval` |
-| POST | `/api/v1/work-orders/{id}/progress` | `{"percentage":0-100,"note":""}` | **broken** — `DEFECTS.md#progress-nameerror` |
+| GET | `/api/v1/work-orders` | — | any |
+| POST | `/api/v1/work-orders/{id}/submit` | `draft → pending_approval` | any |
+| POST | `/api/v1/work-orders/{id}/approve` | `pending_approval → approved` | **manager / admin** |
+| POST | `/api/v1/work-orders/{id}/reject` | `pending_approval → rejected` | **manager / admin** — body `{"reason": "…"}`, required; stored on `details_json.rejection_reason` |
+| POST | `/api/v1/work-orders/{id}/schedule` | `approved → scheduled` | any |
+| POST | `/api/v1/work-orders/{id}/start` | `scheduled → in_progress` | any |
+| POST | `/api/v1/work-orders/{id}/block` | `in_progress → blocked` | any |
+| POST | `/api/v1/work-orders/{id}/complete` | `in_progress → completed` | any |
+| POST | `/api/v1/work-orders/{id}/cancel` | → `cancelled` | any |
+| POST | `/api/v1/work-orders/{id}/progress` | records progress; **never completes** | any |
+
+`approve` and `reject` are the autonomy boundary made literal: the AI proposes,
+a coordinator decides. A non-coordinator gets 403 with code `FORBIDDEN`.
+`progress` records a note and a percentage and deliberately does **not** close
+the work order — completion goes through verification.
 
 State machine (the intended one):
 
@@ -232,8 +244,6 @@ are the open work items.
 | POST | `/api/v1/assets/{id}/readings:batch` | sensor CSV in one request | Machine condition input |
 | POST | `/api/v1/assets/{id}/qc-batches` | multipart QC images → `{"batch_id","images":[…],"count"}` | Product QC input |
 | GET | `/api/v1/qc-batches/{id}` | per-image `defect_class` + confidence, batch defect rate, per-class trend | Product quality report |
-| POST | `/api/v1/work-orders/{id}/approve` | `pending_approval → approved` (the real one) | Coordinator approval |
-| POST | `/api/v1/work-orders/{id}/reject` | `pending_approval → rejected` + reason | Coordinator approval |
 | POST | `/api/v1/work-orders/{id}/result` | technician submits work done, findings, parts used, photos | Maintenance progress input |
 | POST | `/api/v1/work-orders/{id}/verify` | one synchronous `engine.verify()` → `{"verdict":"resolved\|partial\|not_resolved","evidence":[],"follow_up":[]}` | Maintenance result verification |
 | GET | `/api/v1/work-orders/{id}/report` | final report: problem, action, verdict, final asset state | Post maintenance report |

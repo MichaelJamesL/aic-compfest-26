@@ -195,4 +195,7 @@ export const api = {
   workOrders: () => request<WorkOrder[]>('/api/v1/work-orders'),
   transition: (id: string, action: string) =>
     request<WorkOrder>(`/api/v1/work-orders/${id}/${action}`, { method: 'POST' }),
+  /** Rejection carries a reason; the next analysis reads it. */
+  rejectWorkOrder: (id: string, reason: string) =>
+    request<WorkOrder>(`/api/v1/work-orders/${id}/reject`, json({ reason })),
 }

@@ -45,8 +45,9 @@ Two databases are in play and they are **not** the same store:
   ai-engine env) — one table, `doc_chunk`, with a 1024-dim `VECTOR` column and an
   HNSW index. Postgres + pgvector only.
 
-Both read an env var named `DATABASE_URL`. In a single process they collide.
-This is a live trap — see `DEFECTS.md#env-database-url`.
+The engine reads `AIENGINE_DATABASE_URL`; the backend reads `DATABASE_URL`.
+They used to share the name and, running in one process, pointed at each
+other's store.
 
 ## The contract
 
@@ -149,9 +150,10 @@ errors.py       the single error envelope
 config.py       pydantic-settings
 ```
 
-Business logic in `main.py` is a smell — `main.py` currently duplicates
-`services.transition` and its `TRANSITIONS` table, which is exactly the bug in
-`DEFECTS.md#wo-approve`. New logic goes in `services.py`.
+Business logic in `main.py` is a smell. It once carried a second, divergent
+copy of `services.transition` and its `TRANSITIONS` table, so the state machine
+the app ran was not the one the tests checked. There is one of each now, in
+`services.py`. New logic goes there.
 
 ### Engine selection
 
@@ -179,7 +181,8 @@ roadmap list (`FR.md`) because the rulebook excludes it. It exists so
 | `AIENGINE_CONTEXT_BUDGET` | ai-engine | `40000` | prompt corpus token budget |
 | `AIENGINE_TIMEOUT` | ai-engine | `120` | single completion timeout |
 | `AIENGINE_BANK_DIR` | ai-engine | `ai-engine/.banks` | PatchCore memory banks |
-| `DATABASE_URL` | **both** | app: `sqlite:///./backend.db`, KB: `postgresql://…:5433/aic26` | collision — see `DEFECTS.md#env-database-url` |
+| `DATABASE_URL` | backend | `sqlite:///./backend.db` | the application database |
+| `AIENGINE_DATABASE_URL` | ai-engine | `postgresql://…:5433/aic26` | the pgvector knowledge base; falls back to `DATABASE_URL` when the package runs standalone |
 | `APP_ENV` | backend | `local` | offline stub allowed in `local`/`demo`/`test` |
 | `AI_ENGINE_ENABLED` | backend | `false` | flip to use the real engine |
 | `STORAGE_PATH` | backend | `./storage` | uploaded original files |

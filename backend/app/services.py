@@ -60,8 +60,17 @@ def run_analysis(db, asset, payload, identity, request_id, settings):
     return run
 
 TRANSITIONS = {"draft": {"pending_approval", "cancelled"}, "pending_approval": {"approved", "rejected", "cancelled"}, "approved": {"scheduled", "cancelled"}, "scheduled": {"in_progress", "cancelled"}, "in_progress": {"blocked", "completed", "cancelled"}, "blocked": {"in_progress", "cancelled"}, "completed": set(), "cancelled": set(), "rejected": set()}
-def transition(db, order, target, identity, request_id):
-    if target not in TRANSITIONS.get(order.status, set()): raise ValueError(f"invalid_transition:{order.status}->{target}")
-    before = {"status": order.status}; order.status = target
-    audit(db, identity, request_id, "work_order.status_changed", "work_order", order.id, before, {"status": target})
+def transition(db, order, target, identity, request_id, reason: str | None = None):
+    """The one state machine. `main.py` used to carry a second, divergent copy."""
+    if target not in TRANSITIONS.get(order.status, set()):
+        raise ValueError(f"invalid_transition:{order.status}->{target}")
+    before = {"status": order.status}
+    order.status = target
+    after = {"status": target}
+    if reason:
+        after["reason"] = reason
+        details = dict(order.details_json or {})
+        details["rejection_reason"] = reason
+        order.details_json = details
+    audit(db, identity, request_id, "work_order.status_changed", "work_order", order.id, before, after)
     db.commit(); db.refresh(order); return order

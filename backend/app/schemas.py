@@ -31,6 +31,9 @@ class AnalysisIn(BaseModel):
     include_history: bool = True; include_business_context: bool = True
 class WorkOrderUpdate(BaseModel):
     title: str | None = None; description: str | None = None
+class RejectIn(BaseModel):
+    # A rejection without a reason teaches the next analysis nothing.
+    reason: str = Field(min_length=1, max_length=1000)
 class ProgressIn(BaseModel):
     percentage: int = Field(ge=0, le=100); note: str = ""
 class DocumentOut(BaseModel):

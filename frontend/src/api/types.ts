@@ -118,6 +118,8 @@ export interface WorkOrderDetails {
   est_duration_h: number | null
   required_skills: string[]
   safety_notes: string[]
+  /** Set by POST /work-orders/{id}/reject. */
+  rejection_reason?: string
 }
 
 /** Pending — see API.md "contract changes". decide.py does not exist yet. */

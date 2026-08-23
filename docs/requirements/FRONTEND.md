@@ -16,7 +16,7 @@ npm run dev      # :5173, proxies /api /config /health to :8000
 node scripts/browser-pass.mjs
 ```
 
-Last full run: `142 passed (14 files)`, build clean, lint clean, `browser-pass` clean, and
+Last full run: `148 passed (14 files)`, build clean, lint clean, `browser-pass` clean, and
 the dev proxy verified against a live backend on :8000.
 
 `scripts/browser-pass.mjs` exists because happy-dom does no layout: the unit
@@ -135,6 +135,7 @@ is asserted.
 ### Shell
 
 - [x] `AppShell` — page → shell → rail + panel, the exact inset and radii — verified: rendered in all 13 screen tests
+- [x] Siena brand lockup in the rail, on the light plate the mark requires, plus favicons generated from it — verified: `NavRail.test.tsx` (3 tests) and the contrast measurements in `../design/VISUAL_LANGUAGE.md` §1b
 - [x] `NavRail` — three items, active pill, and a 64px icon strip below 1024 — verified: `src/shell/NavRail.test.tsx` (7 tests) plus the narrow-viewport assertions in `browser-pass`
 - [x] `StatusCard` — engine mode from `/config/capabilities`, `--mint`, never hidden — verified: `AnalysisResult.test.tsx` (an unexpected capabilities body used to crash the whole shell; the tests now cover that)
 - [x] `Header` — title, subtitle, search, icons, avatar chip with role switcher — verified: rendered in all screen tests

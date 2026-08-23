@@ -18,6 +18,34 @@ function render(engineOn = false) {
   return renderRoute('/analyze', '/analyze', <NavRail />)
 }
 
+describe('brand', () => {
+  it('shows the Siena wordmark with an accessible name', () => {
+    render()
+    // Both lockups are in the DOM; only one is displayed per breakpoint.
+    const marks = screen.getAllByAltText('Siena')
+    expect(marks).toHaveLength(2)
+    expect(marks.map((m) => m.getAttribute('src')).sort()).toEqual([
+      '/logo-text.png',
+      '/logo.png',
+    ])
+  })
+
+  // The mark is a dark gradient drawn for light backgrounds; on the rail its
+  // right end measures 1.03:1, so it needs the light plate under it.
+  it('keeps the mark on a light plate rather than on the dark rail', () => {
+    render()
+    // Both lockups share the one plate.
+    const plates = screen.getAllByAltText('Siena').map((mark) => mark.parentElement!)
+    expect(new Set(plates)).toHaveProperty('size', 1)
+    expect(plates[0].className.split(' ')).toContain('bg-surface-card')
+  })
+
+  it('carries the positioning line once, on the wide rail', () => {
+    render()
+    expect(screen.getByText('Intelligence, grounded in industry')).toBeTruthy()
+  })
+})
+
 describe('NavRail', () => {
   it('offers exactly three destinations', () => {
     render()

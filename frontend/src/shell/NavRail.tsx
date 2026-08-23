@@ -17,18 +17,42 @@ const ITEMS = [
  * Below 1024 it collapses to a 64px icon-only strip — it is never removed.
  * Navigation and the engine-mode signal must survive every viewport.
  */
+/**
+ * The mark is a sage-to-near-black gradient drawn for light backgrounds: on the
+ * #111111 rail its right end measures 1.03:1, so "SIENA" reads as "SIE". Rather
+ * than recolour someone's logo, it sits on the light plate it was designed for.
+ */
+function Brand() {
+  return (
+    <div>
+      <div className="rounded-control bg-surface-card p-2.5 lg:px-3 lg:py-2.5">
+        <img
+          src="/logo-text.png"
+          alt="Siena"
+          width={1452}
+          height={359}
+          className="hidden h-auto w-full lg:block"
+        />
+        <img
+          src="/logo.png"
+          alt="Siena"
+          width={372}
+          height={359}
+          className="mx-auto h-auto w-full max-w-7 lg:hidden"
+        />
+      </div>
+      <p className="mt-3 hidden text-[11.5px] leading-4 text-rail-content-3 lg:block">
+        Intelligence, grounded in industry
+      </p>
+    </div>
+  )
+}
+
 export function NavRail() {
   return (
     <nav className="sticky top-0 flex h-screen w-16 shrink-0 flex-col justify-between overflow-y-auto bg-rail p-2 lg:w-[232px] lg:p-5">
       <div>
-        <div className="flex h-10 items-center justify-center gap-2.5 lg:justify-start lg:px-1">
-          <span className="grid size-5 shrink-0 place-items-center rounded-full bg-rail-content">
-            <span className="size-1.5 rounded-full bg-rail" />
-          </span>
-          <span className="hidden text-[15px] font-semibold -tracking-[0.01em] text-rail-content lg:inline">
-            Coordinator
-          </span>
-        </div>
+        <Brand />
 
         <ul className="mt-6 space-y-1 lg:mt-8">
           {ITEMS.map(({ to, label, icon: Icon }) => (

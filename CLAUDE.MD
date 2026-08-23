@@ -10,6 +10,8 @@
   the same commit as the code.
 - **Git workflow** (full version in `docs/INDEX.md`): branch per unit of work,
   run the area's checks, commit, push, then merge to `main` with `--no-ff`.
-  Never commit directly to `main`.
+  Never commit directly to `main`. Run `sh scripts/check-tracked.sh` before
+  pushing new files — an unanchored `.gitignore` rule already swallowed
+  `frontend/src/lib/` once.
 - Commit messages are **3–5 words total**, including the Conventional Commits
   prefix. Don't mention Claude when committing.

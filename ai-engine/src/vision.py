@@ -44,7 +44,7 @@ def _load_inferencer(asset_id: str) -> object:
     return TorchInferencer(path=str(model_path))
 
 
-def inspect(asset_id: str, paths: list[str], subject="asset") -> list[DefectFinding]:
+def inspect(asset_id: str, paths: list[str], subject="asset", phase=None) -> list[DefectFinding]:
     if asset_id not in _INFERENCES:
         _INFERENCES[asset_id] = _load_inferencer(asset_id)
     inferencer = _INFERENCES[asset_id]
@@ -68,6 +68,7 @@ def inspect(asset_id: str, paths: list[str], subject="asset") -> list[DefectFind
             severity=severity,
             region=region,
             heatmap_path=None,
+            phase=phase,
         ))
     return findings
 

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Check, Loader2 } from 'lucide-react'
 import { Card, SectionTitle } from '../ui/Card'
+import { Button } from '../ui/Button'
 import { cn } from '../lib/cn'
 
 /**
@@ -31,9 +32,11 @@ const TIMEOUT_S = 120
 export function RunProgress({
   step,
   readingCount,
+  onCancel,
 }: {
   step: number
   readingCount: number
+  onCancel?: () => void
 }) {
   const [elapsed, setElapsed] = useState(0)
 
@@ -53,8 +56,25 @@ export function RunProgress({
 
   return (
     <div className="grid grid-cols-12 gap-3">
+      {/*
+        The wait can run to two minutes with no progress from the server, so it
+        is announced rather than left silent for anyone not watching the list.
+      */}
+      <p aria-live="polite" className="sr-only">
+        {overtime
+          ? 'Analisis masih berjalan, melewati perkiraan waktu.'
+          : `Analisis sedang berjalan, ${engineElapsed} detik.`}
+      </p>
+
       <Card className="col-span-12 xl:col-span-7">
-        <SectionTitle>Proses</SectionTitle>
+        <div className="flex items-center gap-3">
+          <SectionTitle>Proses</SectionTitle>
+          {onCancel && (
+            <Button size="sm" variant="ghost" className="ml-auto" onClick={onCancel}>
+              Batalkan
+            </Button>
+          )}
+        </div>
         <ol className="mt-4 space-y-3">
           {outer.map((item) => (
             <li key={item.label} className="flex items-center gap-3 text-[13px]">

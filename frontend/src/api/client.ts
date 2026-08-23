@@ -77,7 +77,13 @@ const MESSAGES: Record<string, string> = {
   ANALYSIS_FAILED: 'Mesin analisis gagal memproses permintaan.',
 }
 
+/** True when the user cancelled, which is not a failure to report. */
+export function isAborted(error: unknown): boolean {
+  return error instanceof DOMException && error.name === 'AbortError'
+}
+
 export function errorCopy(error: unknown): string {
+  if (isAborted(error)) return 'Analisis dibatalkan.'
   if (!(error instanceof ApiError)) {
     return 'Tidak bisa menghubungi server. Periksa apakah backend berjalan di :8000.'
   }
@@ -161,8 +167,11 @@ export const api = {
     request<DocumentOut>(`/api/v1/knowledge/documents/${id}/reindex`, { method: 'POST' }),
 
   readings: (assetId: string) => request<Reading[]>(`/api/v1/assets/${assetId}/readings`),
-  addReading: (assetId: string, body: Omit<Reading, 'id'>) =>
-    request<{ id: string; quality: string }>(`/api/v1/assets/${assetId}/readings`, json(body)),
+  addReading: (assetId: string, body: Omit<Reading, 'id'>, signal?: AbortSignal) =>
+    request<{ id: string; quality: string }>(`/api/v1/assets/${assetId}/readings`, {
+      ...json(body),
+      signal,
+    }),
 
   setCondition: (assetId: string, condition: string) =>
     request<unknown>(`/api/v1/assets/${assetId}/condition`, {
@@ -177,8 +186,8 @@ export const api = {
       body: JSON.stringify(body),
     }),
 
-  analyze: (assetId: string, body: AnalysisInput) =>
-    request<AnalysisRun>(`/api/v1/assets/${assetId}/analyses`, json(body)),
+  analyze: (assetId: string, body: AnalysisInput, signal?: AbortSignal) =>
+    request<AnalysisRun>(`/api/v1/assets/${assetId}/analyses`, { ...json(body), signal }),
   analysis: (id: string) => request<AnalysisDetail>(`/api/v1/analyses/${id}`),
   /**
    * Runs for one asset. Used only by the comparison screen, which demonstrates

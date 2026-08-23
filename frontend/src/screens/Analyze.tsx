@@ -1,8 +1,8 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router'
 import { Images, Play, Table2 } from 'lucide-react'
 import { AppShell } from '../shell/AppShell'
-import { api } from '../api/client'
+import { api, isAborted } from '../api/client'
 import { useRequest } from '../lib/useRequest'
 import { parseCsv, toReadings, type ParsedReading } from '../lib/csv'
 import { FORM_INPUTS } from '../lib/health'
@@ -31,6 +31,7 @@ export function AnalyzeScreen() {
   const [running, setRunning] = useState(false)
   const [step, setStep] = useState(0)
   const [error, setError] = useState<unknown>(null)
+  const abort = useRef<AbortController | null>(null)
 
   const selected = assets.data?.find((asset) => asset.id === assetId) ?? null
 
@@ -46,8 +47,14 @@ export function AnalyzeScreen() {
     return FORM_INPUTS.map((input) => ({ ...input, present: present[input.key] }))
   }, [readings.length, schedule, spareparts, technicians, condition, operator])
 
+  function cancel() {
+    abort.current?.abort()
+  }
+
   async function run() {
     if (!assetId) return
+    const controller = new AbortController()
+    abort.current = controller
     setRunning(true)
     setError(null)
     setStep(0)
@@ -56,7 +63,11 @@ export function AnalyzeScreen() {
         setStep(1)
         // No batch endpoint yet (docs/API.md), so one request per reading.
         for (const reading of readings) {
-          await api.addReading(assetId, { ...reading, source: 'csv', external_id: null })
+          await api.addReading(
+            assetId,
+            { ...reading, source: 'csv', external_id: null },
+            controller.signal,
+          )
         }
       }
 
@@ -73,21 +84,25 @@ export function AnalyzeScreen() {
       })
 
       setStep(3)
-      const run = await api.analyze(assetId, {
-        tier: 'professional',
-        manual_condition: condition.trim() || null,
-      })
+      const run = await api.analyze(
+        assetId,
+        { tier: 'professional', manual_condition: condition.trim() || null },
+        controller.signal,
+      )
       navigate(`/analysis/${run.id}`)
     } catch (err) {
-      setError(err)
+      // Cancelling is a choice, not a failure: return to the form quietly.
+      if (!isAborted(err)) setError(err)
       setRunning(false)
+    } finally {
+      abort.current = null
     }
   }
 
   if (running) {
     return (
       <AppShell title="Menjalankan analisis" subtitle={selected?.name}>
-        <RunProgress step={step} readingCount={readings.length} />
+        <RunProgress step={step} readingCount={readings.length} onCancel={cancel} />
       </AppShell>
     )
   }

@@ -16,7 +16,7 @@ npm run dev      # :5173, proxies /api /config /health to :8000
 node scripts/browser-pass.mjs
 ```
 
-Last full run: `148 passed (14 files)`, build clean, lint clean, `browser-pass` clean, and
+Last full run: `156 passed (15 files)`, build clean, lint clean, `browser-pass` clean, and
 the dev proxy verified against a live backend on :8000.
 
 `scripts/browser-pass.mjs` exists because happy-dom does no layout: the unit
@@ -138,7 +138,8 @@ is asserted.
 - [x] Siena brand lockup in the rail — the light variant, straight on the rail at 6.39:1 — plus favicons generated from the dark mark — verified: `NavRail.test.tsx` (3 tests) and the measurements in `../design/VISUAL_LANGUAGE.md` §1b
 - [x] `NavRail` — three items, active pill, and a 64px icon strip below 1024 — verified: `src/shell/NavRail.test.tsx` (7 tests) plus the narrow-viewport assertions in `browser-pass`
 - [x] `StatusCard` — engine mode from `/config/capabilities`, `--mint`, never hidden — verified: `AnalysisResult.test.tsx` (an unexpected capabilities body used to crash the whole shell; the tests now cover that)
-- [x] `Header` — title, subtitle, search, icons, avatar chip with role switcher — verified: rendered in all screen tests
+- [x] `Header` — title, subtitle, and the role switcher — verified: rendered in all screen tests, and `Analyze.test.tsx` asserts the header carries no dead controls
+- [x] `ErrorBoundary` — a designed failure screen instead of a blank page — verified: `src/shell/ErrorBoundary.test.tsx` (4 tests)
 - [x] Sticky `.glass-dark` header past 24px of scroll — verified: `browser-pass` asserts no blur before scrolling and blur after
 - [ ] Count badge on a nav item — not built; nothing needs one yet
 
@@ -264,6 +265,26 @@ to every check until contrast was measured from rendered pixels.
   `transition-duration` against the string `"0s"` when reduced motion computes
   it as `"1e-05s"`, and treating an intentional `overflow: hidden` truncation
   as a layout failure.
+
+### Recording resilience
+
+The demo is seven minutes, unedited. Three things that were fine in normal use
+would have ended a take.
+
+- [x] **A component throwing blanked the whole page.** `StatusCard` reading an
+  unexpected response did exactly that earlier in development. An
+  `ErrorBoundary` now catches it and shows a designed screen with the message,
+  a reload, and a route back into the app.
+- [x] **Three dead controls in the header** — search, settings, notifications —
+  copied from the reference as decoration. A judge clicking one on camera gets
+  nothing, and notifications are out of scope this round. Removed; only the
+  role switcher, which works, remains.
+- [x] **The two-minute analysis had no way out.** `POST …/analyses` blocks with
+  no progress endpoint and nothing cancelled it. The call is now abortable, the
+  wait screen carries a Batalkan control, and cancelling returns to the form
+  quietly rather than reporting a failure.
+- [x] The wait is announced through `aria-live`, so it is not silent for anyone
+  not watching the stage list.
 
 ### Deployment
 

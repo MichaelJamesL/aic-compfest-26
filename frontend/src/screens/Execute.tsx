@@ -39,7 +39,19 @@ export function ExecuteScreen() {
   if (error || !data) {
     return (
       <AppShell title="Eksekusi">
-        <ErrorState error={error ?? new Error('not found')} onRetry={reload} />
+        <Card>
+          <ErrorState
+            error={error ?? new Error('not found')}
+            onRetry={reload}
+            action={
+              <Link to="/work-orders">
+                <Button size="sm" variant="primary">
+                  Semua work order
+                </Button>
+              </Link>
+            }
+          />
+        </Card>
       </AppShell>
     )
   }

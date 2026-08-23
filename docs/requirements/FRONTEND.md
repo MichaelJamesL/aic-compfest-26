@@ -16,7 +16,7 @@ npm run dev      # :5173, proxies /api /config /health to :8000
 node scripts/browser-pass.mjs
 ```
 
-Last full run: `139 passed (14 files)`, build clean, lint clean, `browser-pass` clean, and
+Last full run: `142 passed (14 files)`, build clean, lint clean, `browser-pass` clean, and
 the dev proxy verified against a live backend on :8000.
 
 `scripts/browser-pass.mjs` exists because happy-dom does no layout: the unit
@@ -158,7 +158,7 @@ is asserted.
 - [x] 4 Work order list + detail with the state track — verified: `src/screens/WorkOrders.test.tsx`, 8 tests incl. the disabled approve/reject naming `../DEFECTS.md#wo-approve`, the role gate, and the terminal `rejected` track
 - [x] 5 Technician execution form — verified: `src/screens/Flow.test.tsx`, 5 tests. Submitting is disabled and names the missing `POST …/result`; the screen states that a result does not close the work order.
 - [x] 6 Verification & final report — verified: `Flow.test.tsx`, 2 tests. With no `/verify` route the screen explains the three verdicts and names both missing pieces instead of rendering an empty shell. The verdict and report layout is built but unreachable until the backend lands.
-- [x] 7 Run comparison (graceful degradation) — verified: `Flow.test.tsx`, 4 tests incl. per-run input coverage (0/6 vs 5/6) and the verbatim adoption sentence
+- [x] 7 Run comparison (graceful degradation) — verified: `Flow.test.tsx`, 7 tests incl. per-run input coverage (1/7 vs 6/7), the verbatim adoption sentence, the run picker listing only the asset's *other* runs, the single-run message, and the refusal to compare a run with itself
 
 ### Cross-cutting
 
@@ -194,6 +194,23 @@ structurally cannot catch, and they will recur.
   Track labels now have short forms.
 - A `disabled` primary button kept its white fill at 40% opacity, so a blocked
   action was still the loudest element on the bar. Disabled now drops the fill.
+
+### Defects found by looking at the error states
+
+`browser-pass` now visits two deliberately missing resources and screenshots
+what a viewer would see.
+
+- **Screen-level errors rendered bare on a full-height black panel** — a line of
+  text and a button floating in the void, which reads as a crash rather than as
+  handled. They are now cards, explain what likely happened, and offer a way out
+  as well as a retry.
+- **The comparison screen could only be reached by typing a UUID into the
+  address bar.** It is a 40-second video beat; that was not usable. Run B is now
+  picked from the asset's other runs, and a run is never offered as its own
+  comparison.
+- One checker bug of my own: any `console.error` failed the pass, including the
+  handled 4xx that an error state exists to render. Uncaught exceptions still
+  fail; handled request failures are now warnings.
 
 ### Defects found by the production-bundle pass
 

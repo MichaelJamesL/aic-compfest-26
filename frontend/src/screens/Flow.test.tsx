@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, screen } from '@testing-library/react'
+import { cleanup, screen, waitFor } from '@testing-library/react'
 import { CAPABILITIES, renderRoute, stubRoutes } from '../test/harness'
 import { ExecuteScreen } from './Execute'
 import { ReportScreen } from './Report'
@@ -119,6 +119,60 @@ describe('Compare — graceful degradation', () => {
     expect(await screen.findByText(/Jalankan aset yang sama dua kali/)).toBeTruthy()
   })
 
+  // The comparison is a 40-second video beat; typing a UUID into the address
+  // bar is not a usable way to reach it.
+  it('offers the asset\'s other runs in a picker instead of requiring a URL edit', async () => {
+    stubRoutes({
+      '/config/capabilities': CAPABILITIES,
+      '/api/v1/assets/a1/analyses': [
+        { id: 'run-1', status: 'succeeded', tier: 'starter', trigger: 'manual', created_at: '2026-08-22T10:00:00', health_score: 72, priority: 'medium', engine_mode: 'ai_engine' },
+        { id: 'run-2', status: 'succeeded', tier: 'professional', trigger: 'manual', created_at: '2026-08-22T14:00:00', health_score: 48, priority: 'high', engine_mode: 'ai_engine' },
+      ],
+      '/api/v1/analyses/run-1': analysis(),
+    })
+    renderRoute('/analysis/run-1/compare', '/analysis/:id/compare', <CompareScreen />)
+
+    // The asset id only becomes known once the first run loads, so the list
+    // arrives on a second request.
+    await waitFor(() => expect(screen.getAllByRole('option')).toHaveLength(2))
+    const picker = screen.getByLabelText('Run B') as HTMLSelectElement
+    // The run already open is not offered as its own comparison.
+    expect([...picker.options].map((option) => option.value)).toEqual(['', 'run-2'])
+    expect(picker.options[1].textContent).toContain('professional')
+    expect(picker.options[1].textContent).toContain('48')
+  })
+
+  it('refuses to compare a run with itself', async () => {
+    stubRoutes({
+      '/config/capabilities': CAPABILITIES,
+      '/api/v1/assets/a1/analyses': [],
+      '/api/v1/analyses/run-1': analysis(),
+    })
+    renderRoute('/analysis/run-1/compare?with=run-1', '/analysis/:id/compare', <CompareScreen />)
+    expect(await screen.findByText(/Belum ada run kedua untuk dibandingkan/)).toBeTruthy()
+    expect(screen.queryByRole('heading', { name: 'Run B' })).toBeNull()
+  })
+
+  it('says so plainly when the asset has only ever been analysed once', async () => {
+    stubRoutes({
+      '/config/capabilities': CAPABILITIES,
+      '/api/v1/assets/a1/analyses': [
+        { id: 'run-1', status: 'succeeded', tier: 'starter', trigger: 'manual', created_at: '2026-08-22T10:00:00', health_score: 72, priority: 'medium', engine_mode: 'ai_engine' },
+      ],
+      '/api/v1/analyses/run-1': analysis(),
+    })
+    renderRoute('/analysis/run-1/compare', '/analysis/:id/compare', <CompareScreen />)
+    await waitFor(() =>
+      expect(
+        (screen.getByLabelText('Run B') as HTMLSelectElement).options[0].textContent,
+      ).toMatch(/belum ada run lain/),
+    )
+    const picker = screen.getByLabelText('Run B') as HTMLSelectElement
+    expect(picker.disabled).toBe(true)
+    expect(picker.options[0].textContent).toMatch(/belum ada run lain/)
+    expect(screen.getByRole('button', { name: 'Jalankan analisis kedua' })).toBeTruthy()
+  })
+
   it('scores input coverage per run so the two columns differ visibly', async () => {
     const full = analysis({}, {
       asset: { id: 'a1', name: 'CNC-02', type: 'cnc-mill', criticality: 'high' },
@@ -132,8 +186,9 @@ describe('Compare — graceful degradation', () => {
       '/api/v1/analyses/run-2': { ...full, id: 'run-2' },
     })
     renderRoute('/analysis/run-1/compare?with=run-2', '/analysis/:id/compare', <CompareScreen />)
-    expect(await screen.findByText('Run A')).toBeTruthy()
-    expect(screen.getByText('Run B')).toBeTruthy()
+    // Scoped to headings: the run picker above also names both columns.
+    expect(await screen.findByRole('heading', { name: 'Run A' })).toBeTruthy()
+    expect(screen.getByRole('heading', { name: 'Run B' })).toBeTruthy()
     // Run A has only the manual condition; run B has everything but QC images.
     expect(screen.getByText('1/7 input')).toBeTruthy()
     expect(screen.getByText('6/7 input')).toBeTruthy()

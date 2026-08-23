@@ -35,7 +35,19 @@ export function WorkOrderDetailScreen() {
   if (error || !data) {
     return (
       <AppShell title="Work order">
-        <ErrorState error={error ?? new Error('not found')} onRetry={reload} />
+        <Card>
+          <ErrorState
+            error={error ?? new Error('not found')}
+            onRetry={reload}
+            action={
+              <Link to="/work-orders">
+                <Button size="sm" variant="primary">
+                  Semua work order
+                </Button>
+              </Link>
+            }
+          />
+        </Card>
       </AppShell>
     )
   }

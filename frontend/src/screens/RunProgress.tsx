@@ -105,7 +105,7 @@ export function RunProgress({
           Seluruh pemrosesan berjalan sinkron dengan parameter statis saat demonstrasi; tidak
           ada auto-tuning, background job, maupun loop umpan balik otomatis pada tahap ini.
         </p>
-        <p className="mt-4 border-t border-ink/10 pt-4 text-xs leading-5 text-ink-dim">
+        <p className="mt-4 border-t border-ink/10 pt-4 text-xs leading-5 text-soft">
           Satu permintaan menghasilkan satu keluaran. Tidak ada antrean di belakang layar
           yang perlu ditunggu, dan tidak ada proses yang tetap berjalan setelah halaman ini
           ditutup.

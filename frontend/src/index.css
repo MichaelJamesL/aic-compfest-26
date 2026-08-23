@@ -86,12 +86,25 @@
   font-variant-numeric: tabular-nums;
 }
 
+/*
+ * Secondary text that inherits its surface's colour instead of naming one.
+ * `--ink-dim` is calibrated against white and falls to 2.28:1 on the sage
+ * card; 80% of the surface's own ink measures at or above 4.5:1 on all four
+ * tints and on the dark cards. 0.65 was tried and measured 3.89:1 on clay.
+ * Never use `text-ink-dim` on a coloured surface.
+ */
+@utility text-soft {
+  opacity: 0.8;
+}
+
 /* Glass — only for layers that float over moving content.
    Never on a static card. VISUAL_LANGUAGE.md §6. */
 @utility glass-dark {
   background: rgba(17, 17, 17, 0.72);
+  /* Standard property only: Lightning CSS adds the prefixes its browser
+     targets need. Hand-written pairs get collapsed to the prefixed form and
+     the standard one is dropped, which breaks Firefox. */
   backdrop-filter: blur(24px) saturate(160%);
-  -webkit-backdrop-filter: blur(24px) saturate(160%);
   border: 1px solid rgba(255, 255, 255, 0.1);
   box-shadow: var(--shadow-float);
 }
@@ -99,7 +112,6 @@
 @utility glass-light {
   background: rgba(255, 255, 255, 0.72);
   backdrop-filter: blur(24px) saturate(160%);
-  -webkit-backdrop-filter: blur(24px) saturate(160%);
   border: 1px solid rgba(17, 17, 17, 0.08);
   box-shadow: var(--shadow-float);
 }

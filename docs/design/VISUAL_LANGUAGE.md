@@ -61,8 +61,28 @@ shell it reads as harsh, and the whole depth model collapses.
 | `--text-2` | `#9A9A9A` | `#5C5C5C` | 6.7:1 / 6.7:1 | labels, table headers, secondary rows |
 | `--text-3` | `#7C7C7C` | `#767676` | 4.5:1 / 4.5:1 | captions, timestamps — the floor, never go lighter |
 
-All three pass WCAG AA at 14px. There is no fourth, dimmer step; if text needs
-to be quieter than `--text-3`, it needs to be smaller or removed.
+All three pass WCAG AA at 14px **on `--card` and on `--shell`**. There is no
+fourth, dimmer step; if text needs to be quieter than `--text-3`, it needs to be
+smaller or removed.
+
+### Secondary text on a tinted card — use `text-soft`, never `--ink-dim`
+
+`--ink-dim` is calibrated against white. On the four accent tints it collapses:
+
+| Surface | `--ink-dim` (#5C5C5C) | `text-soft` (ink at 80%) |
+| --- | --- | --- |
+| `--sage` | **2.28:1** ✗ | 4.8:1 ✓ |
+| `--clay` | **2.69:1** ✗ | 5.2:1 ✓ |
+| `--mint` | **4.07:1** ✗ | 6.4:1 ✓ |
+| `--apricot` | fails | passes |
+
+So a tinted card never names a text colour. It inherits `#111111` from `Card`
+and mutes with the `text-soft` utility — 80% opacity, measured, not guessed.
+An earlier 65% was tried and measures 3.89:1 on clay.
+
+These numbers come from `scripts/browser-pass.mjs`, which computes contrast
+from what actually rendered — including opacity, blended rather than skipped.
+Run it rather than reasoning about the palette table.
 
 ### Accents — sampled
 
@@ -450,6 +470,8 @@ Font, self-hosted or from Google Fonts:
 6. Is there more than one primary button in view?
 7. Do all spacing values come from the allowed set?
 8. Does every severity read correctly in greyscale?
+8b. Has `browser-pass` been run against the **production bundle**, not just the
+    dev server? They are not the same CSS.
 9. Is any state (empty, loading, error, partial input) unstyled?
 10. Would this screenshot be indistinguishable from a hundred other AI-built
     dashboards? If yes, the reference was not followed.

@@ -86,6 +86,72 @@ async function visit(page, name, path) {
     }
   })
 
+  // Contrast, measured from what actually rendered rather than from the
+  // palette table. This is the check that catches a dark-surface token used on
+  // a light tinted card.
+  const lowContrast = await page.evaluate(() => {
+    const luminance = (rgb) => {
+      const [r, g, b] = rgb.map((value) => {
+        const channel = value / 255
+        return channel <= 0.03928 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4
+      })
+      return 0.2126 * r + 0.7152 * g + 0.0722 * b
+    }
+    const parse = (color) => {
+      const match = color.match(/rgba?\(([^)]+)\)/)
+      if (!match) return null
+      const parts = match[1].split(',').map(Number)
+      return { rgb: parts.slice(0, 3), alpha: parts.length > 3 ? parts[3] : 1 }
+    }
+    const backdrop = (node) => {
+      for (let el = node; el; el = el.parentElement) {
+        const parsed = parse(getComputedStyle(el).backgroundColor)
+        if (parsed && parsed.alpha > 0.5) return parsed.rgb
+      }
+      return [255, 255, 255]
+    }
+
+    const findings = []
+    for (const el of document.querySelectorAll('*')) {
+      if (el.children.length) continue
+      const text = el.textContent?.trim()
+      if (!text) continue
+      const style = getComputedStyle(el)
+      if (style.visibility === 'hidden' || style.display === 'none') continue
+      const fg = parse(style.color)
+      if (!fg) continue
+
+      // Muted text is blended, not exempt: skipping low-opacity elements would
+      // let the checker pass by excluding exactly what it should measure.
+      const bg = backdrop(el)
+      const alpha = fg.alpha * parseFloat(style.opacity || '1')
+      const blended = fg.rgb.map((channel, i) => alpha * channel + (1 - alpha) * bg[i])
+
+      const [lighter, darker] = [luminance(blended), luminance(bg)].sort((a, b) => b - a)
+      const ratio = (lighter + 0.05) / (darker + 0.05)
+      const size = parseFloat(style.fontSize)
+      const large = size >= 24 || (size >= 18.66 && Number(style.fontWeight) >= 600)
+      const floor = large ? 3 : 4.5
+      if (ratio < floor) {
+        findings.push({
+          text: text.slice(0, 32),
+          ratio: ratio.toFixed(2),
+          size,
+          floor,
+          alpha: alpha.toFixed(2),
+        })
+      }
+    }
+    return findings.slice(0, 4)
+  })
+  for (const finding of lowContrast) {
+    report(
+      'fail',
+      path,
+      `contrast ${finding.ratio}:1 (needs ${finding.floor}, alpha ${finding.alpha}) on "${finding.text}"`,
+    )
+  }
+
   await page.screenshot({ path: join(OUT, `${name}.png`), fullPage: true })
   // A fullPage capture parks sticky elements at the first viewport's bottom,
   // which misrepresents them. Capture the viewport too.

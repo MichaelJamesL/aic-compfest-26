@@ -8,7 +8,9 @@
     "build": "tsc -b && vite build",
     "lint": "oxlint",
     "preview": "vite preview",
-    "test": "vitest run"
+    "test": "vitest run",
+    "serve:dist": "node scripts/serve-dist.mjs",
+    "browser-pass": "node scripts/browser-pass.mjs"
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.3.3",
@@ -31,5 +33,11 @@
     "typescript": "~6.0.2",
     "vite": "^8.2.0",
     "vitest": "^4.1.11"
-  }
+  },
+  "browserslist": [
+    "chrome >= 111",
+    "edge >= 111",
+    "firefox >= 121",
+    "safari >= 16.4"
+  ]
 }

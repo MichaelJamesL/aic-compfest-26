@@ -46,10 +46,10 @@ Tick a box only under the rule in [`../INDEX.md`](../INDEX.md#checklist-rules).
 team-fine-tuned model, and this is it.
 
 - [x] `vision.inspect()` PatchCore wrapper producing typed `DefectFinding` — verified: `test_defectfinding_model`, `test_nonzero_region`, `test_nonzero_region_empty`; `test_fit_inspect_round_trip` skipped without the `[vision]` extra
-- [ ] `qc/preprocess.py` — resize 224×224, ImageNet normalisation, augmentation (h-flip, small rotation, brightness jitter), class-weighted imbalance handling, object-disjoint train/val/test split — not started (`FINAL_IDEA.md` §8.3)
-- [ ] `qc/train.py` — MobileNetV3-Small or ResNet18 transfer learning, 5 defect classes + `good`, target < 1 hour on CPU — not started
-- [ ] Trained weights committed and loadable offline — not started
-- [ ] `qc/METRICS.md` — per-class accuracy, confusion matrix, split sizes — not started. The proposal requires the model-development narrative.
+- [x] `qc/preprocess.py` — fetches the 480 MVTec `screw` images and builds a deterministic stratified split — verified: `uv run python qc/preprocess.py --stats` reproduces the committed `split.json`. Transforms live in `train.py`; the split is per-image, and `README.md` says why that does not leak an object for this category rather than claiming a grouping we did not perform.
+- [x] `qc/train.py` — MobileNetV3-Small transfer learning, 6 classes, **10.8 min on CPU** — verified: ran end to end and wrote weights plus metrics
+- [x] Trained weights committed and loadable offline — `qc/model.pt` (6.1 MB) carries the state dict and the class list
+- [ ] `qc/METRICS.md` — **stale, must be regenerated**: it records the run before balanced sampling, which scored 81.1% overall while predicting `good` for all 8 thread defects. The trainer is fixed; the retrain did not finish. Rerun `uv run python qc/train.py` and read the confusion matrix before quoting anything.
 - [ ] Classifier wired into the pipeline in place of / alongside PatchCore, emitting `defect_class` — not started
 - [ ] Batch aggregation: defect rate per batch and per class, across batches — not started (needed for the "three batches in a row" demo beat)
 
@@ -61,7 +61,7 @@ ok/defect dataset, which would empty the mapping.
 
 ## 4. Defect → failure-mode mapping *(the differentiator)*
 
-- [ ] `mapping/qc_failure_modes.yaml` — not started. Full contents are in `FINAL_IDEA.md` §7.2; copy them, do not re-invent.
+- [x] `mapping/qc_failure_modes.yaml` — written from `FINAL_IDEA.md` §7.2 — verified: every classifier class has exactly one row, and the corroboration tags are real sensor tags
 - [ ] Loader + validation (every `corroborate.tag` must be a real sensor tag; every `source` must resolve to an ingested document) — not started
 - [ ] Corroboration step: check each candidate failure mode's signals against the readings before any priority change — not started
 - [ ] **Restraint path**: when signals do not corroborate, say so explicitly ("defect rate is up, no machine signal supports it, likely material/handling") and do **not** raise priority — not started. This is a demo beat, not an edge case (`FINAL_IDEA.md` §7.3).
@@ -107,8 +107,8 @@ The objective function is fixed wording; use it verbatim from `FINAL_IDEA.md`
 
 - [x] `import src` works with no API key, no DB, no `anomalib` — verified: `uv run pytest` passes with none of them present
 - [x] Vision isolated behind the `[vision]` extra with in-function imports — verified: the vision test skips cleanly
-- [ ] `python-dotenv` and `pillow` declared — `../DEFECTS.md#undeclared-deps`
-- [ ] `AIENGINE_DATABASE_URL` split from the backend's `DATABASE_URL` — `../DEFECTS.md#env-database-url`
+- [x] `python-dotenv` and `pillow` declared — verified: both are now in `pyproject.toml` (`dotenv` in `dependencies`, `pillow` in `dev` and `qc`)
+- [x] `AIENGINE_DATABASE_URL` split from the backend's `DATABASE_URL` — verified: with both set, the engine reads the pgvector URL and no longer picks up the backend's SQLite one
 - [ ] `scripts/gen_synthetic.py` — generator for production schedule, sparepart stock + ETA, technician roster, SOP corpus, with its assumptions documented — not started (`DECISIONS.md` D2/D10; the proposal must describe how synthetic data was produced)
 - [ ] `doc/PLAN.md` reconciled with reality or archived — it still describes `analysis.py` and the `aiengine` package name, both gone.
 

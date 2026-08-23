@@ -45,7 +45,19 @@ export function AnalysisResultScreen() {
   if (error || !data) {
     return (
       <AppShell title="Hasil analisis">
-        <ErrorState error={error} onRetry={reload} />
+        <Card>
+          <ErrorState
+            error={error}
+            onRetry={reload}
+            action={
+              <Link to="/analyze">
+                <Button size="sm" variant="primary">
+                  Analisis baru
+                </Button>
+              </Link>
+            }
+          />
+        </Card>
       </AppShell>
     )
   }

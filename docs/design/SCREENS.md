@@ -369,6 +369,16 @@ full input. Same section order down both sides so the eye compares by row.
 Sections present on the right but absent on the left render as a `--text-3`
 line naming the missing input.
 
+**Run B is picked, not typed.** A select above the columns lists the asset's
+other runs (`GET /assets/{id}/analyses`), each labelled with its timestamp, tier
+and health score. Reaching this screen must not require editing a UUID into the
+address bar — it is a 40-second video beat. When the asset has only one run the
+select says so and offers "Jalankan analisis kedua"; a run is never offered as
+its own comparison.
+
+This is the one sanctioned use of the per-asset analyses endpoint. It is not a
+history page — see `DEFECTS.md#analysis-history-out-of-scope`.
+
 One line at the top, fixed wording:
 
 > Sistem tetap menghasilkan analisis dengan input apa pun yang tersedia; makin

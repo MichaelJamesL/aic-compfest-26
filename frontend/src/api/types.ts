@@ -185,6 +185,18 @@ export interface RequestSnapshot {
   trigger: string
 }
 
+/** Row shape of GET /assets/{id}/analyses — the raw table row, per API.md. */
+export interface AnalysisSummary {
+  id: string
+  status: 'succeeded' | 'failed'
+  tier: string
+  trigger: string
+  created_at: string
+  health_score: number | null
+  priority: Priority | null
+  engine_mode: EngineMode | null
+}
+
 export interface WorkOrder {
   id: string
   factory_id: string

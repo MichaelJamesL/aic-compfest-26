@@ -4,13 +4,16 @@ import { AppShell } from '../shell/AppShell'
 import { api } from '../api/client'
 import { useRequest } from '../lib/useRequest'
 import { inputCoverage } from '../lib/health'
+import { formatDateTime } from '../lib/format'
 import { healthLabel, priorityLabel, priorityTone } from '../lib/severity'
 import { Card, SectionTitle } from '../ui/Card'
 import { Badge } from '../ui/Badge'
+import { Button } from '../ui/Button'
+import { Select } from '../ui/Field'
 import { MetricCard } from '../ui/MetricCard'
 import { EmptyState, ErrorState, MissingInput } from '../ui/States'
 import { Skeleton } from '../ui/Skeleton'
-import type { AnalysisDetail } from '../api/types'
+import type { AnalysisDetail, AnalysisSummary } from '../api/types'
 
 /**
  * The graceful-degradation beat: the same asset run twice, minimal input on the
@@ -19,11 +22,21 @@ import type { AnalysisDetail } from '../api/types'
  */
 export function CompareScreen() {
   const { id = '' } = useParams()
-  const [params] = useSearchParams()
-  const other = params.get('with') ?? ''
+  const [params, setParams] = useSearchParams()
+  // Comparing a run with itself proves nothing; treat it as no selection.
+  const requested = params.get('with') ?? ''
+  const other = requested === id ? '' : requested
 
   const left = useRequest(() => api.analysis(id), [id])
   const right = useRequest(() => (other ? api.analysis(other) : Promise.resolve(null)), [other])
+
+  // The other runs for this asset, so the second column can be picked rather
+  // than typed into the URL. This is the comparison beat, not a history page.
+  const assetId = left.data?.request_snapshot?.asset.id
+  const runs = useRequest(
+    () => (assetId ? api.assetAnalyses(assetId) : Promise.resolve([])),
+    [assetId],
+  )
 
   if (left.loading || right.loading) {
     return (
@@ -62,12 +75,26 @@ export function CompareScreen() {
         </p>
       </Card>
 
+      <RunPicker
+        currentId={id}
+        selectedId={other}
+        runs={(runs.data ?? []).filter((run) => run.id !== id)}
+        loading={runs.loading}
+        onSelect={(next) => setParams(next ? { with: next } : {})}
+      />
+
       {!right.data ? (
         <Card>
-          <EmptyState>
-            Pilih run kedua untuk dibandingkan dengan menambahkan <code>?with=</code> dan id
-            analisis lain pada URL. Jalankan aset yang sama dua kali — sekali dengan dokumen
-            dan kondisi manual saja, sekali dengan seluruh input.
+          <EmptyState
+            action={
+              <Link to="/analyze">
+                <Button variant="primary">Jalankan analisis kedua</Button>
+              </Link>
+            }
+          >
+            Belum ada run kedua untuk dibandingkan. Jalankan aset yang sama dua kali — sekali
+            hanya dengan dokumen dan kondisi manual, sekali dengan seluruh input — lalu pilih
+            run keduanya di atas.
           </EmptyState>
         </Card>
       ) : (
@@ -77,6 +104,52 @@ export function CompareScreen() {
         </div>
       )}
     </AppShell>
+  )
+}
+
+function RunPicker({
+  currentId,
+  selectedId,
+  runs,
+  loading,
+  onSelect,
+}: {
+  currentId: string
+  selectedId: string
+  runs: AnalysisSummary[]
+  loading: boolean
+  onSelect: (id: string) => void
+}) {
+  if (loading) return <Skeleton className="mb-3 h-[76px] rounded-card" />
+
+  return (
+    <Card className="mb-3">
+      <div className="grid gap-4 md:grid-cols-2">
+        <div>
+          <p className="text-[13px] font-medium text-dim">Run A</p>
+          <p className="mt-1.5 text-[13px] text-faint">
+            Analisis {currentId.slice(0, 8)} — run yang sedang dibuka
+          </p>
+        </div>
+        <Select
+          label="Run B"
+          value={selectedId}
+          onChange={(event) => onSelect(event.target.value)}
+          disabled={runs.length === 0}
+        >
+          <option value="">
+            {runs.length === 0 ? '— belum ada run lain pada mesin ini —' : '— pilih run —'}
+          </option>
+          {runs.map((run) => (
+            <option key={run.id} value={run.id}>
+              {formatDateTime(run.created_at)} · {run.tier} · skor{' '}
+              {run.health_score ?? '—'}
+              {run.status === 'failed' ? ' · gagal' : ''}
+            </option>
+          ))}
+        </Select>
+      </div>
+    </Card>
   )
 }
 

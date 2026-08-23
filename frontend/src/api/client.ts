@@ -2,6 +2,7 @@ import type {
   AnalysisDetail,
   AnalysisInput,
   AnalysisRun,
+  AnalysisSummary,
   ApiErrorBody,
   Asset,
   AssetInput,
@@ -179,6 +180,13 @@ export const api = {
   analyze: (assetId: string, body: AnalysisInput) =>
     request<AnalysisRun>(`/api/v1/assets/${assetId}/analyses`, json(body)),
   analysis: (id: string) => request<AnalysisDetail>(`/api/v1/analyses/${id}`),
+  /**
+   * Runs for one asset. Used only by the comparison screen, which demonstrates
+   * a claim the proposal makes — not by a history page, which is out of scope
+   * (docs/DEFECTS.md#analysis-history-out-of-scope).
+   */
+  assetAnalyses: (assetId: string) =>
+    request<AnalysisSummary[]>(`/api/v1/assets/${assetId}/analyses`),
   ask: (assetId: string, question: string) =>
     request<{ answer: string }>(`/api/v1/assets/${assetId}/ask`, json({ question })),
 

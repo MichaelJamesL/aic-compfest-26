@@ -37,7 +37,13 @@ function report(level, route, message) {
 
 async function visit(page, name, path) {
   const errors = []
-  page.on('console', (msg) => msg.type() === 'error' && errors.push(msg.text()))
+  const noise = []
+  page.on('console', (msg) => {
+    if (msg.type() !== 'error') return
+    // A handled 4xx still logs to the console; that is the app working.
+    if (/Failed to load resource/.test(msg.text())) noise.push(msg.text())
+    else errors.push(msg.text())
+  })
   page.on('pageerror', (error) => errors.push(error.message))
 
   await page.goto(BASE + path, { waitUntil: 'networkidle' })
@@ -170,6 +176,9 @@ async function visit(page, name, path) {
   if (probe.panelBg && probe.panelBg !== 'rgb(0, 0, 0)') report('warn', path, `panel background ${probe.panelBg}, expected #000000`)
 
   for (const error of errors) report('fail', path, `console: ${error.slice(0, 140)}`)
+  for (const item of noise.slice(0, 2)) {
+    report('warn', path, `request failed (handled): ${item.slice(0, 90)}`)
+  }
 
   return probe
 }
@@ -280,6 +289,26 @@ try {
     const context = await browser.newContext({ viewport: VIEWPORT, deviceScaleFactor: 2 })
     const page = await context.newPage()
     await visit(page, name, path)
+    await context.close()
+  }
+
+  // Error and empty states have only ever been asserted in happy-dom. They are
+  // what a judge sees if something breaks on camera, so look at them.
+  for (const [name, path] of [
+    ['error-analysis', '/analysis/00000000-0000-0000-0000-000000000000'],
+    ['error-work-order', '/work-orders/00000000-0000-0000-0000-000000000000'],
+  ]) {
+    const context = await browser.newContext({ viewport: VIEWPORT, deviceScaleFactor: 2 })
+    const page = await context.newPage()
+    const probe = await visit(page, name, path)
+    // An error state still has to be a designed screen, not a blank panel.
+    if (probe.textNodes < 300) {
+      report('fail', path, `error state is nearly empty (${probe.textNodes} chars)`)
+    }
+    const hasRecovery = await page.evaluate(() =>
+      Boolean([...document.querySelectorAll('button')].find((b) => /coba lagi|muat ulang/i.test(b.textContent ?? ''))),
+    )
+    if (!hasRecovery) report('fail', path, 'error state offers no retry')
     await context.close()
   }
 

@@ -7,9 +7,9 @@ on it before either side builds.
 """
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, time
 from enum import StrEnum
-from typing import Literal, Optional
+from typing import Dict, Literal, Optional
 
 from pydantic import BaseModel, Field
 
@@ -51,11 +51,61 @@ class Document(BaseModel):
     text: str
     factory_id: str | None = None
 
+class DayOfWeek(StrEnum):
+    MONDAY = "monday"
+    TUESDAY = "tuesday"
+    WEDNESDAY = "wednesday"
+    THURSDAY = "thursday"
+    FRIDAY = "friday"
+    SATURDAY = "saturday"
+    SUNDAY = "sunday"
+
+class TimeInterval(BaseModel):
+    start: time
+    end: time
+
+class TechnicianSchedule(BaseModel):
+    name: str
+    role: str
+    specialty: str | None = None
+    work_time: Dict[DayOfWeek, TimeInterval] = Field(default_factory=dict)
+    occupied_time: Dict[DayOfWeek, list[TimeInterval]] = Field(default_factory=dict)
+
+class ProductionSchedule(BaseModel):
+    work_time: Dict[DayOfWeek, TimeInterval] = Field(default_factory=dict)
+
+class SparePart(BaseModel):
+    id: str
+    name: str
+    stock: int = 0
+    unit: str = "pcs"
+    min_stock: int | None = None
+    eta: str | None = None
+
+
+class QCBatch(BaseModel):
+    phase: str
+    asset_id: str
+    product: str
+    images: list[str] = Field(default_factory=list)
+
+
+class PhaseQC(BaseModel):
+    phase: str
+    asset_id: str
+    product: str
+    inspected: int
+    defects: int
+    defect_rate: float
+    findings: list[DefectFinding] = Field(default_factory=list)
+
 
 class BusinessContext(BaseModel):
     production_schedule: str | None = None
-    spareparts: list[str] = Field(default_factory=list)
-    sparepart_eta: str | None = None  # e.g. "bearing SKF-6204 ETA 5 days"
+    inventory: list[SparePart] = Field(
+        default_factory=list,
+        description="Available spare parts for this asset (snapshot from backend, not full warehouse inventory).",
+    )
     technicians_available: int | None = None
     operator_report: str | None = None
 
@@ -70,6 +120,7 @@ class DefectFinding(BaseModel):
     region: tuple[int, int, int, int] | None = None
     heatmap_path: str | None = None
     method: str = "patchcore"
+    phase: str | None = None
 
 
 class AnalysisRequest(BaseModel):
@@ -78,6 +129,7 @@ class AnalysisRequest(BaseModel):
     factory_id: str | None = None
     readings: list[SensorReading] = Field(default_factory=list)
     images: list[str] = Field(default_factory=list)
+    qc_batches: list[QCBatch] = Field(default_factory=list)
     manual_condition: str | None = None
     history: list[MaintenanceRecord] = Field(default_factory=list)
     business: BusinessContext = Field(default_factory=BusinessContext)
@@ -128,6 +180,7 @@ class AnalysisResult(BaseModel):
     health_summary: str
     anomalies: list[Anomaly]
     defects: list[DefectFinding] = Field(default_factory=list)
+    qc_by_phase: list[PhaseQC] = Field(default_factory=list)
     root_causes: list[RootCause]
     recommendation: str
     priority: Literal["low", "medium", "high", "critical"]
@@ -154,6 +207,7 @@ class ContextBundle(BaseModel):
     assets_facts: str
     anomalies: list[Anomaly]
     defects: list[DefectFinding] = Field(default_factory=list)
+    qc_by_phase: list[PhaseQC] = Field(default_factory=list)
     health_score: int
     corpus: list[ContextDoc]
     history: list[MaintenanceRecord]

@@ -59,42 +59,41 @@ The name reads as the chain the product runs: **S**ense, **I**ntelligence,
 **E**fficiency, **N**avigate, **A**ssist. That expansion is storytelling for the
 proposal and the video; it does not belong in the UI.
 
-| Asset | File | Use |
+| Asset | File | Surface |
 | --- | --- | --- |
-| Mark | `public/logo.png` | the collapsed 64px rail, favicons |
-| Lockup | `public/logo-text.png` | the expanded rail |
-| Favicon | `public/favicon-32.png`, `apple-touch-icon.png`, `icon-512.png` | generated from the mark |
+| Lockup, light | `public/logo-text-white.png` | the rail and any dark surface |
+| Mark, light | `public/logo-white.png` | the collapsed 64px rail |
+| Lockup, dark | `public/logo-text.png` | light surfaces — exports, print, slides |
+| Mark, dark | `public/logo.png` | light surfaces; the source for the favicons |
+| Favicons | `public/favicon-32.png`, `apple-touch-icon.png`, `icon-512.png` | generated: the dark mark on a light plate, so it survives a dark tab bar too |
 
-### The mark needs a light background — this is measured, not a preference
+### Pick the variant by measurement, not by eye
 
-Both files are a sage-to-near-black gradient drawn for light surfaces. On the
-`#111111` rail:
+Both gradients were measured against `--rail` `#111111`:
 
-| Sampled at | Colour | vs rail | vs white |
-| --- | --- | ---: | ---: |
-| left | `#638373` | 4.52:1 | 4.18:1 |
-| middle | `#45594F` | 2.51:1 | 7.51:1 |
-| right | `#262D29` | **1.34:1** | 14.10:1 |
-| lockup, far right | `#111614` | **1.03:1** | 18.28:1 |
+| | darkest opaque pixel | vs rail |
+| --- | --- | ---: |
+| dark lockup | `#111614` | **1.03:1** |
+| light lockup | `#769F8B` | **6.39:1** |
 
-At 1.03:1 the last letters are gone: "SIENA" renders as "SIE". So the rail puts
-the mark on a `--surface-card` plate — the light background it was designed
-for — rather than recolouring someone's logo or filtering it.
+At 1.03:1 the last letters of the dark lockup vanish — "SIENA" renders as
+"SIE". The light variants clear 4.5:1 across their whole gradient, so on the
+rail they sit directly on the background with nothing behind them. An earlier
+build put the dark lockup on a light plate; the plate is gone now that the
+right file exists.
 
-The favicons bake the same plate in, because a transparent dark mark also
-disappears on a dark browser tab.
-
-**Open:** a light or single-colour variant would let the mark sit directly on
-the rail and drop the plate. Until one exists, the plate stays; do not fake it
-with a CSS filter.
+Never recolour, filter, or invert a variant to make it fit a surface. Pick the
+one drawn for that surface, and if neither fits, measure before shipping.
 
 ### Rules
 
 - The lockup appears **once**, at the top of the rail. Never repeat it in the
   header — the page title lives there.
+- Light variants on dark surfaces, dark variants on light ones. There is no
+  third option.
 - The tagline appears once, under the lockup, on the wide rail only.
-- Never place the mark on any accent tint. It was measured against white and
-  the rail; nothing else is verified.
+- Never place the mark on any accent tint. Both variants were measured against
+  white and against the rail; nothing else is verified.
 - The mark is never recoloured, rotated, or given effects.
 
 ## 2. Palette

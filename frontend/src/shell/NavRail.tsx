@@ -18,29 +18,27 @@ const ITEMS = [
  * Navigation and the engine-mode signal must survive every viewport.
  */
 /**
- * The mark is a sage-to-near-black gradient drawn for light backgrounds: on the
- * #111111 rail its right end measures 1.03:1, so "SIENA" reads as "SIE". Rather
- * than recolour someone's logo, it sits on the light plate it was designed for.
+ * The light variants sit directly on the rail — darkest opaque pixel `#769F8B`
+ * measures 6.39:1 against `--rail`, so the plate the dark lockup needed is
+ * gone. The dark files stay for light surfaces and the favicons.
  */
 function Brand() {
   return (
-    <div>
-      <div className="rounded-control bg-surface-card p-2.5 lg:px-3 lg:py-2.5">
-        <img
-          src="/logo-text.png"
-          alt="Siena"
-          width={1452}
-          height={359}
-          className="hidden h-auto w-full lg:block"
-        />
-        <img
-          src="/logo.png"
-          alt="Siena"
-          width={372}
-          height={359}
-          className="mx-auto h-auto w-full max-w-7 lg:hidden"
-        />
-      </div>
+    <div className="px-1">
+      <img
+        src="/logo-text-white.png"
+        alt="Siena"
+        width={1452}
+        height={359}
+        className="hidden h-auto w-full max-w-[168px] lg:block"
+      />
+      <img
+        src="/logo-white.png"
+        alt="Siena"
+        width={372}
+        height={359}
+        className="mx-auto h-auto w-full max-w-8 lg:hidden"
+      />
       <p className="mt-3 hidden text-[11.5px] leading-4 text-rail-content-3 lg:block">
         Intelligence, grounded in industry
       </p>

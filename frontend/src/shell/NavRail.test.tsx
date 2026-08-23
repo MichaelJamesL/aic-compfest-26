@@ -24,20 +24,20 @@ describe('brand', () => {
     // Both lockups are in the DOM; only one is displayed per breakpoint.
     const marks = screen.getAllByAltText('Siena')
     expect(marks).toHaveLength(2)
+    // The light variants: the dark ones are for light surfaces and favicons.
     expect(marks.map((m) => m.getAttribute('src')).sort()).toEqual([
-      '/logo-text.png',
-      '/logo.png',
+      '/logo-text-white.png',
+      '/logo-white.png',
     ])
   })
 
-  // The mark is a dark gradient drawn for light backgrounds; on the rail its
-  // right end measures 1.03:1, so it needs the light plate under it.
-  it('keeps the mark on a light plate rather than on the dark rail', () => {
+  // The light variants clear 6.39:1 on the rail, so nothing sits behind them.
+  // A plate would reintroduce a light block the design does not need.
+  it('places the mark straight on the rail, with no plate behind it', () => {
     render()
-    // Both lockups share the one plate.
-    const plates = screen.getAllByAltText('Siena').map((mark) => mark.parentElement!)
-    expect(new Set(plates)).toHaveProperty('size', 1)
-    expect(plates[0].className.split(' ')).toContain('bg-surface-card')
+    for (const mark of screen.getAllByAltText('Siena')) {
+      expect(mark.parentElement!.className).not.toContain('bg-surface-card')
+    }
   })
 
   it('carries the positioning line once, on the wide rail', () => {

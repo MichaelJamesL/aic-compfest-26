@@ -51,6 +51,52 @@ donut-with-social-networks. Take the system, not the content.
 
 ---
 
+## 1b. Brand
+
+**Siena** — *Intelligence, grounded in industry.*
+
+The name reads as the chain the product runs: **S**ense, **I**ntelligence,
+**E**fficiency, **N**avigate, **A**ssist. That expansion is storytelling for the
+proposal and the video; it does not belong in the UI.
+
+| Asset | File | Use |
+| --- | --- | --- |
+| Mark | `public/logo.png` | the collapsed 64px rail, favicons |
+| Lockup | `public/logo-text.png` | the expanded rail |
+| Favicon | `public/favicon-32.png`, `apple-touch-icon.png`, `icon-512.png` | generated from the mark |
+
+### The mark needs a light background — this is measured, not a preference
+
+Both files are a sage-to-near-black gradient drawn for light surfaces. On the
+`#111111` rail:
+
+| Sampled at | Colour | vs rail | vs white |
+| --- | --- | ---: | ---: |
+| left | `#638373` | 4.52:1 | 4.18:1 |
+| middle | `#45594F` | 2.51:1 | 7.51:1 |
+| right | `#262D29` | **1.34:1** | 14.10:1 |
+| lockup, far right | `#111614` | **1.03:1** | 18.28:1 |
+
+At 1.03:1 the last letters are gone: "SIENA" renders as "SIE". So the rail puts
+the mark on a `--surface-card` plate — the light background it was designed
+for — rather than recolouring someone's logo or filtering it.
+
+The favicons bake the same plate in, because a transparent dark mark also
+disappears on a dark browser tab.
+
+**Open:** a light or single-colour variant would let the mark sit directly on
+the rail and drop the plate. Until one exists, the plate stays; do not fake it
+with a CSS filter.
+
+### Rules
+
+- The lockup appears **once**, at the top of the rail. Never repeat it in the
+  header — the page title lives there.
+- The tagline appears once, under the lockup, on the wide rail only.
+- Never place the mark on any accent tint. It was measured against white and
+  the rail; nothing else is verified.
+- The mark is never recoloured, rotated, or given effects.
+
 ## 2. Palette
 
 ### Neutrals — sampled

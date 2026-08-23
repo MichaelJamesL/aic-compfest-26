@@ -29,7 +29,9 @@ from src.schemas import (  # noqa: E402
     Asset,
     BusinessContext,
     MaintenanceRecord,
+    QCBatch,
     SensorReading,
+    SparePart,
     Tier,
 )
 
@@ -39,6 +41,7 @@ def _parse_dt(raw: str) -> datetime:
 
 
 def _build_request(case: dict) -> AnalysisRequest:
+    bc = case.get("business", {})
     return AnalysisRequest(
         tier=Tier(case["tier"]),
         asset=Asset(**case["asset"]),
@@ -57,8 +60,14 @@ def _build_request(case: dict) -> AnalysisRequest:
             )
             for h in case.get("history", [])
         ],
-        business=BusinessContext(**case.get("business", {})),
+        business=BusinessContext(
+            production_schedule=bc.get("production_schedule"),
+            inventory=[SparePart(**sp) for sp in bc.get("inventory", [])],
+            technicians_available=bc.get("technicians_available"),
+            operator_report=bc.get("operator_report"),
+        ),
         images=case.get("images", []),
+        qc_batches=[QCBatch(**qb) for qb in case.get("qc_batches", [])],
     )
 
 

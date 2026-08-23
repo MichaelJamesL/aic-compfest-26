@@ -47,6 +47,26 @@ describe('Work order list', () => {
     renderRoute('/work-orders', '/work-orders', <WorkOrdersScreen />)
     expect(await screen.findByText(/Work order dibuat dari hasil analisis/)).toBeTruthy()
   })
+
+  /**
+   * A row that navigates has to look like it does before anyone hovers it:
+   * hover is not an affordance on touch, and it does not show in a screenshot.
+   */
+  it('makes a navigating row visibly navigable', async () => {
+    stubRoutes({ '/config/capabilities': CAPABILITIES, '/api/v1/work-orders': [order()] })
+    const { container } = renderRoute('/work-orders', '/work-orders', <WorkOrdersScreen />)
+
+    const title = await screen.findByRole('link', { name: 'Ganti insert dan verifikasi runout' })
+    expect(title.getAttribute('href')).toBe('/work-orders/wo-1')
+    // Underlined at rest, not only on hover.
+    expect(title.className).toContain('underline')
+
+    // The row itself reads as interactive, and the direction is shown.
+    const row = title.closest('tr')!
+    expect(row.className).toContain('hover:bg-surface-raised')
+    expect(screen.getByRole('link', { name: 'Buka Ganti insert dan verifikasi runout' })).toBeTruthy()
+    expect(container.querySelector('.sr-only')?.textContent).toBe('Buka')
+  })
 })
 
 describe('Work order detail', () => {

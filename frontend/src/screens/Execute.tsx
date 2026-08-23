@@ -1,11 +1,11 @@
 import { useState } from 'react'
-import { Link, useParams } from 'react-router'
-import { ArrowLeft, Camera, Send } from 'lucide-react'
+import { useParams } from 'react-router'
+import { Camera, Send } from 'lucide-react'
 import { AppShell } from '../shell/AppShell'
 import { api, getIdentity } from '../api/client'
 import { useRequest } from '../lib/useRequest'
 import { Card, CardTitle, SectionTitle } from '../ui/Card'
-import { Button } from '../ui/Button'
+import { BackLink, Button, LinkButton } from '../ui/Button'
 import { TextArea, TextInput } from '../ui/Field'
 import { DropZone } from '../ui/DropZone'
 import { ErrorState } from '../ui/States'
@@ -44,11 +44,7 @@ export function ExecuteScreen() {
             error={error ?? new Error('not found')}
             onRetry={reload}
             action={
-              <Link to="/work-orders">
-                <Button size="sm" variant="primary">
-                  Semua work order
-                </Button>
-              </Link>
+              <LinkButton to="/work-orders" size="sm" variant="primary">Semua work order</LinkButton>
             }
           />
         </Card>
@@ -61,12 +57,7 @@ export function ExecuteScreen() {
 
   return (
     <AppShell title={data.title} subtitle="Kirim hasil pekerjaan untuk diverifikasi.">
-      <Link
-        to={`/work-orders/${data.id}`}
-        className="mb-3 inline-flex items-center gap-1.5 text-[13px] text-content-3 hover:text-content"
-      >
-        <ArrowLeft size={14} /> Kembali ke work order
-      </Link>
+      <BackLink to={`/work-orders/${data.id}`}>Kembali ke work order</BackLink>
 
       <div className="grid grid-cols-12 gap-3">
         <div className="col-span-12 space-y-3 xl:col-span-8">

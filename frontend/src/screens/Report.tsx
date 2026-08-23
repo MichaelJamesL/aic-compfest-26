@@ -1,12 +1,12 @@
-import { Link, useParams } from 'react-router'
-import { ArrowLeft, Download, RefreshCw } from 'lucide-react'
+import { useParams } from 'react-router'
+import { Download, RefreshCw } from 'lucide-react'
 import { AppShell } from '../shell/AppShell'
 import { api } from '../api/client'
 import { useRequest } from '../lib/useRequest'
 import { VERDICT } from '../lib/severity'
 import { Card, CardTitle, SectionTitle } from '../ui/Card'
 import { Badge } from '../ui/Badge'
-import { Button } from '../ui/Button'
+import { BackLink, Button, LinkButton } from '../ui/Button'
 import { ErrorState } from '../ui/States'
 import { Skeleton } from '../ui/Skeleton'
 import type { MaintenanceReport } from '../api/types'
@@ -39,11 +39,7 @@ export function ReportScreen() {
             error={error ?? new Error('not found')}
             onRetry={reload}
             action={
-              <Link to="/work-orders">
-                <Button size="sm" variant="primary">
-                  Semua work order
-                </Button>
-              </Link>
+              <LinkButton to="/work-orders" size="sm" variant="primary">Semua work order</LinkButton>
             }
           />
         </Card>
@@ -57,12 +53,7 @@ export function ReportScreen() {
 
   return (
     <AppShell title="Verifikasi & laporan" subtitle={data.title}>
-      <Link
-        to={`/work-orders/${data.id}`}
-        className="mb-3 inline-flex items-center gap-1.5 text-[13px] text-content-3 hover:text-content"
-      >
-        <ArrowLeft size={14} /> Kembali ke work order
-      </Link>
+      <BackLink to={`/work-orders/${data.id}`}>Kembali ke work order</BackLink>
 
       {report ? <Verdict report={report} /> : <NotYetVerified />}
     </AppShell>

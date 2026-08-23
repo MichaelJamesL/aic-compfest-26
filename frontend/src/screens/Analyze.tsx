@@ -7,7 +7,7 @@ import { useRequest } from '../lib/useRequest'
 import { parseCsv, toReadings, type ParsedReading } from '../lib/csv'
 import { FORM_INPUTS } from '../lib/health'
 import { Card, CardTitle, SectionTitle } from '../ui/Card'
-import { Button } from '../ui/Button'
+import { Button, LinkButton } from '../ui/Button'
 import { DropZone } from '../ui/DropZone'
 import { Select, TextArea, TextInput } from '../ui/Field'
 import { EmptyState, ErrorState } from '../ui/States'
@@ -118,7 +118,11 @@ export function AnalyzeScreen() {
       {assets.data && assets.data.length === 0 && (
         <Card>
           <EmptyState
-            action={<Button variant="primary" onClick={() => navigate('/setup')}>Buka Setup</Button>}
+            action={
+              <LinkButton to="/setup" variant="primary">
+                Buka Setup
+              </LinkButton>
+            }
           >
             Belum ada mesin terdaftar. Unggah daftar mesin di Setup sebelum menjalankan
             analisis.

@@ -138,6 +138,6 @@ describe('Analyze — the single input form', () => {
   it('sends the user to Setup when no machine is registered', async () => {
     render([])
     expect(await screen.findByText(/Belum ada mesin terdaftar/)).toBeTruthy()
-    expect(screen.getByRole('button', { name: 'Buka Setup' })).toBeTruthy()
+    expect(screen.getByRole('link', { name: 'Buka Setup' })).toBeTruthy()
   })
 })

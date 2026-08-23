@@ -98,6 +98,8 @@ async function visit(page, name, path) {
         .filter((el) => {
           if (el.children.length) return false
           if (el.scrollWidth <= el.clientWidth + 1) return false
+          // `sr-only` clips on purpose: it is read, never seen.
+          if (el.closest('.sr-only')) return false
           return getComputedStyle(el).overflowX === 'hidden'
         })
         .slice(0, 4)
@@ -210,6 +212,20 @@ async function visit(page, name, path) {
  * media queries.
  */
 async function keyboardWalk(page, route) {
+  // The real invariant is that *every* interactive element can be reached, not
+  // that some arbitrary number can. An earlier threshold of 8 was calibrated
+  // against a header that still carried three controls which did nothing.
+  const expected = await page.evaluate(
+    () =>
+      [...document.querySelectorAll('a[href], button, input, select, textarea')].filter((el) => {
+        if (el.disabled || el.getAttribute('tabindex') === '-1') return false
+        // A hidden file input behind a visible trigger belongs out of the tab
+        // order; so does anything inside a collapsed breakpoint.
+        const box = el.getBoundingClientRect()
+        return box.width > 0 && box.height > 0
+      }).length,
+  )
+
   const reachable = []
   const ringless = []
 
@@ -238,8 +254,12 @@ async function keyboardWalk(page, route) {
     }
   }
 
-  if (reachable.length < 8) {
-    report('fail', route, `only ${reachable.length} elements reachable by Tab`)
+  if (reachable.length < expected) {
+    report(
+      'fail',
+      route,
+      `${expected - reachable.length} of ${expected} interactive elements unreachable by Tab`,
+    )
   }
   // An invisible focus ring is an accessibility failure, not a style choice.
   for (const element of ringless.slice(0, 3)) {

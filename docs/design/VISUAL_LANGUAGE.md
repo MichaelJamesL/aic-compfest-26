@@ -412,6 +412,36 @@ Ghost: text only, `--text-2`, hover `--text-1`.
 Destructive: `--crit` background, `#111111` text — approval rejection only.
 One primary button per screen region.
 
+### Navigation must look like navigation
+
+Hover is not an affordance. It does not exist on a touch screen, it does not
+appear in a screenshot, and it does not help anyone deciding whether something
+is clickable *before* they move the mouse. Anything that goes somewhere shows it
+at rest.
+
+| Going somewhere | Use | Renders |
+| --- | --- | --- |
+| A primary or secondary action | `LinkButton` | one `<a>` with the button treatment |
+| Back up a level | `BackLink` | 32-tall pill, hairline border, hover surface |
+| Inline in running text | `TextLink` | `--content`, **underlined at rest** |
+| A table row | `Tr to=…` + `NavCell` + `ChevronCell` | row hover surface, underlined title, trailing chevron |
+
+Rules:
+
+- **Never wrap a `<Button>` in a `<Link>`.** That nests interactive content:
+  two focus stops, ambiguous role, and invalid HTML. `LinkButton` renders one
+  anchor and shares `controlClass` with `Button`, so the two cannot drift.
+- **Never use `<Button onClick={() => navigate(…)}>`.** It looks like a button
+  but is a navigation, so right-click, middle-click and open-in-new-tab all
+  fail on it.
+- A navigable row gets **three** signals — hover surface, underlined title,
+  trailing chevron — because the first is invisible at rest and the third alone
+  is easy to miss. The chevron is `tabIndex={-1}`: it goes where the title goes,
+  and one destination should not cost two tab stops.
+- `underline-offset-[3px]` with `decoration-line-strong`, darkening to
+  `decoration-content` on hover. Never a coloured link: the palette has no link
+  blue and is not getting one.
+
 ### Input
 Height 40, `--card` on dark / `--shell` with hairline-ink on light, radius
 `--r-control` (search fields use `--r-pill`, as in the reference), 14/400,

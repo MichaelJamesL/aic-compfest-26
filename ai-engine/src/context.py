@@ -9,7 +9,7 @@ from __future__ import annotations
 import tiktoken
 
 from . import config, knowledge, vision
-from .schemas import AnalysisRequest, ContextBundle, ContextDoc
+from .schemas import AnalysisRequest, ContextBundle, ContextDoc, PhaseQC
 from .signals import detect_anomalies, health_score
 
 # How many most-recent maintenance records to include.
@@ -70,6 +70,29 @@ def select_context(
     defects = vision.inspect(request.asset.id, request.images) if request.images else []
     health, summary = health_score(request.asset, anomalies, request.history, defects)
 
+    qc_by_phase: list[PhaseQC] = []
+    for batch in request.qc_batches:
+        if not batch.images:
+            continue
+        try:
+            findings = vision.inspect(
+                batch.product, batch.images, subject="product", phase=batch.phase
+            )
+        except (FileNotFoundError, OSError):
+            continue
+        defect_count = sum(1 for f in findings if f.label == "defect")
+        qc_by_phase.append(
+            PhaseQC(
+                phase=batch.phase,
+                asset_id=batch.asset_id,
+                product=batch.product,
+                inspected=len(findings),
+                defects=defect_count,
+                defect_rate=defect_count / len(findings) if findings else 0.0,
+                findings=findings,
+            )
+        )
+
     query = _retrieval_query(request)
     corpus = knowledge.search(query, request.asset.id, request.factory_id, k=RETRIEVAL_K)
 
@@ -81,6 +104,7 @@ def select_context(
         assets_facts=_assets_facts(request, anomalies, health, summary, defects),
         anomalies=anomalies,
         defects=defects,
+        qc_by_phase=qc_by_phase,
         health_score=health,
         corpus=_pack_corpus(corpus, budget),
         history=history,

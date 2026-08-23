@@ -1,13 +1,13 @@
 import { useState } from 'react'
-import { Link, useParams } from 'react-router'
-import { ArrowLeft, Download } from 'lucide-react'
+import { useParams } from 'react-router'
+import { Download } from 'lucide-react'
 import { AppShell } from '../shell/AppShell'
 import { ApiError, api } from '../api/client'
 import { useRequest } from '../lib/useRequest'
 import { VERDICT } from '../lib/severity'
 import { Card, CardTitle, SectionTitle } from '../ui/Card'
 import { Badge } from '../ui/Badge'
-import { Button } from '../ui/Button'
+import { BackLink, Button, LinkButton } from '../ui/Button'
 import { ErrorState } from '../ui/States'
 import { Skeleton } from '../ui/Skeleton'
 import type { MaintenanceReport, WorkOrder } from '../api/types'
@@ -51,11 +51,7 @@ export function ReportScreen() {
             error={error ?? new Error('not found')}
             onRetry={reload}
             action={
-              <Link to="/work-orders">
-                <Button size="sm" variant="primary">
-                  Semua work order
-                </Button>
-              </Link>
+              <LinkButton to="/work-orders" size="sm" variant="primary">Semua work order</LinkButton>
             }
           />
         </Card>
@@ -67,12 +63,7 @@ export function ReportScreen() {
 
   return (
     <AppShell title="Verifikasi & laporan" subtitle={order.title}>
-      <Link
-        to={`/work-orders/${order.id}`}
-        className="mb-3 inline-flex items-center gap-1.5 text-[13px] text-faint hover:text-white"
-      >
-        <ArrowLeft size={14} /> Kembali ke work order
-      </Link>
+      <BackLink to={`/work-orders/${order.id}`}>Kembali ke work order</BackLink>
 
       {report ? <Verdict orderId={order.id} report={report} /> : (
          <NotYetVerified orderId={order.id} hasTechnicianResult={order.technician_result_json != null && order.status === 'in_progress'} onVerified={reload} />
@@ -104,7 +95,7 @@ function NotYetVerified({ orderId, hasTechnicianResult, onVerified }: {
     <>
       <Card>
         <SectionTitle>Belum diverifikasi</SectionTitle>
-        <p className="mt-3 max-w-prose text-[13px] leading-6 text-dim">
+        <p className="mt-3 max-w-prose text-[13px] leading-6 text-content-2">
           Verifikasi berjalan setelah teknisi mengirim hasil pekerjaan. AI membandingkan
           hasil itu dengan SOP dan kondisi mesin, lalu mengeluarkan verdict beserta
           buktinya — bukan menyatakan selesai sendiri.
@@ -112,9 +103,9 @@ function NotYetVerified({ orderId, hasTechnicianResult, onVerified }: {
 
         <div className="mt-5 grid gap-3 md:grid-cols-3">
           {(['resolved', 'partial', 'not_resolved'] as const).map((verdict) => (
-            <div key={verdict} className="rounded-control border border-hair p-4">
+            <div key={verdict} className="rounded-control border border-line p-4">
               <Badge tone={VERDICT[verdict].tone}>{VERDICT[verdict].label}</Badge>
-              <p className="mt-2.5 text-xs leading-5 text-faint">
+              <p className="mt-2.5 text-xs leading-5 text-content-3">
                 {verdict === 'resolved' && 'Bukti mendukung bahwa masalah kondisi mesin hilang.'}
                 {verdict === 'partial' && 'Sebagian tindakan terbukti, sisanya butuh tindak lanjut.'}
                 {verdict === 'not_resolved' && 'Bukti tidak mendukung; diagnosis ulang bisa diminta.'}
@@ -137,7 +128,6 @@ function NotYetVerified({ orderId, hasTechnicianResult, onVerified }: {
           mengisi dan mengirim hasil pekerjaan terlebih dahulu.
         </p>
       )}
-
     </>
   )
 }
@@ -193,13 +183,13 @@ function Verdict({ orderId, report }: { orderId: string; report: MaintenanceRepo
           <SectionTitle>Tindak lanjut</SectionTitle>
           <ul className="mt-4 space-y-2">
             {report.verdict.follow_up.map((item) => (
-              <li key={item} className="text-[13px] text-dim">
+              <li key={item} className="text-[13px] text-content-2">
                 {item}
               </li>
             ))}
           </ul>
           <div className="mt-5">
-            <p className="text-xs text-faint">Diagnosis ulang belum tersedia pada API saat ini.</p>
+            <p className="text-xs text-content-3">Diagnosis ulang belum tersedia pada API saat ini.</p>
           </div>
         </Card>
       )}
@@ -220,15 +210,15 @@ function Verdict({ orderId, report }: { orderId: string; report: MaintenanceRepo
         <dl className="mt-4 space-y-4">
           <div>
             <CardTitle muted>Masalah</CardTitle>
-            <dd className="mt-1 text-[13px] leading-6 text-dim">{report.problem}</dd>
+            <dd className="mt-1 text-[13px] leading-6 text-content-2">{report.problem}</dd>
           </div>
           <div>
             <CardTitle muted>Tindakan</CardTitle>
-            <dd className="mt-1 text-[13px] leading-6 text-dim">{report.action}</dd>
+            <dd className="mt-1 text-[13px] leading-6 text-content-2">{report.action}</dd>
           </div>
           <div>
             <CardTitle muted>Kondisi akhir mesin</CardTitle>
-            <dd className="mt-1 text-[13px] leading-6 text-dim">
+            <dd className="mt-1 text-[13px] leading-6 text-content-2">
               {report.final_asset_state.status ?? 'Status tidak tersedia'}
             </dd>
           </div>

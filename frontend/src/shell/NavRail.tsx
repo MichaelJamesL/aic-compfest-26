@@ -11,21 +11,46 @@ const ITEMS = [
 ]
 
 /**
- * Below 1024 this collapses to a 64px icon-only strip — it is never removed.
+ * Dark rail against the light work surface. Sticky and full-height, so it does
+ * not scroll away on a long results page.
+ *
+ * Below 1024 it collapses to a 64px icon-only strip — it is never removed.
  * Navigation and the engine-mode signal must survive every viewport.
  */
+/**
+ * The light variants sit directly on the rail — darkest opaque pixel `#769F8B`
+ * measures 6.39:1 against `--rail`, so the plate the dark lockup needed is
+ * gone. The dark files stay for light surfaces and the favicons.
+ */
+function Brand() {
+  return (
+    <div className="px-1">
+      <img
+        src="/logo-text-white.png"
+        alt="Siena"
+        width={1452}
+        height={359}
+        className="hidden h-auto w-full max-w-[168px] lg:block"
+      />
+      <img
+        src="/logo-white.png"
+        alt="Siena"
+        width={372}
+        height={359}
+        className="mx-auto h-auto w-full max-w-8 lg:hidden"
+      />
+      <p className="mt-3 hidden text-[11.5px] leading-4 text-rail-content-3 lg:block">
+        Intelligence, grounded in industry
+      </p>
+    </div>
+  )
+}
+
 export function NavRail() {
   return (
-    <nav className="flex w-16 shrink-0 flex-col justify-between p-2 lg:w-[232px] lg:p-5">
+    <nav className="sticky top-0 flex h-screen w-16 shrink-0 flex-col justify-between overflow-y-auto bg-rail p-2 lg:w-[232px] lg:p-5">
       <div>
-        <div className="flex h-10 items-center justify-center gap-2.5 lg:justify-start lg:px-1">
-          <span className="grid size-5 shrink-0 place-items-center rounded-full bg-ink">
-            <span className="size-1.5 rounded-full bg-shell" />
-          </span>
-          <span className="hidden text-[15px] font-semibold -tracking-[0.01em] lg:inline">
-            Coordinator
-          </span>
-        </div>
+        <Brand />
 
         <ul className="mt-6 space-y-1 lg:mt-8">
           {ITEMS.map(({ to, label, icon: Icon }) => (
@@ -38,14 +63,14 @@ export function NavRail() {
                     'flex h-10 items-center justify-center gap-3 rounded-control text-sm font-medium',
                     'transition-colors duration-100 lg:justify-start lg:px-3.5',
                     isActive
-                      ? 'bg-ink text-shell'
-                      : 'text-ink-dim hover:bg-ink/5 hover:text-ink',
+                      ? 'bg-rail-content text-rail'
+                      : 'text-rail-content-2 hover:bg-white/5 hover:text-rail-content',
                   )
                 }
               >
                 {({ isActive }) => (
                   <>
-                    <Icon size={18} className={cn('shrink-0', !isActive && 'text-ink-faint')} />
+                    <Icon size={18} className={cn('shrink-0', !isActive && 'text-rail-content-3')} />
                     <span className="hidden lg:inline">{label}</span>
                   </>
                 )}

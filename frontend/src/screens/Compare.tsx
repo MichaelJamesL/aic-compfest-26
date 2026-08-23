@@ -1,5 +1,5 @@
-import { Link, useParams, useSearchParams } from 'react-router'
-import { Activity, ArrowLeft, FileText, Gauge } from 'lucide-react'
+import { useParams, useSearchParams } from 'react-router'
+import { Activity, FileText, Gauge } from 'lucide-react'
 import { AppShell } from '../shell/AppShell'
 import { api } from '../api/client'
 import { useRequest } from '../lib/useRequest'
@@ -8,7 +8,7 @@ import { formatDateTime } from '../lib/format'
 import { healthLabel, priorityLabel, priorityTone } from '../lib/severity'
 import { Card, SectionTitle } from '../ui/Card'
 import { Badge } from '../ui/Badge'
-import { Button } from '../ui/Button'
+import { BackLink, LinkButton } from '../ui/Button'
 import { Select } from '../ui/Field'
 import { MetricCard } from '../ui/MetricCard'
 import { EmptyState, ErrorState, MissingInput } from '../ui/States'
@@ -61,12 +61,7 @@ export function CompareScreen() {
 
   return (
     <AppShell title="Perbandingan run" subtitle={asset}>
-      <Link
-        to={`/analysis/${id}`}
-        className="mb-3 inline-flex items-center gap-1.5 text-[13px] text-faint hover:text-white"
-      >
-        <ArrowLeft size={14} /> Kembali ke hasil analisis
-      </Link>
+      <BackLink to={`/analysis/${id}`}>Kembali ke hasil analisis</BackLink>
 
       <Card tint="mint" className="mb-3">
         <p className="text-[13px] leading-6">
@@ -87,9 +82,7 @@ export function CompareScreen() {
         <Card>
           <EmptyState
             action={
-              <Link to="/analyze">
-                <Button variant="primary">Jalankan analisis kedua</Button>
-              </Link>
+              <LinkButton to="/analyze" variant="primary">Jalankan analisis kedua</LinkButton>
             }
           >
             Belum ada run kedua untuk dibandingkan. Jalankan aset yang sama dua kali — sekali
@@ -126,8 +119,8 @@ function RunPicker({
     <Card className="mb-3">
       <div className="grid gap-4 md:grid-cols-2">
         <div>
-          <p className="text-[13px] font-medium text-dim">Run A</p>
-          <p className="mt-1.5 text-[13px] text-faint">
+          <p className="text-[13px] font-medium text-content-2">Run A</p>
+          <p className="mt-1.5 text-[13px] text-content-3">
             Analisis {currentId.slice(0, 8)} — run yang sedang dibuka
           </p>
         </div>
@@ -184,8 +177,8 @@ function Column({ detail, label }: { detail: AnalysisDetail; label: string }) {
               key={item.key}
               className={
                 item.present
-                  ? 'rounded-lg bg-raised px-2 py-1 text-xs text-white'
-                  : 'rounded-lg border border-hair px-2 py-1 text-xs text-faint'
+                  ? 'rounded-lg bg-surface-raised px-2 py-1 text-xs text-content'
+                  : 'rounded-lg border border-line px-2 py-1 text-xs text-content-3'
               }
             >
               {item.label}
@@ -239,9 +232,9 @@ function Column({ detail, label }: { detail: AnalysisDetail; label: string }) {
         <SectionTitle>Root cause</SectionTitle>
         <ul className="mt-3 space-y-2">
           {result.root_causes.map((cause) => (
-            <li key={cause.cause} className="text-[13px] text-dim">
+            <li key={cause.cause} className="text-[13px] text-content-2">
               {cause.cause}{' '}
-              <span className="tnum text-faint">{Math.round(cause.confidence * 100)}%</span>
+              <span className="tnum text-content-3">{Math.round(cause.confidence * 100)}%</span>
             </li>
           ))}
           {result.root_causes.length === 0 && (

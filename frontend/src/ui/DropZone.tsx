@@ -51,12 +51,12 @@ export function DropZone({
           'flex h-[120px] w-full flex-col items-center justify-center gap-1.5 rounded-control',
           'border border-dashed px-4 text-center transition-colors duration-100',
           'disabled:pointer-events-none disabled:opacity-40',
-          over ? 'border-solid border-dim bg-raised' : 'border-hair-strong hover:border-dim',
+          over ? 'border-solid border-dim bg-surface-raised' : 'border-line-strong hover:border-dim',
         )}
       >
-        <span className="text-dim">{icon}</span>
-        <span className="text-[13px] font-medium text-white">{label}</span>
-        <span className="text-xs text-faint">{hint}</span>
+        <span className="text-content-2">{icon}</span>
+        <span className="text-[13px] font-medium text-content">{label}</span>
+        <span className="text-xs text-content-3">{hint}</span>
       </button>
       <input
         ref={input}

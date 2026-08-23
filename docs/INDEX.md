@@ -74,6 +74,7 @@ green.
 git checkout -b <type>/<short-slug>      # feat/ fix/ docs/ chore/
 # … work …
 cd frontend && npm run test && npm run build     # or the area's own checks
+sh scripts/check-tracked.sh                      # nothing silently ignored
 git add -A && git commit -m "feat: three to five words"
 git push -u origin HEAD
 git checkout main && git merge --no-ff <branch> && git push origin main
@@ -91,6 +92,13 @@ Rules:
 - **Merge with `--no-ff`** so each unit of work stays a visible group in the
   history.
 - Never rewrite published history. No force-push to `main`, ever.
+- **Run `sh scripts/check-tracked.sh` before pushing anything with new files.**
+  The root `.gitignore` is a combined Python/Node template, and an unanchored
+  rule from one language's build output can swallow another's source. It
+  already did: `lib/` from the Python packaging block matched
+  `frontend/src/lib/` — ten files every screen imports — and an ignored file
+  never appears in `git status`, so nothing said so. A teammate cloning the
+  repo would have got a frontend that does not compile.
 - Nothing in the repo may identify an educational institution — rulebook
   requirement, and it applies to commit messages and author names too.
 

@@ -73,7 +73,7 @@ export function Donut({
         <div className="absolute inset-0 flex items-center justify-center">
           <p className="tnum text-[30px] leading-[34px] font-semibold -tracking-[0.02em]">
             {value}
-            {suffix && <span className="text-base text-faint">{suffix}</span>}
+            {suffix && <span className="text-base text-content-3">{suffix}</span>}
           </p>
         </div>
       </div>
@@ -81,7 +81,7 @@ export function Donut({
       {/* Below the ring, not inside it: the inner circle is only ~84px wide at
           the caption's height, and Indonesian band labels are longer. */}
       {caption && (
-        <p className={cn('mt-3 text-center text-xs', captionClass ?? 'text-dim')}>{caption}</p>
+        <p className={cn('mt-3 text-center text-xs', captionClass ?? 'text-content-2')}>{caption}</p>
       )}
     </div>
   )
@@ -99,7 +99,7 @@ export function DonutLegend({ segments }: { segments: Segment[] }) {
             style={{ background: segment.color }}
             aria-hidden
           />
-          <dt className="flex-1 text-xs text-dim">{segment.label}</dt>
+          <dt className="flex-1 text-xs text-content-2">{segment.label}</dt>
           <dd className="tnum text-xs font-medium">
             {Math.round((segment.value / total) * 100)}%
           </dd>

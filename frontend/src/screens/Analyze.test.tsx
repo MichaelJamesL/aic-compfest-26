@@ -149,9 +149,19 @@ describe('Analyze — the single input form', () => {
     await waitFor(() => expect(screen.getByText('navigated away')).toBeTruthy())
   })
 
+  it('offers no dead controls in the header', async () => {
+    render()
+    await screen.findByText('Kelengkapan input')
+    // Search, settings and notifications were decoration copied from the
+    // reference; a control that does nothing is worse than an absent one.
+    expect(screen.queryByRole('searchbox')).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Pengaturan' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Notifikasi' })).toBeNull()
+  })
+
   it('sends the user to Setup when no machine is registered', async () => {
     render([])
     expect(await screen.findByText(/Belum ada mesin terdaftar/)).toBeTruthy()
-    expect(screen.getByRole('button', { name: 'Buka Setup' })).toBeTruthy()
+    expect(screen.getByRole('link', { name: 'Buka Setup' })).toBeTruthy()
   })
 })

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Check, Loader2 } from 'lucide-react'
 import { Card, SectionTitle } from '../ui/Card'
+import { Button } from '../ui/Button'
 import { cn } from '../lib/cn'
 
 /**
@@ -31,9 +32,11 @@ const TIMEOUT_S = 120
 export function RunProgress({
   step,
   readingCount,
+  onCancel,
 }: {
   step: number
   readingCount: number
+  onCancel?: () => void
 }) {
   const [elapsed, setElapsed] = useState(0)
 
@@ -53,27 +56,44 @@ export function RunProgress({
 
   return (
     <div className="grid grid-cols-12 gap-3">
+      {/*
+        The wait can run to two minutes with no progress from the server, so it
+        is announced rather than left silent for anyone not watching the list.
+      */}
+      <p aria-live="polite" className="sr-only">
+        {overtime
+          ? 'Analisis masih berjalan, melewati perkiraan waktu.'
+          : `Analisis sedang berjalan, ${engineElapsed} detik.`}
+      </p>
+
       <Card className="col-span-12 xl:col-span-7">
-        <SectionTitle>Proses</SectionTitle>
+        <div className="flex items-center gap-3">
+          <SectionTitle>Proses</SectionTitle>
+          {onCancel && (
+            <Button size="sm" variant="ghost" className="ml-auto" onClick={onCancel}>
+              Batalkan
+            </Button>
+          )}
+        </div>
         <ol className="mt-4 space-y-3">
           {outer.map((item) => (
             <li key={item.label} className="flex items-center gap-3 text-[13px]">
               <Marker done={item.done} active={item.active} />
-              <span className={item.done || item.active ? 'text-white' : 'text-faint'}>
+              <span className={item.done || item.active ? 'text-content' : 'text-content-3'}>
                 {item.label}
               </span>
             </li>
           ))}
         </ol>
 
-        <div className="mt-6 border-t border-hair pt-5">
+        <div className="mt-6 border-t border-line pt-5">
           <div className="flex items-baseline justify-between gap-3">
             <h3 className="text-sm font-medium">Perkiraan tahap</h3>
-            <span className="tnum text-xs text-faint">
+            <span className="tnum text-xs text-content-3">
               {overtime ? 'masih berjalan…' : `${engineElapsed}s`}
             </span>
           </div>
-          <p className="mt-1.5 text-xs leading-5 text-faint">
+          <p className="mt-1.5 text-xs leading-5 text-content-3">
             Urutan ini mencerminkan pipeline, bukan telemetri dari server — backend tidak
             mengirim progres antara.
           </p>
@@ -86,10 +106,10 @@ export function RunProgress({
               return (
                 <li key={stage.label} className="flex items-center gap-3 text-[13px]">
                   <Marker done={reached && !running} active={running} muted={!stage.available} />
-                  <span className={cn('flex-1', stage.available ? 'text-dim' : 'text-faint')}>
+                  <span className={cn('flex-1', stage.available ? 'text-content-2' : 'text-content-3')}>
                     {stage.label}
                   </span>
-                  <span className="text-[11.5px] text-faint">
+                  <span className="text-[11.5px] text-content-3">
                     {stage.available ? stage.kind : 'belum tersedia'}
                   </span>
                 </li>
@@ -124,7 +144,7 @@ function Marker({
   active: boolean
   muted?: boolean
 }) {
-  if (active) return <Loader2 size={14} className="shrink-0 animate-spin text-white" />
+  if (active) return <Loader2 size={14} className="shrink-0 animate-spin text-content" />
   if (done)
     return (
       <span className="grid size-3.5 shrink-0 place-items-center rounded-full bg-ok-fill text-ok-text">
@@ -135,7 +155,7 @@ function Marker({
     <span
       className={cn(
         'size-3.5 shrink-0 rounded-full border',
-        muted ? 'border-hair' : 'border-hair-strong',
+        muted ? 'border-line' : 'border-line-strong',
       )}
       aria-hidden
     />

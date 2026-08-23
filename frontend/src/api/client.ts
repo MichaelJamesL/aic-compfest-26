@@ -100,7 +100,13 @@ const MESSAGES: Record<string, string> = {
   technician_result_required: 'Hasil pekerjaan teknisi belum dikirim.',
 }
 
+/** True when the user cancelled, which is not a failure to report. */
+export function isAborted(error: unknown): boolean {
+  return error instanceof DOMException && error.name === 'AbortError'
+}
+
 export function errorCopy(error: unknown): string {
+  if (isAborted(error)) return 'Analisis dibatalkan.'
   if (!(error instanceof ApiError)) {
     return 'Tidak bisa menghubungi server. Periksa apakah backend berjalan di :8000.'
   }
@@ -199,8 +205,8 @@ export const api = {
   },
 
   readings: (assetId: string) => request<Reading[]>(`/api/v1/assets/${assetId}/readings`),
-  addReading: (assetId: string, body: Omit<Reading, 'id'>) =>
-    request<{ id: string; quality: string }>(`/api/v1/assets/${assetId}/readings`, json(body)),
+  addReading: (assetId: string, body: Omit<Reading, 'id'>, signal?: AbortSignal) =>
+    request<{ id: string; quality: string }>(`/api/v1/assets/${assetId}/readings`, { ...json(body), signal }),
   importReadings: (assetId: string, file: File) => {
     const form = new FormData(); form.append('file', file)
     return request<{ count: number; errors: { row: number; reason: string }[] }>(`/api/v1/assets/${assetId}/readings/import`, { method: 'POST', body: form })
@@ -228,8 +234,8 @@ export const api = {
     })
   },
 
-  analyze: (assetId: string, body: AnalysisInput) =>
-    request<AnalysisRun>(`/api/v1/assets/${assetId}/analyses`, json(body)),
+  analyze: (assetId: string, body: AnalysisInput, signal?: AbortSignal) =>
+    request<AnalysisRun>(`/api/v1/assets/${assetId}/analyses`, { ...json(body), signal }),
   analysis: (id: string) => request<AnalysisDetail>(`/api/v1/analyses/${id}`),
   /**
    * Runs for one asset. Used only by the comparison screen, which demonstrates

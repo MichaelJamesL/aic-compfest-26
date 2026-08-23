@@ -1,11 +1,11 @@
 import { useState } from 'react'
-import { Link, useParams } from 'react-router'
-import { ArrowLeft, Send } from 'lucide-react'
+import { useParams } from 'react-router'
+import { Send } from 'lucide-react'
 import { AppShell } from '../shell/AppShell'
 import { api, getIdentity } from '../api/client'
 import { useRequest } from '../lib/useRequest'
 import { Card, CardTitle, SectionTitle } from '../ui/Card'
-import { Button } from '../ui/Button'
+import { BackLink, Button, LinkButton } from '../ui/Button'
 import { TextArea, TextInput } from '../ui/Field'
 import { ErrorState } from '../ui/States'
 import { Skeleton } from '../ui/Skeleton'
@@ -45,11 +45,7 @@ export function ExecuteScreen() {
             error={error ?? new Error('not found')}
             onRetry={reload}
             action={
-              <Link to="/work-orders">
-                <Button size="sm" variant="primary">
-                  Semua work order
-                </Button>
-              </Link>
+              <LinkButton to="/work-orders" size="sm" variant="primary">Semua work order</LinkButton>
             }
           />
         </Card>
@@ -79,12 +75,7 @@ export function ExecuteScreen() {
 
   return (
     <AppShell title={data.title} subtitle="Kirim hasil pekerjaan untuk diverifikasi.">
-      <Link
-        to={`/work-orders/${data.id}`}
-        className="mb-3 inline-flex items-center gap-1.5 text-[13px] text-faint hover:text-white"
-      >
-        <ArrowLeft size={14} /> Kembali ke work order
-      </Link>
+      <BackLink to={`/work-orders/${data.id}`}>Kembali ke work order</BackLink>
 
       <div className="grid grid-cols-12 gap-3">
         <div className="col-span-12 space-y-3 xl:col-span-8">
@@ -93,7 +84,7 @@ export function ExecuteScreen() {
             <ul className="mt-4 space-y-1">
               {steps.map((step) => (
                 <li key={step}>
-                  <label className="flex cursor-pointer items-start gap-3 rounded-control px-2 py-2 text-[13px] text-dim hover:bg-raised">
+                  <label className="flex cursor-pointer items-start gap-3 rounded-control px-2 py-2 text-[13px] text-content-2 hover:bg-surface-raised">
                     <input
                       type="checkbox"
                       className="mt-1 size-3.5 shrink-0 accent-white"
@@ -106,12 +97,12 @@ export function ExecuteScreen() {
                         )
                       }
                     />
-                    <span className={done.includes(step) ? 'text-white' : undefined}>{step}</span>
+                    <span className={done.includes(step) ? 'text-content' : undefined}>{step}</span>
                   </label>
                 </li>
               ))}
             </ul>
-            <p className="mt-3 text-xs text-faint">
+            <p className="mt-3 text-xs text-content-3">
               {done.length} dari {steps.length} langkah ditandai selesai.
             </p>
           </Card>
@@ -168,8 +159,8 @@ export function ExecuteScreen() {
       </div>
 
       <div className="sticky bottom-4 z-20 mt-3">
-        <div className="glass-dark flex flex-wrap items-center gap-3 rounded-card px-5 py-3.5">
-          <p className="flex-1 text-[13px] text-dim">
+        <div className="glass-light flex flex-wrap items-center gap-3 rounded-card px-5 py-3.5">
+          <p className="flex-1 text-[13px] text-content-2">
             {isTechnician
               ? 'Kirim hasil untuk diverifikasi.'
               : 'Form ini diisi oleh teknisi — ganti peran di pojok kanan atas.'}

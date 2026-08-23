@@ -1,35 +1,21 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 
-export function useRequest<T>(request: () => Promise<T>, deps: readonly unknown[]) {
-  const [data, setData] = useState<T | undefined>(undefined)
-  const [error, setError] = useState<unknown>(null)
-  const [loading, setLoading] = useState(true)
-  const [reloadKey, setReloadKey] = useState(0)
-  const requestRef = useRef(request)
-  requestRef.current = request
+interface State<T> { data: T | null; error: unknown; loading: boolean }
 
-  const reload = useCallback(() => setReloadKey((key) => key + 1), [])
-
+export function useRequest<T>(fn: () => Promise<T>, deps: unknown[] = []) {
+  const [state, setState] = useState<State<T>>({ data: null, error: null, loading: true })
+  const alive = useRef(true)
+  // The caller owns the dependency list; this hook only owns request state.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const run = useCallback(fn, deps)
+  const reload = useCallback(() => {
+    setState((prev) => ({ ...prev, loading: true, error: null }))
+    run().then((data) => alive.current && setState({ data, error: null, loading: false }), (error) => alive.current && setState({ data: null, error, loading: false }))
+  }, [run])
   useEffect(() => {
-    let current = true
-    setLoading(true)
-    setError(null)
-    requestRef.current()
-      .then((value) => {
-        if (current) setData(value)
-      })
-      .catch((reason: unknown) => {
-        if (current) setError(reason)
-      })
-      .finally(() => {
-        if (current) setLoading(false)
-      })
-    return () => {
-      current = false
-    }
-    // `request` is intentionally controlled by the caller's dependency list.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [...deps, reloadKey])
-
-  return { data, error, loading, reload, setData }
+    alive.current = true
+    reload()
+    return () => { alive.current = false }
+  }, [reload])
+  return { ...state, reload, setData: (data: T) => setState({ data, error: null, loading: false }) }
 }

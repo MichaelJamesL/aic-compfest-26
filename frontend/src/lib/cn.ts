@@ -5,9 +5,7 @@ export function cn(...values: ClassValue[]): string {
     .flatMap((value) => {
       if (!value) return []
       if (typeof value === 'string') return [value]
-      return Object.entries(value)
-        .filter(([, enabled]) => enabled)
-        .map(([name]) => name)
+      return Object.entries(value).filter(([, enabled]) => enabled).map(([name]) => name)
     })
     .join(' ')
 }

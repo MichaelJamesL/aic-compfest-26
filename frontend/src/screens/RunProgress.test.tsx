@@ -64,6 +64,28 @@ describe('RunProgress — the two-minute wait', () => {
     expect(screen.queryByText('121s')).toBeNull()
   })
 
+  // Two minutes with no way out is a trap, especially mid-recording.
+  it('offers a way out of the wait', () => {
+    const onCancel = vi.fn()
+    render(<RunProgress step={3} readingCount={0} onCancel={onCancel} />)
+    const button = screen.getByRole('button', { name: 'Batalkan' })
+    button.click()
+    expect(onCancel).toHaveBeenCalledOnce()
+  })
+
+  it('hides the cancel control when the caller cannot honour it', () => {
+    render(<RunProgress step={3} readingCount={0} />)
+    expect(screen.queryByRole('button', { name: 'Batalkan' })).toBeNull()
+  })
+
+  it('announces the wait for anyone not watching the stage list', () => {
+    const { container } = render(<RunProgress step={3} readingCount={0} onCancel={() => {}} />)
+    const live = container.querySelector('[aria-live="polite"]')!
+    expect(live.textContent).toMatch(/Analisis sedang berjalan/)
+    tick(121)
+    expect(live.textContent).toMatch(/melewati perkiraan waktu/)
+  })
+
   it('states the synchronous-scope claim while the user waits', () => {
     render(<RunProgress step={3} readingCount={0} />)
     expect(

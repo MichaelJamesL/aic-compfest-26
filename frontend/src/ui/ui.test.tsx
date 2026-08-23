@@ -64,12 +64,13 @@ describe('Button', () => {
     // Class membership, not substring: every button carries `disabled:border`.
     const classOf = (name: string) =>
       screen.getByRole('button', { name }).className.split(' ')
-    // Primary is a fill on dark; destructive is the only --crit fill.
-    expect(classOf('Setujui')).toContain('bg-white')
+    // Primary is an ink fill on the light work surface; destructive is the
+    // only --crit fill.
+    expect(classOf('Setujui')).toContain('bg-content')
     expect(classOf('Filter')).toContain('border')
-    expect(classOf('Filter')).not.toContain('bg-white')
+    expect(classOf('Filter')).not.toContain('bg-content')
     expect(classOf('Tolak')).not.toContain('border')
-    expect(classOf('Tolak')).toContain('text-dim')
+    expect(classOf('Tolak')).toContain('text-content-2')
     expect(classOf('Hapus')).toContain('bg-crit')
   })
 
@@ -82,7 +83,7 @@ describe('Button', () => {
     const button = screen.getByRole('button', { name: 'Setujui' })
     expect((button as HTMLButtonElement).disabled).toBe(true)
     expect(button.className).toContain('disabled:bg-transparent')
-    expect(button.className).toContain('disabled:text-faint')
+    expect(button.className).toContain('disabled:text-content-3')
     // A disabled control must say why.
     expect(button.getAttribute('title')).toBe('Belum tersedia')
   })

@@ -1,4 +1,3 @@
-import { Link } from 'react-router'
 import { SlidersHorizontal } from 'lucide-react'
 import { AppShell } from '../shell/AppShell'
 import { api } from '../api/client'
@@ -7,8 +6,8 @@ import { formatDateTime } from '../lib/format'
 import { WORK_ORDER, priorityLabel, priorityTone } from '../lib/severity'
 import { Card, SectionTitle } from '../ui/Card'
 import { Badge, StatusDot } from '../ui/Badge'
-import { Button } from '../ui/Button'
-import { Table, Td, Th, Tr } from '../ui/Table'
+import { Button, LinkButton } from '../ui/Button'
+import { ChevronCell, NavCell, Table, Td, Th, Tr } from '../ui/Table'
 import { EmptyState, ErrorState } from '../ui/States'
 import { Skeleton } from '../ui/Skeleton'
 
@@ -30,9 +29,7 @@ export function WorkOrdersScreen() {
         {data?.length === 0 && (
           <EmptyState
             action={
-              <Link to="/analyze">
-                <Button variant="primary">Jalankan analisis</Button>
-              </Link>
+              <LinkButton to="/analyze" variant="primary">Jalankan analisis</LinkButton>
             }
           >
             Belum ada work order. Work order dibuat dari hasil analisis.
@@ -49,19 +46,18 @@ export function WorkOrdersScreen() {
                   <Th>Prioritas</Th>
                   <Th>Status</Th>
                   <Th align="right">Dibuat</Th>
+                  <Th>
+                    <span className="sr-only">Buka</span>
+                  </Th>
                 </tr>
               </thead>
               <tbody>
                 {data.map((order, index) => {
                   const state = WORK_ORDER[order.status]
                   return (
-                    <Tr key={order.id}>
+                    <Tr key={order.id} to={`/work-orders/${order.id}`}>
                       <Td tone="muted">{index + 1}</Td>
-                      <Td tone="primary">
-                        <Link to={`/work-orders/${order.id}`} className="hover:underline">
-                          {order.title}
-                        </Link>
-                      </Td>
+                      <NavCell to={`/work-orders/${order.id}`}>{order.title}</NavCell>
                       <Td>
                         <Badge tone={priorityTone(order.priority)}>
                           {priorityLabel(order.priority)}
@@ -71,6 +67,7 @@ export function WorkOrdersScreen() {
                         <StatusDot tone={state.tone}>{state.label}</StatusDot>
                       </Td>
                       <Td align="right">{formatDateTime(order.created_at)}</Td>
+                      <ChevronCell to={`/work-orders/${order.id}`} label={`Buka ${order.title}`} />
                     </Tr>
                   )
                 })}

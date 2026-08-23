@@ -3,25 +3,37 @@
 /* Design tokens — extracted from docs/ref/ui-ref.jpg.
    See docs/design/VISUAL_LANGUAGE.md. Do not add a colour that is not here. */
 @theme {
-  /* surfaces */
-  --color-page: #e5e5e5;
-  --color-shell: #ffffff;
-  --color-panel: #000000;
+  /*
+   * Two surfaces, named by role rather than by colour. The rail is dark and
+   * the work surface is light; inverting them again is an edit to these
+   * values, not a sweep through every component.
+   */
+
+  /* The work surface — light. */
+  --color-surface: #e5e5e5;
+  --color-surface-card: #ffffff;
+  --color-surface-raised: #f1f1f1;
+  --color-content: #111111;
+  --color-content-2: #5c5c5c;
+  /* #767676 clears 4.5:1 on a white card but only 3.61:1 on the #E5E5E5 panel
+     base, and this text appears on both. Calibrated against the darker of the
+     two: 4.9:1 on the panel, 6.2:1 on a card. */
+  --color-content-3: #616161;
+  --color-line: rgba(17, 17, 17, 0.1);
+  --color-line-strong: rgba(17, 17, 17, 0.22);
+
+  /* The navigation rail — dark. */
+  --color-rail: #111111;
+  --color-rail-raised: #1e1e1e;
+  --color-rail-line: rgba(255, 255, 255, 0.1);
+  --color-rail-content: #ffffff;
+  --color-rail-content-2: #9a9a9a;
+  --color-rail-content-3: #7c7c7c;
+
+  /* Kept: tinted cards still use ink text, and `Card` names it. */
   --color-card: #111111;
-  --color-raised: #1e1e1e;
-
-  /* text — dark surfaces */
-  --color-dim: #9a9a9a;
-  --color-faint: #7c7c7c;
-  /* text — light surfaces */
-  --color-ink: #111111;
-  --color-ink-dim: #5c5c5c;
-  --color-ink-faint: #767676;
-
-  /* hairlines */
-  --color-hair: rgba(255, 255, 255, 0.08);
-  --color-hair-strong: rgba(255, 255, 255, 0.16);
-  --color-hair-ink: rgba(17, 17, 17, 0.08);
+  --color-shell: #ffffff;
+  --color-page: #e5e5e5;
 
   /* accents */
   --color-sage: #7f9e8c;
@@ -37,15 +49,23 @@
   --color-high: #dd9251;
   --color-crit: #d26e3d;
 
-  /* severity tints for pills on dark */
-  --color-ok-fill: rgba(127, 158, 140, 0.18);
-  --color-ok-text: #a9c9b6;
-  --color-warn-fill: rgba(180, 161, 147, 0.18);
-  --color-warn-text: #cbb9ac;
-  --color-high-fill: rgba(221, 146, 81, 0.18);
-  --color-high-text: #eab07a;
-  --color-crit-fill: rgba(210, 110, 61, 0.18);
-  --color-crit-text: #e8956a;
+  /*
+   * Severity tints for pills on the light work surface. The previous values
+   * were light-on-dark and would be unreadable here; these are measured by
+   * `scripts/browser-pass.mjs` against what actually renders.
+   */
+  --color-ok-fill: rgba(127, 158, 140, 0.24);
+  --color-ok-text: #33564a;
+  --color-warn-fill: rgba(180, 161, 147, 0.3);
+  --color-warn-text: #55443a;
+  --color-high-fill: rgba(221, 146, 81, 0.28);
+  --color-high-text: #6d3f10;
+  --color-crit-fill: rgba(210, 110, 61, 0.24);
+  --color-crit-text: #7d340f;
+
+  /* Marks a number as computed rather than written by the model. The mid-tone
+     teal is for dark surfaces; this is its light-surface pair. */
+  --color-teal-ink: #335958;
 
   --radius-shell: 28px;
   --radius-panel: 24px;
@@ -66,8 +86,8 @@
     -moz-osx-font-smoothing: grayscale;
   }
   body {
-    /* Matches the shell so overscroll never reveals a stray gutter. */
-    background: var(--color-shell);
+    /* Matches the rail so overscroll never reveals a stray gutter. */
+    background: var(--color-rail);
     color: var(--color-ink);
     font-family: var(--font-sans);
     font-size: 14px;
@@ -81,6 +101,19 @@
     background: var(--color-apricot);
     color: var(--color-card);
   }
+}
+
+/* Visually hidden, still announced. */
+@utility sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border-width: 0;
 }
 
 @utility tnum {
@@ -110,11 +143,16 @@
   box-shadow: var(--shadow-float);
 }
 
+/*
+ * On the light work surface a translucent light panel has little to separate
+ * it from what it floats over — 72% let body text bleed through the approval
+ * bar. More opacity and a firmer hairline, and the shadow does the rest.
+ */
 @utility glass-light {
-  background: rgba(255, 255, 255, 0.72);
+  background: rgba(255, 255, 255, 0.88);
   backdrop-filter: blur(24px) saturate(160%);
-  border: 1px solid rgba(17, 17, 17, 0.08);
-  box-shadow: var(--shadow-float);
+  border: 1px solid rgba(17, 17, 17, 0.14);
+  box-shadow: 0 12px 32px -10px rgba(17, 17, 17, 0.22);
 }
 
 @supports not (backdrop-filter: blur(1px)) {

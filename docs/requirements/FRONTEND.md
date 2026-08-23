@@ -16,11 +16,8 @@ npm run dev      # :5173, proxies /api /config /health to :8000
 node scripts/browser-pass.mjs
 ```
 
-Last test/build run: `118 passed (11 files)`, build clean. Browser pass and
-live-proxy verification were not run in this verification.
-
-The API client also carries the backend's maintenance-history and sensor CSV
-import methods, expanded document kinds, and work-order export contract.
+Last full run: `157 passed (15 files)`, build clean, lint clean, `browser-pass` clean, and
+the dev proxy verified against a live backend on :8000.
 
 `scripts/browser-pass.mjs` exists because happy-dom does no layout: the unit
 tests cannot see a broken grid, a clipped label, or a panel that scrolls
@@ -128,6 +125,7 @@ is asserted.
 - [x] `Badge` — the four severity tints plus the solid-negative variant — verified: priority badge asserted in `AnalysisResult.test.tsx`
 - [x] `Bars` — 14/10, top-radius 6, one highlighted bar — verified: `ui.test.tsx` covers axis labels, scaling against the largest value, the hover tooltip appearing and clearing, and the dimming of unhovered bars
 - [x] `MetricCard` — icon chip, title, action, value, caption, badge — verified: used for the headline numbers on the comparison screen and asserted in `Flow.test.tsx`
+- [x] `LinkButton`, `BackLink`, `TextLink`, and navigable table rows — verified: `WorkOrders.test.tsx` asserts the row's href, its rest-state underline, the row hover surface and the chevron; `Flow.test.tsx` and `Analyze.test.tsx` assert navigations expose the `link` role, not `button`
 - [x] `Button` — primary / secondary / ghost / destructive, both surfaces — verified: `ui.test.tsx` asserts each variant's distinct treatment, the small size, the accessible name on an icon-only button, and that a disabled button drops its fill and states why
 - [x] `Input`, `Select`, `Textarea` — labels above, never floating, never uppercase — verified: every field is reachable by `getByLabelText` in `Analyze.test.tsx` and `Flow.test.tsx`, which is only true if the label is correctly associated
 - [x] `DropZone` — dashed hairline, drag state, extension + size hint — verified: `ui.test.tsx` covers the hint text, the dashed→solid→dashed drag cycle, files reaching the caller, and a disabled zone ignoring both highlight and drop
@@ -138,10 +136,12 @@ is asserted.
 ### Shell
 
 - [x] `AppShell` — page → shell → rail + panel, the exact inset and radii — verified: rendered in all 13 screen tests
-- [x] `NavRail` — three items, active pill, and a 64px icon strip below 1024 — covered by `src/shell/NavRail.test.tsx` (7 tests) and the narrow-viewport assertions in `browser-pass`; browser pass was not run in the current verification
+- [x] Siena brand lockup in the rail — the light variant, straight on the rail at 6.39:1 — plus favicons generated from the dark mark — verified: `NavRail.test.tsx` (3 tests) and the measurements in `../design/VISUAL_LANGUAGE.md` §1b
+- [x] `NavRail` — three items, active pill, and a 64px icon strip below 1024 — verified: `src/shell/NavRail.test.tsx` (7 tests) plus the narrow-viewport assertions in `browser-pass`
 - [x] `StatusCard` — engine mode from `/config/capabilities`, `--mint`, never hidden — verified: `AnalysisResult.test.tsx` (an unexpected capabilities body used to crash the whole shell; the tests now cover that)
-- [x] `Header` — title, subtitle, search, icons, avatar chip with role switcher — verified: rendered in all screen tests
-- [x] Sticky `.glass-dark` header past 24px of scroll — covered by `browser-pass`, which asserts no blur before scrolling and blur after; browser pass was not run in the current verification
+- [x] `Header` — title, subtitle, and the role switcher — verified: rendered in all screen tests, and `Analyze.test.tsx` asserts the header carries no dead controls
+- [x] `ErrorBoundary` — a designed failure screen instead of a blank page — verified: `src/shell/ErrorBoundary.test.tsx` (4 tests)
+- [x] Sticky `.glass-dark` header past 24px of scroll — verified: `browser-pass` asserts no blur before scrolling and blur after
 - [ ] Count badge on a nav item — not built; nothing needs one yet
 
 ### Screens — see `../design/SCREENS.md`
@@ -266,6 +266,46 @@ to every check until contrast was measured from rendered pixels.
   `transition-duration` against the string `"0s"` when reduced motion computes
   it as `"1e-05s"`, and treating an intentional `overflow: hidden` truncation
   as a layout failure.
+
+### Navigation affordance
+
+Things that navigated did not look like it, and some were not links at all.
+
+- **Six `<Link>` elements wrapped a `<Button>`** — `<a><button>`, which nests
+  interactive content: two focus stops for one destination and an ambiguous
+  role. Replaced by `LinkButton`, one anchor sharing the button's treatment.
+- **One navigation was a `<Button onClick={navigate}>`** — right-click,
+  middle-click and open-in-new-tab all failed on it. Now a link.
+- **Four back links were muted 13px text with an arrow** — indistinguishable
+  from a caption. Now a bordered pill with a hover surface.
+- **Work-order rows navigated but only underlined on hover.** Hover is not an
+  affordance on touch and does not show in a screenshot. The row now carries a
+  hover surface, an underlined title, and a trailing chevron.
+- Two more checker bugs, both mine: the keyboard walk required "at least 8"
+  tabbable elements, a number calibrated against a header that still carried
+  three dead controls — it now asserts that *every visible* interactive element
+  is reachable, which is the actual invariant — and it counted `sr-only` text
+  as clipped.
+
+### Recording resilience
+
+The demo is seven minutes, unedited. Three things that were fine in normal use
+would have ended a take.
+
+- [x] **A component throwing blanked the whole page.** `StatusCard` reading an
+  unexpected response did exactly that earlier in development. An
+  `ErrorBoundary` now catches it and shows a designed screen with the message,
+  a reload, and a route back into the app.
+- [x] **Three dead controls in the header** — search, settings, notifications —
+  copied from the reference as decoration. A judge clicking one on camera gets
+  nothing, and notifications are out of scope this round. Removed; only the
+  role switcher, which works, remains.
+- [x] **The two-minute analysis had no way out.** `POST …/analyses` blocks with
+  no progress endpoint and nothing cancelled it. The call is now abortable, the
+  wait screen carries a Batalkan control, and cancelling returns to the form
+  quietly rather than reporting a failure.
+- [x] The wait is announced through `aria-live`, so it is not silent for anyone
+  not watching the stage list.
 
 ### Deployment
 

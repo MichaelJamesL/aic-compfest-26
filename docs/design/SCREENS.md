@@ -56,11 +56,15 @@ When `ai_engine` is `false`, the dot turns `--warn` and the label reads
 `Mode offline (stub)`. **Never hide this.** Presenting stub output as model
 output is the one thing that would sink the submission.
 
-Header: page title (22/600) with a one-line subtitle in `--text-3`. Right side:
-settings icon, notification icon (no badge — we do not build notifications), and
-an avatar chip with the demo user's name and role from `X-Demo-User`. A role
-switcher lives here, because the demo needs to move between coordinator and
-technician — style it as the reference's avatar chevron, not as a form control.
+Header: page title (22/600) with a one-line subtitle, and the avatar chip with
+the demo user's role from `X-Demo-User`. The role switcher lives there because
+the demo needs to move between coordinator and technician — styled as the
+reference's avatar chevron, not as a form control.
+
+**Nothing else.** The reference's header also carries a search field and
+settings and notification icons; those were copied here as decoration and did
+nothing. A control that does nothing is worse than an absent one, and
+notifications are on the roadmap list, not in this round.
 
 The header becomes `.glass-dark` and sticky once the content scrolls past 24px.
 That is one of the five sanctioned glass uses.
@@ -172,6 +176,11 @@ berjalan…" rather than stalling at 99%.
 
 This screen is on camera for two minutes of a seven-minute video. It is worth
 the effort, and it doubles as an explanation of the architecture.
+
+It also carries a **Batalkan** control. The request is abortable; cancelling
+returns to the form without reporting an error, because cancelling is a choice
+rather than a failure. The wait is announced through `aria-live` as well as
+shown.
 
 ---
 
@@ -290,6 +299,7 @@ and it is currently unbuildable server-side (`../DEFECTS.md#wo-approve`).
 
 | State | Design |
 | --- | --- |
+| a component throws | The `ErrorBoundary` renders a designed failure screen — message, reload, route back. Never a blank page: the recording cannot be cut. |
 | `status: "failed"` | Full-card message with `error_code`, the `request_id`, and a retry button. Never a blank result page. |
 | `engine_mode: "offline_stub"` | Persistent `--warn` strip at the top of the panel: "Output dari stub offline, bukan model." |
 | partial input | Cards C and D render with what exists; missing sections say which input is absent, in `--text-3`. Never hide a card — the absence is the message. |

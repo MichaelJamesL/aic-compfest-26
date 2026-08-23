@@ -259,7 +259,8 @@ describe('Compare — graceful degradation', () => {
     const picker = screen.getByLabelText('Run B') as HTMLSelectElement
     expect(picker.disabled).toBe(true)
     expect(picker.options[0].textContent).toMatch(/belum ada run lain/)
-    expect(screen.getByRole('button', { name: 'Jalankan analisis kedua' })).toBeTruthy()
+    // A navigation is a link, not a button — one anchor, one focus stop.
+    expect(screen.getByRole('link', { name: 'Jalankan analisis kedua' })).toBeTruthy()
   })
 
   it('scores input coverage per run so the two columns differ visibly', async () => {

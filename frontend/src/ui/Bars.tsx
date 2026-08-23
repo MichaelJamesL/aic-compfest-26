@@ -43,9 +43,9 @@ export function Bars({
             onMouseLeave={() => setActive(null)}
           >
             {active === index && (
-              <div className="glass-light absolute bottom-full z-10 mb-2 rounded-control px-3 py-2 text-ink">
+              <div className="glass-light absolute bottom-full z-10 mb-2 rounded-control px-3 py-2 text-content">
                 <p className="tnum text-sm font-semibold">{format(bar.value)}</p>
-                <p className="text-[11.5px] text-ink-faint">{bar.label}</p>
+                <p className="text-[11.5px] text-content-3">{bar.label}</p>
               </div>
             )}
             <div
@@ -61,7 +61,7 @@ export function Bars({
       </div>
       <div className="mt-3 flex gap-2.5">
         {bars.map((bar) => (
-          <span key={bar.label} className="flex-1 text-center text-[11.5px] text-faint">
+          <span key={bar.label} className="flex-1 text-center text-[11.5px] text-content-3">
             {bar.label}
           </span>
         ))}
@@ -75,13 +75,13 @@ export function ConfidenceBar({ value }: { value: number }) {
   const percent = Math.round(Math.min(Math.max(value, 0), 1) * 100)
   return (
     <span className="inline-flex items-center gap-2">
-      <span className="h-1 w-16 overflow-hidden rounded-full bg-raised">
+      <span className="h-1 w-16 overflow-hidden rounded-full bg-surface-raised">
         <span
           className="block h-full rounded-full bg-teal"
           style={{ width: `${percent}%` }}
         />
       </span>
-      <span className="tnum text-xs text-dim">{percent}%</span>
+      <span className="tnum text-xs text-content-2">{percent}%</span>
     </span>
   )
 }

@@ -1,13 +1,13 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router'
 import { Images, Play, Table2 } from 'lucide-react'
 import { AppShell } from '../shell/AppShell'
-import { api } from '../api/client'
+import { api, isAborted } from '../api/client'
 import { useRequest } from '../lib/useRequest'
 import { parseCsv, toReadings, type ParsedReading } from '../lib/csv'
 import { FORM_INPUTS } from '../lib/health'
 import { Card, CardTitle, SectionTitle } from '../ui/Card'
-import { Button } from '../ui/Button'
+import { Button, LinkButton } from '../ui/Button'
 import { DropZone } from '../ui/DropZone'
 import { Select, TextArea, TextInput } from '../ui/Field'
 import { EmptyState, ErrorState } from '../ui/States'
@@ -35,6 +35,7 @@ export function AnalyzeScreen() {
   const [running, setRunning] = useState(false)
   const [step, setStep] = useState(0)
   const [error, setError] = useState<unknown>(null)
+  const abort = useRef<AbortController | null>(null)
 
   const selected = assets.data?.find((asset) => asset.id === assetId) ?? null
 
@@ -72,8 +73,14 @@ export function AnalyzeScreen() {
     }
   }
 
+  function cancel() {
+    abort.current?.abort()
+  }
+
   async function run() {
     if (!assetId) return
+    const controller = new AbortController()
+    abort.current = controller
     setRunning(true)
     setError(null)
     setStep(0)
@@ -81,7 +88,11 @@ export function AnalyzeScreen() {
       if (readings.length) {
         setStep(1)
         for (const reading of readings) {
-          await api.addReading(assetId, { ...reading, source: 'csv', external_id: null })
+          await api.addReading(
+            assetId,
+            { ...reading, source: 'csv', external_id: null },
+            controller.signal,
+          )
         }
       }
 
@@ -102,18 +113,21 @@ export function AnalyzeScreen() {
         tier: 'professional',
         manual_condition: condition.trim() || null,
         qc_batch_id: qcBatchId,
-      })
+      }, controller.signal)
       navigate(`/analysis/${run.id}`)
     } catch (err) {
-      setError(err)
+      // Cancelling is a choice, not a failure: return to the form quietly.
+      if (!isAborted(err)) setError(err)
       setRunning(false)
+    } finally {
+      abort.current = null
     }
   }
 
   if (running) {
     return (
       <AppShell title="Menjalankan analisis" subtitle={selected?.name}>
-        <RunProgress step={step} readingCount={readings.length} />
+        <RunProgress step={step} readingCount={readings.length} onCancel={cancel} />
       </AppShell>
     )
   }
@@ -129,7 +143,11 @@ export function AnalyzeScreen() {
       {assets.data && assets.data.length === 0 && (
         <Card>
           <EmptyState
-            action={<Button variant="primary" onClick={() => navigate('/setup')}>Buka Setup</Button>}
+            action={
+              <LinkButton to="/setup" variant="primary">
+                Buka Setup
+              </LinkButton>
+            }
           >
             Belum ada mesin terdaftar. Unggah daftar mesin di Setup sebelum menjalankan
             analisis.
@@ -173,8 +191,8 @@ export function AnalyzeScreen() {
                   }}
                 />
                 {readings.length > 0 && (
-                  <p className="mt-3 text-[13px] text-dim">
-                    <span className="text-white">{csvName}</span> — {readings.length} pembacaan,{' '}
+                  <p className="mt-3 text-[13px] text-content-2">
+                    <span className="text-content">{csvName}</span> — {readings.length} pembacaan,{' '}
                     {new Set(readings.map((r) => r.tag)).size} tag terdeteksi
                     {readings.length === 500 && ' (dibatasi 500 baris)'}
                   </p>
@@ -246,7 +264,7 @@ export function AnalyzeScreen() {
 
             <Card>
               <SectionTitle>Kondisi manual</SectionTitle>
-              <p className="mt-2 text-[13px] text-faint">
+              <p className="mt-2 text-[13px] text-content-3">
                 Selalu tersedia. Ini yang membuat analisis tetap jalan pada pabrik tanpa
                 sensor sama sekali.
               </p>
@@ -274,7 +292,7 @@ export function AnalyzeScreen() {
               >
                 Jalankan analisis
               </Button>
-              <p className="text-xs text-faint">
+              <p className="text-xs text-content-3">
                 {assetId ? 'Proses sinkron, bisa memakan waktu hingga 2 menit.' : 'Pilih mesin dulu.'}
               </p>
             </div>
@@ -289,8 +307,8 @@ export function AnalyzeScreen() {
                     <span
                       className={
                         item.present
-                          ? 'size-2 rounded-full bg-ink'
-                          : 'size-2 rounded-full border border-ink/30'
+                          ? 'size-2 rounded-full bg-card'
+                          : 'size-2 rounded-full border border-card/30'
                       }
                       aria-hidden
                     />

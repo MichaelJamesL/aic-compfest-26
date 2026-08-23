@@ -11,6 +11,9 @@ class Settings(BaseSettings):
     ai_engine_enabled: bool = False
     ai_engine_timeout: int = 30
     max_upload_bytes: int = 10 * 1024 * 1024
+    max_qc_image_bytes: int = 5 * 1024 * 1024
+    max_qc_batch_bytes: int = 50 * 1024 * 1024
+    max_qc_images: int = 20
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
 @lru_cache

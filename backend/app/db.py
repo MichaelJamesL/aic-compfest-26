@@ -1,5 +1,5 @@
 from collections.abc import Generator
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, inspect, text
 from sqlalchemy.pool import StaticPool
 from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
 from .config import get_settings
@@ -28,3 +28,29 @@ def get_db() -> Generator[Session, None, None]:
 def init_db() -> None:
     from . import models
     Base.metadata.create_all(engine)
+    # The project has no migration runner yet; keep the small demo schema
+    # upgrade safe for databases created before these columns/tables existed.
+    columns = {column["name"] for column in inspect(engine).get_columns("assets")}
+    if "external_id" not in columns:
+        with engine.begin() as connection:
+            connection.execute(text("ALTER TABLE assets ADD COLUMN external_id VARCHAR(200)"))
+    with engine.begin() as connection:
+        connection.execute(text("CREATE UNIQUE INDEX IF NOT EXISTS uq_asset_external_id ON assets (factory_id, external_id) WHERE external_id IS NOT NULL"))
+    wo_columns = {column["name"] for column in inspect(engine).get_columns("work_orders")}
+    additions = {
+        "technician_result_json": "JSON",
+        "result_submitted_at": "DATETIME",
+        "verification_json": "JSON",
+        "verified_at": "DATETIME",
+    }
+    missing = {name: definition for name, definition in additions.items() if name not in wo_columns}
+    if missing:
+        with engine.begin() as connection:
+            for name, definition in missing.items():
+                connection.execute(text(f"ALTER TABLE work_orders ADD COLUMN {name} {definition}"))
+    maintenance_columns = {column["name"] for column in inspect(engine).get_columns("maintenance_records")}
+    if "external_id" not in maintenance_columns:
+        with engine.begin() as connection:
+            connection.execute(text("ALTER TABLE maintenance_records ADD COLUMN external_id VARCHAR(200)"))
+    with engine.begin() as connection:
+        connection.execute(text("CREATE UNIQUE INDEX IF NOT EXISTS uq_maintenance_external_id ON maintenance_records (factory_id, external_id) WHERE external_id IS NOT NULL"))

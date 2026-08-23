@@ -16,6 +16,7 @@ class Factory(Base):
 
 class Asset(Base):
     __tablename__ = "assets"
+    __table_args__ = (UniqueConstraint("factory_id", "external_id", name="uq_asset_external_id"),)
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=uid)
     factory_id: Mapped[str] = mapped_column(ForeignKey("factories.id"), index=True)
     name: Mapped[str] = mapped_column(String(200))
@@ -24,6 +25,7 @@ class Asset(Base):
     status: Mapped[str] = mapped_column(String(30), default="active")
     location: Mapped[str | None] = mapped_column(String(200), nullable=True)
     specs_json: Mapped[dict] = mapped_column(JSON, default=dict)
+    external_id: Mapped[str | None] = mapped_column(String(200), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now, onupdate=now)
 
@@ -58,6 +60,27 @@ class Document(Base):
     ingestion_error: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
 
+class QCBatch(Base):
+    __tablename__ = "qc_batches"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=uid)
+    factory_id: Mapped[str] = mapped_column(String(36), index=True)
+    asset_id: Mapped[str] = mapped_column(ForeignKey("assets.id"), index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+
+class QCImage(Base):
+    __tablename__ = "qc_images"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=uid)
+    factory_id: Mapped[str] = mapped_column(String(36), index=True)
+    batch_id: Mapped[str] = mapped_column(ForeignKey("qc_batches.id"), index=True)
+    asset_id: Mapped[str] = mapped_column(ForeignKey("assets.id"), index=True)
+    filename: Mapped[str] = mapped_column(String(255))
+    mime_type: Mapped[str] = mapped_column(String(100))
+    size_bytes: Mapped[int] = mapped_column(Integer)
+    storage_key: Mapped[str] = mapped_column(String(500))
+    defect_class: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    class_confidence: Mapped[float | None] = mapped_column(Float, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+
 class MaintenanceRecord(Base):
     __tablename__ = "maintenance_records"
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=uid)
@@ -68,6 +91,7 @@ class MaintenanceRecord(Base):
     findings: Mapped[str] = mapped_column(Text, default="")
     parts_used_json: Mapped[list] = mapped_column(JSON, default=list)
     source: Mapped[str] = mapped_column(String(30), default="manual")
+    external_id: Mapped[str | None] = mapped_column(String(200), nullable=True)
 
 class BusinessContext(Base):
     __tablename__ = "business_contexts"
@@ -113,6 +137,10 @@ class WorkOrder(Base):
     priority: Mapped[str] = mapped_column(String(20), default="medium")
     status: Mapped[str] = mapped_column(String(30), default="draft")
     details_json: Mapped[dict] = mapped_column(JSON, default=dict)
+    technician_result_json: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    result_submitted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    verification_json: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    verified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now, onupdate=now)
 

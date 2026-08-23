@@ -1,5 +1,5 @@
-import { Link, useParams, useSearchParams } from 'react-router'
-import { Activity, ArrowLeft, FileText, Gauge } from 'lucide-react'
+import { useParams, useSearchParams } from 'react-router'
+import { Activity, FileText, Gauge } from 'lucide-react'
 import { AppShell } from '../shell/AppShell'
 import { api } from '../api/client'
 import { useRequest } from '../lib/useRequest'
@@ -8,7 +8,7 @@ import { formatDateTime } from '../lib/format'
 import { healthLabel, priorityLabel, priorityTone } from '../lib/severity'
 import { Card, SectionTitle } from '../ui/Card'
 import { Badge } from '../ui/Badge'
-import { Button } from '../ui/Button'
+import { BackLink, LinkButton } from '../ui/Button'
 import { Select } from '../ui/Field'
 import { MetricCard } from '../ui/MetricCard'
 import { EmptyState, ErrorState, MissingInput } from '../ui/States'
@@ -61,12 +61,7 @@ export function CompareScreen() {
 
   return (
     <AppShell title="Perbandingan run" subtitle={asset}>
-      <Link
-        to={`/analysis/${id}`}
-        className="mb-3 inline-flex items-center gap-1.5 text-[13px] text-content-3 hover:text-content"
-      >
-        <ArrowLeft size={14} /> Kembali ke hasil analisis
-      </Link>
+      <BackLink to={`/analysis/${id}`}>Kembali ke hasil analisis</BackLink>
 
       <Card tint="mint" className="mb-3">
         <p className="text-[13px] leading-6">
@@ -87,9 +82,7 @@ export function CompareScreen() {
         <Card>
           <EmptyState
             action={
-              <Link to="/analyze">
-                <Button variant="primary">Jalankan analisis kedua</Button>
-              </Link>
+              <LinkButton to="/analyze" variant="primary">Jalankan analisis kedua</LinkButton>
             }
           >
             Belum ada run kedua untuk dibandingkan. Jalankan aset yang sama dua kali — sekali

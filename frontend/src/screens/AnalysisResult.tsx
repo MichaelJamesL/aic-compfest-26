@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Link, useNavigate, useParams } from 'react-router'
+import { useNavigate, useParams } from 'react-router'
 import { ArrowRight, Download, FileText, GitCompare, ShieldAlert, Wrench } from 'lucide-react'
 import { AppShell } from '../shell/AppShell'
 import { api, errorCopy } from '../api/client'
@@ -17,7 +17,7 @@ import {
 } from '../lib/severity'
 import { Card, CardTitle, DeterministicNote, SectionTitle } from '../ui/Card'
 import { Badge, StatusDot } from '../ui/Badge'
-import { Button } from '../ui/Button'
+import { Button, LinkButton } from '../ui/Button'
 import { Donut, DonutLegend } from '../ui/Donut'
 import { Bars, ConfidenceBar } from '../ui/Bars'
 import { Table, Td, Th, Tr } from '../ui/Table'
@@ -50,11 +50,7 @@ export function AnalysisResultScreen() {
             error={error}
             onRetry={reload}
             action={
-              <Link to="/analyze">
-                <Button size="sm" variant="primary">
-                  Analisis baru
-                </Button>
-              </Link>
+              <LinkButton to="/analyze" size="sm" variant="primary">Analisis baru</LinkButton>
             }
           />
         </Card>
@@ -130,11 +126,13 @@ function Result({ detail, onReload }: { detail: AnalysisDetail; onReload: () => 
           {result.model ?? 'model tidak diketahui'} · tier {result.tier ?? '—'}
         </span>
         <div className="ml-auto flex gap-2">
-          <Link to={`/analysis/${detail.id}/compare`}>
-            <Button size="sm" icon={<GitCompare size={14} />}>
-              Bandingkan run
-            </Button>
-          </Link>
+          <LinkButton
+            to={`/analysis/${detail.id}/compare`}
+            size="sm"
+            icon={<GitCompare size={14} />}
+          >
+            Bandingkan run
+          </LinkButton>
           <Button size="sm" icon={<Download size={14} />} disabled title="Belum tersedia di backend">
             Ekspor
           </Button>

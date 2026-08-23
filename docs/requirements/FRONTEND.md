@@ -16,7 +16,7 @@ npm run dev      # :5173, proxies /api /config /health to :8000
 node scripts/browser-pass.mjs
 ```
 
-Last full run: `156 passed (15 files)`, build clean, lint clean, `browser-pass` clean, and
+Last full run: `157 passed (15 files)`, build clean, lint clean, `browser-pass` clean, and
 the dev proxy verified against a live backend on :8000.
 
 `scripts/browser-pass.mjs` exists because happy-dom does no layout: the unit
@@ -125,6 +125,7 @@ is asserted.
 - [x] `Badge` — the four severity tints plus the solid-negative variant — verified: priority badge asserted in `AnalysisResult.test.tsx`
 - [x] `Bars` — 14/10, top-radius 6, one highlighted bar — verified: `ui.test.tsx` covers axis labels, scaling against the largest value, the hover tooltip appearing and clearing, and the dimming of unhovered bars
 - [x] `MetricCard` — icon chip, title, action, value, caption, badge — verified: used for the headline numbers on the comparison screen and asserted in `Flow.test.tsx`
+- [x] `LinkButton`, `BackLink`, `TextLink`, and navigable table rows — verified: `WorkOrders.test.tsx` asserts the row's href, its rest-state underline, the row hover surface and the chevron; `Flow.test.tsx` and `Analyze.test.tsx` assert navigations expose the `link` role, not `button`
 - [x] `Button` — primary / secondary / ghost / destructive, both surfaces — verified: `ui.test.tsx` asserts each variant's distinct treatment, the small size, the accessible name on an icon-only button, and that a disabled button drops its fill and states why
 - [x] `Input`, `Select`, `Textarea` — labels above, never floating, never uppercase — verified: every field is reachable by `getByLabelText` in `Analyze.test.tsx` and `Flow.test.tsx`, which is only true if the label is correctly associated
 - [x] `DropZone` — dashed hairline, drag state, extension + size hint — verified: `ui.test.tsx` covers the hint text, the dashed→solid→dashed drag cycle, files reaching the caller, and a disabled zone ignoring both highlight and drop
@@ -265,6 +266,26 @@ to every check until contrast was measured from rendered pixels.
   `transition-duration` against the string `"0s"` when reduced motion computes
   it as `"1e-05s"`, and treating an intentional `overflow: hidden` truncation
   as a layout failure.
+
+### Navigation affordance
+
+Things that navigated did not look like it, and some were not links at all.
+
+- **Six `<Link>` elements wrapped a `<Button>`** — `<a><button>`, which nests
+  interactive content: two focus stops for one destination and an ambiguous
+  role. Replaced by `LinkButton`, one anchor sharing the button's treatment.
+- **One navigation was a `<Button onClick={navigate}>`** — right-click,
+  middle-click and open-in-new-tab all failed on it. Now a link.
+- **Four back links were muted 13px text with an arrow** — indistinguishable
+  from a caption. Now a bordered pill with a hover surface.
+- **Work-order rows navigated but only underlined on hover.** Hover is not an
+  affordance on touch and does not show in a screenshot. The row now carries a
+  hover surface, an underlined title, and a trailing chevron.
+- Two more checker bugs, both mine: the keyboard walk required "at least 8"
+  tabbable elements, a number calibrated against a header that still carried
+  three dead controls — it now asserts that *every visible* interactive element
+  is reachable, which is the actual invariant — and it counted `sr-only` text
+  as clipped.
 
 ### Recording resilience
 

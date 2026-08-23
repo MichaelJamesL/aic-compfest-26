@@ -1,6 +1,6 @@
 import { useState } from 'react'
-import { Link, useParams } from 'react-router'
-import { ArrowLeft, ShieldAlert } from 'lucide-react'
+import { useParams } from 'react-router'
+import { ShieldAlert } from 'lucide-react'
 import { AppShell } from '../shell/AppShell'
 import { api, errorCopy, getIdentity } from '../api/client'
 import { useRequest } from '../lib/useRequest'
@@ -9,7 +9,7 @@ import { WORK_ORDER, priorityLabel, priorityTone } from '../lib/severity'
 import { Card, CardTitle, SectionTitle } from '../ui/Card'
 import { TextArea } from '../ui/Field'
 import { Badge } from '../ui/Badge'
-import { Button } from '../ui/Button'
+import { BackLink, Button, LinkButton } from '../ui/Button'
 import { StateTrack } from '../ui/StateTrack'
 import { ErrorState } from '../ui/States'
 import { Skeleton } from '../ui/Skeleton'
@@ -41,11 +41,7 @@ export function WorkOrderDetailScreen() {
             error={error ?? new Error('not found')}
             onRetry={reload}
             action={
-              <Link to="/work-orders">
-                <Button size="sm" variant="primary">
-                  Semua work order
-                </Button>
-              </Link>
+              <LinkButton to="/work-orders" size="sm" variant="primary">Semua work order</LinkButton>
             }
           />
         </Card>
@@ -93,12 +89,7 @@ function Detail({ order, onChange }: { order: WorkOrder; onChange: (o: WorkOrder
 
   return (
     <AppShell title={order.title} subtitle={`Work order ${order.id.slice(0, 8)}`}>
-      <Link
-        to="/work-orders"
-        className="mb-3 inline-flex items-center gap-1.5 text-[13px] text-content-3 hover:text-content"
-      >
-        <ArrowLeft size={14} /> Semua work order
-      </Link>
+      <BackLink to={"/work-orders"}>Semua work order</BackLink>
 
       <Card>
         <div className="flex flex-wrap items-center gap-2">
@@ -178,16 +169,12 @@ function Detail({ order, onChange }: { order: WorkOrder; onChange: (o: WorkOrder
             memverifikasi bukti.
           </p>
 
-          <Link to={`/work-orders/${order.id}/execute`}>
-            <Button size="sm" variant="ghost">
-              Form teknisi
-            </Button>
-          </Link>
-          <Link to={`/work-orders/${order.id}/report`}>
-            <Button size="sm" variant="ghost">
-              Verifikasi & laporan
-            </Button>
-          </Link>
+          <LinkButton to={`/work-orders/${order.id}/execute`} size="sm">
+            Form teknisi
+          </LinkButton>
+          <LinkButton to={`/work-orders/${order.id}/report`} size="sm">
+            Verifikasi & laporan
+          </LinkButton>
 
           {order.status === 'draft' && (
             <Button size="sm" variant="primary" disabled={busy} onClick={() => act('submit')}>

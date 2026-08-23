@@ -1,0 +1,72 @@
+# Defect class -> candidate machine failure modes -> the sensor signals that
+# must corroborate before priority moves.
+#
+# This is ENGINEERING KNOWLEDGE derived from SOPs and handbooks, not something
+# the system learned. Say so openly: auditable beats appearing learned.
+# Every row is readable and arguable by a maintenance engineer, which is the
+# point (FINAL_IDEA.md §7.2, DECISIONS.md D2).
+#
+# The rule the engine enforces:
+#   classifier gives a class + confidence
+#     -> this table gives candidate failure modes + signals to check
+#       -> the engine checks those signals against the readings
+#         -> only then may priority_delta apply.
+# If no signal corroborates, the system says so and does NOT escalate. That
+# restraint is demonstrated deliberately, not treated as an edge case.
+
+version: 1
+asset_type: cnc-mill
+
+defects:
+  - defect_class: thread_top
+    candidate_failure_modes: [tool_wear, spindle_runout]
+    corroborate:
+      - tag: tool_wear_min
+        rule: "> p90 baseline"
+      - tag: torque_nm
+        rule: "trend_up over last 50 cycles"
+    priority_delta: +1
+    recommended_action: "Ganti insert/tap, verifikasi runout spindle"
+    source: "SOP-CNC-04 §3.2"
+
+  - defect_class: thread_side
+    candidate_failure_modes: [tool_wear, axis_backlash]
+    corroborate:
+      - tag: torque_nm
+        rule: "trend_up"
+    priority_delta: +1
+    recommended_action: "Periksa keausan tap dan backlash sumbu"
+    source: "SOP-CNC-04 §3.4"
+
+  - defect_class: scratch_neck
+    candidate_failure_modes: [fixture_misalignment, chip_evacuation_failure]
+    corroborate:
+      - tag: torque_nm
+        rule: "variance > 2x baseline"
+    priority_delta: +1
+    recommended_action: "Periksa fixture dan aliran pembuangan chip"
+    source: "SOP-CNC-07 §2.1"
+
+  - defect_class: scratch_head
+    candidate_failure_modes: [material_handling, clamping_pressure]
+    corroborate: []
+    priority_delta: 0
+    recommended_action: "Periksa penanganan material dan tekanan clamping"
+    note: >-
+      Sering bukan masalah mesin. Tidak menaikkan prioritas tanpa konfirmasi
+      sinyal — baris ini ada justru untuk menahan diri.
+
+  - defect_class: manipulated_front
+    candidate_failure_modes: [axis_backlash, clamping_loss]
+    corroborate:
+      - tag: rotational_speed_rpm
+        rule: "variance > 2x baseline"
+    priority_delta: +1
+    recommended_action: "Verifikasi backlash sumbu dan gaya clamping"
+    source: "SOP-CNC-09 §1.5"
+
+  - defect_class: good
+    candidate_failure_modes: []
+    corroborate: []
+    priority_delta: 0
+    note: "Kelas nominal. Tidak pernah menaikkan prioritas."

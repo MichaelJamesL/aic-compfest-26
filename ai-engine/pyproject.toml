@@ -16,11 +16,14 @@ dependencies = [
     "pgvector>=0.2",
     "tiktoken>=0.6",
     "PyYAML>=6.0",
+    "python-dotenv>=1.0",
 ]
 
 [project.optional-dependencies]
-dev = ["pytest>=8.0"]
+dev = ["pytest>=8.0", "pillow>=10.0"]
 vision = ["anomalib>=2.0"]
+# The one model the team fine-tunes: a defect classifier for QC images.
+qc = ["torch>=2.2", "torchvision>=0.17", "pillow>=10.0"]
 
 [[tool.uv.index]]
 name = "pytorch-cpu"

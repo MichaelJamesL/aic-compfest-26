@@ -218,3 +218,6 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+# QC dataset — MVTec AD is CC BY-NC-SA 4.0 and ~200MB. Rebuild it with
+# `uv run python ai-engine/qc/preprocess.py`; the split is deterministic.
+ai-engine/qc/data/

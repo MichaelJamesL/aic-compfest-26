@@ -20,6 +20,8 @@ from src.schemas import (
     SensorReading,
     Tier,
     WorkOrder,
+    TechnicianResult,
+    VerificationResult,
 )
 
 NOW = datetime.datetime(2026, 8, 10, tzinfo=datetime.timezone.utc)
@@ -89,3 +91,13 @@ def test_analyze_returns_valid_result_with_tier_preserved(monkeypatch: pytest.Mo
     assert result.tier == Tier.STANDARD
     assert result.recommendation
     assert captured["request"].tier == Tier.STANDARD
+
+
+def test_verify_returns_typed_result_with_one_agent_call():
+    engine = MaintenanceEngine(model=TestModel())
+    result = engine.verify(
+        WorkOrder(title="Replace bearing", steps=["Replace the bearing"]),
+        TechnicianResult(work_done="Bearing replaced", findings="No further noise", evidence=["photo-1"]),
+    )
+    assert isinstance(result, VerificationResult)
+    assert result.verdict in {"resolved", "partial", "not_resolved"}

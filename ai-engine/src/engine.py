@@ -15,7 +15,7 @@ from pydantic_ai.providers.deepseek import DeepSeekProvider
 from pydantic_ai.settings import ModelSettings
 
 from . import config, context, prompts
-from .schemas import AnalysisRequest, AnalysisResult
+from .schemas import AnalysisRequest, AnalysisResult, TechnicianResult, VerificationResult, WorkOrder
 
 _MODEL_SETTINGS = ModelSettings(
     max_tokens=config.MAX_OUTPUT_TOKENS,
@@ -58,6 +58,18 @@ class MaintenanceEngine:
             retries=1,
             model_settings=_MODEL_SETTINGS,
         )
+        self._verification_agent = Agent(
+            self.model,
+            name="maintenance_verification",
+            system_prompt=(
+                "Verify whether the technician's evidence resolves the work order. "
+                "Return resolved only when the requested work is complete and the evidence supports it. "
+                "Use partial when some work remains and not_resolved when the fault remains."
+            ),
+            output_type=VerificationResult,
+            retries=1,
+            model_settings=_MODEL_SETTINGS,
+        )
         # Last run's usage, so callers (e.g. the demo) can read cache metrics.
         self.last_usage: Any | None = None
 
@@ -82,5 +94,15 @@ class MaintenanceEngine:
         bundle = context.select_context(request, self.budget_tokens)
         user_turn = prompts.build_ask_turn(bundle, question)
         run = self._ask_agent.run_sync(user_turn)
+        self.last_usage = run.usage
+        return run.output
+
+    def verify(self, work_order: WorkOrder, technician_result: TechnicianResult) -> VerificationResult:
+        """Make exactly one synchronous, typed verification call."""
+        prompt = (
+            f"Work order:\n{work_order.model_dump_json()}\n\n"
+            f"Technician result:\n{technician_result.model_dump_json()}"
+        )
+        run = self._verification_agent.run_sync(prompt)
         self.last_usage = run.usage
         return run.output

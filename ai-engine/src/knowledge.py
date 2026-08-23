@@ -24,10 +24,12 @@ def connect() -> psycopg.Connection:
 def init_schema(conn: psycopg.Connection | None = None) -> None:
     close = conn is None
     conn = conn or connect()
+    conn.execute("CREATE EXTENSION IF NOT EXISTS vector")
     conn.execute(
         """
         CREATE TABLE IF NOT EXISTS doc_chunk (
           id BIGSERIAL PRIMARY KEY,
+          factory_id TEXT,
           asset_id TEXT,
           doc_id TEXT, doc_title TEXT, kind TEXT,
           chunk_index INT, text TEXT,
@@ -35,6 +37,8 @@ def init_schema(conn: psycopg.Connection | None = None) -> None:
         )
         """
     )
+    # CREATE TABLE does not upgrade a table on an existing Docker volume.
+    conn.execute("ALTER TABLE doc_chunk ADD COLUMN IF NOT EXISTS factory_id TEXT")
     conn.execute(
         """
         CREATE INDEX IF NOT EXISTS doc_chunk_embedding_idx
@@ -84,50 +88,70 @@ def _split_chunks(text: str) -> list[str]:
 
 
 def ingest(
-    document: Document, asset_id: str | None = None, conn: psycopg.Connection | None = None
+    document: Document,
+    asset_id: str | None = None,
+    factory_id: str | None = None,
+    conn: psycopg.Connection | None = None,
 ) -> int:
     close = conn is None
     conn = conn or connect()
-    chunks = _split_chunks(document.text)
-    vectors = embed(chunks)
-    for i, (chunk, vector) in enumerate(zip(chunks, vectors)):
+    try:
+        init_schema(conn)
+        chunks = _split_chunks(document.text)
+        vectors = embed(chunks)
+        if len(vectors) != len(chunks):
+            raise ValueError("embedding count does not match chunk count")
+        scoped_factory_id = factory_id or document.factory_id
+        # Prepare embeddings before deleting the old version, then replace all
+        # chunks in one transaction so a failed reindex cannot claim readiness.
         conn.execute(
-            """
-            INSERT INTO doc_chunk
-                (asset_id, doc_id, doc_title, kind, chunk_index, text, embedding)
-            VALUES (%s, %s, %s, %s, %s, %s, %s)
-            """,
-            (asset_id, document.id, document.title, document.kind, i, chunk, vector),
+            "DELETE FROM doc_chunk WHERE doc_id = %s AND factory_id = %s",
+            (document.id, scoped_factory_id),
         )
-    conn.commit()
-    if close:
-        conn.close()
-    return len(chunks)
+        for i, (chunk, vector) in enumerate(zip(chunks, vectors)):
+            conn.execute(
+                """
+                INSERT INTO doc_chunk
+                    (factory_id, asset_id, doc_id, doc_title, kind, chunk_index, text, embedding)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                """,
+                (scoped_factory_id, asset_id, document.id, document.title, document.kind, i, chunk, vector),
+            )
+        conn.commit()
+        return len(chunks)
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
+        if close:
+            conn.close()
 
 
 def search(
     query: str,
     asset_id: str | None,
+    factory_id: str,
     k: int = 5,
     conn: psycopg.Connection | None = None,
 ) -> list[ContextDoc]:
     close = conn is None
     conn = conn or connect()
+    init_schema(conn)
     # pgvector adapts numpy arrays, not plain lists.
     vector = np.asarray(embed([query])[0], dtype=np.float32)
     rows = conn.execute(
         """
-        SELECT doc_title, kind, text, id, 1 - (embedding <=> %s) AS distance
+        SELECT doc_title, kind, text, id, 1 - (embedding <=> %s) AS similarity
         FROM doc_chunk
-        WHERE asset_id = %s OR asset_id IS NULL
+        WHERE factory_id = %s AND (asset_id = %s OR asset_id IS NULL)
         ORDER BY embedding <=> %s
         LIMIT %s
         """,
-        (vector, asset_id, vector, k),
+        (vector, factory_id, asset_id, vector, k),
     ).fetchall()
     if close:
         conn.close()
     return [
-        ContextDoc(title=row[0], kind=row[1], text=row[2], chunk_id=row[3], distance=row[4])
+        ContextDoc(title=row[0], kind=row[1], text=row[2], chunk_id=row[3], similarity=row[4])
         for row in rows
     ]

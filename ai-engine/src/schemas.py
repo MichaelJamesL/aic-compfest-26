@@ -47,8 +47,9 @@ class MaintenanceRecord(BaseModel):
 class Document(BaseModel):
     id: str
     title: str
-    kind: Literal["sop", "manual", "log"] = "sop"
+    kind: Literal["sop", "manual", "log", "qc_standard", "maintenance_history"] = "sop"
     text: str
+    factory_id: str | None = None
 
 
 class BusinessContext(BaseModel):
@@ -74,6 +75,7 @@ class DefectFinding(BaseModel):
 class AnalysisRequest(BaseModel):
     tier: Tier
     asset: Asset
+    factory_id: str | None = None
     readings: list[SensorReading] = Field(default_factory=list)
     images: list[str] = Field(default_factory=list)
     manual_condition: str | None = None
@@ -106,6 +108,21 @@ class WorkOrder(BaseModel):
     safety_notes: list[str] = Field(default_factory=list)
 
 
+class TechnicianResult(BaseModel):
+    """Evidence submitted by the technician after executing a work order."""
+
+    work_done: str = ""
+    findings: str = ""
+    parts_used: list[str] = Field(default_factory=list)
+    evidence: list[str] = Field(default_factory=list)
+
+
+class VerificationResult(BaseModel):
+    verdict: Literal["resolved", "partial", "not_resolved"]
+    evidence: list[str] = Field(default_factory=list)
+    follow_up: list[str] = Field(default_factory=list)
+
+
 class AnalysisResult(BaseModel):
     health_score: int  # 0-100, from signals.py, not the LLM
     health_summary: str
@@ -130,7 +147,7 @@ class ContextDoc(BaseModel):
     kind: str
     text: str
     chunk_id: int | None = None
-    distance: float | None = None
+    similarity: float | None = None
 
 
 class ContextBundle(BaseModel):

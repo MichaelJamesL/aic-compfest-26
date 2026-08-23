@@ -32,7 +32,7 @@ ai-engine/
   eval/                     # cases.yaml + run_eval.py
 ```
 
-Backend installs it with `uv add ../ai-engine` (path dep) and imports:
+Backend installs it with `uv add ../ai-engine` (path dep) and imports. Backend verification can also run without the AI package in offline mode; this is a deterministic stub, not a fallback claim about DeepSeek availability:
 
 ```python
 from src import MaintenanceEngine

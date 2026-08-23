@@ -68,16 +68,20 @@ def detect_anomalies(readings: list[SensorReading]) -> list[Anomaly]:
         above = values[values > upper]
         if not below.size and not above.size:
             continue
-        observed, upper_out, lower_out = np.max(above), 0.0, 0.0
+        # Compare each side against its own fence. In particular, do not use
+        # np.max on `above` before checking it: low-only outliers are valid.
+        candidates: list[tuple[float, float]] = []
         if above.size:
-            observed, upper_out = np.max(above), np.max(above)
+            high = float(np.max(above))
+            candidates.append((abs(high - upper), high))
         if below.size:
-            lower_val = np.min(below)
-            if lower_out == 0.0 or abs(lower_val - lower) > abs(observed - upper):
-                observed = lower_val
+            low = float(np.min(below))
+            candidates.append((abs(lower - low), low))
+        # `above` is appended first, making equal-distance ties deterministic.
+        _, observed = max(candidates, key=lambda candidate: candidate[0])
         # How many (half-)IQRs beyond the fence the observation sits.
-        margin = max(abs(observed - upper), abs(lower - observed))
-        width = iqr_dist = upper - lower
+        margin = observed - upper if observed > upper else lower - observed
+        width = upper - lower
         mult = margin / (width / 2) if width else 0.0
         severity = _severity(mult)
         expected = (round(float(lower), 2), round(float(upper), 2))
@@ -101,7 +105,14 @@ def _severity(mult: float) -> str:
 
 
 def _days_since(dt: datetime, now: datetime) -> float:
-    return max(0.0, (now - dt).total_seconds() / 86400.0)
+    return max(0.0, (_as_utc(now) - _as_utc(dt)).total_seconds() / 86400.0)
+
+
+def _as_utc(value: datetime) -> datetime:
+    """Treat SQLite's timezone-less timestamps as UTC."""
+    if value.tzinfo is None:
+        return value.replace(tzinfo=timezone.utc)
+    return value.astimezone(timezone.utc)
 
 
 def health_score(
@@ -117,7 +128,7 @@ def health_score(
     the asset's interval, and repeat failures on the same tag within
     REPEAT_WINDOW_DAYS.
     """
-    now = now or datetime.now(timezone.utc)
+    now = _as_utc(now or datetime.now(timezone.utc))
     score = 100.0
     reasons: list[str] = []
 
@@ -135,7 +146,7 @@ def health_score(
         interval = int(asset.specs["maintenance_interval_days"])
 
     if history:
-        last = max(history, key=lambda r: r.performed_at).performed_at
+        last = max(history, key=lambda r: _as_utc(r.performed_at)).performed_at
         overdue = _days_since(last, now)
         if overdue > interval:
             score -= HEALTH_WEIGHTS["overdue"]
@@ -145,7 +156,7 @@ def health_score(
     recent_cutoff = now - timedelta(days=REPEAT_WINDOW_DAYS)
     tag_failures: dict[str, int] = defaultdict(int)
     for r in history:
-        if r.performed_at >= recent_cutoff and r.asset_id == asset.id:
+        if _as_utc(r.performed_at) >= recent_cutoff and r.asset_id == asset.id:
             tag_failures[r.findings or r.action] += 1
     for _, count in tag_failures.items():
         if count > 1:

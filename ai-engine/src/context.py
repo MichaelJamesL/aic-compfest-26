@@ -71,7 +71,7 @@ def select_context(
     health, summary = health_score(request.asset, anomalies, request.history, defects)
 
     query = _retrieval_query(request)
-    corpus = knowledge.search(query, request.asset.id, k=RETRIEVAL_K)
+    corpus = knowledge.search(query, request.asset.id, request.factory_id, k=RETRIEVAL_K)
 
     history = sorted(request.history, key=lambda r: r.performed_at, reverse=True)[
         :HISTORY_LIMIT

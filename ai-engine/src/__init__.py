@@ -18,6 +18,8 @@ from .schemas import (
     RootCause,
     SensorReading,
     Tier,
+    TechnicianResult,
+    VerificationResult,
     WorkOrder,
 )
 
@@ -37,4 +39,6 @@ __all__ = [
     "DefectFinding",
     "RootCause",
     "WorkOrder",
+    "TechnicianResult",
+    "VerificationResult",
 ]

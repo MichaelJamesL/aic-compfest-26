@@ -27,6 +27,24 @@ def test_planted_spike_is_flagged():
     assert out[0].severity == "critical"
 
 
+def test_low_only_outlier_is_flagged():
+    vals = [50.0 + (i % 3) for i in range(20)]
+    vals[-1] = 5.0
+    out = detect_anomalies(_readings(vals))
+    assert len(out) == 1
+    assert out[0].observed == 5.0
+    assert out[0].severity == "critical"
+
+
+def test_both_side_outliers_choose_the_most_extreme_fence_distance():
+    vals = [50.0 + (i % 3) for i in range(20)]
+    vals[-2:] = [5.0, 500.0]
+    out = detect_anomalies(_readings(vals))
+    assert len(out) == 1
+    assert out[0].observed == 500.0
+    assert out[0].severity == "critical"
+
+
 def test_too_few_points_returns_empty():
     assert detect_anomalies(_readings([50.0, 60.0, 70.0])) == []
 
@@ -53,6 +71,29 @@ def test_overdue_maintenance_deducts():
     score, summary = health_score(asset, [], [old], now=now)
     assert score < 100
     assert "overdue" in summary.lower()
+
+
+def test_naive_sqlite_maintenance_timestamp_is_treated_as_utc():
+    asset = Asset(id="a1", name="Pump", type="pump")
+    now = datetime.datetime(2026, 8, 10, tzinfo=datetime.timezone.utc)
+    old = MaintenanceRecord(
+        asset_id="a1",
+        performed_at=datetime.datetime(2026, 1, 1),
+        action="overhaul",
+    )
+    score, summary = health_score(asset, [], [old], now=now)
+    assert score < 100
+    assert "overdue" in summary.lower()
+
+
+def test_naive_and_aware_history_can_be_compared():
+    asset = Asset(id="a1", name="Pump", type="pump")
+    now = datetime.datetime(2026, 8, 10, tzinfo=datetime.timezone.utc)
+    history = [
+        MaintenanceRecord(asset_id="a1", performed_at=datetime.datetime(2026, 1, 1), action="old"),
+        MaintenanceRecord(asset_id="a1", performed_at=now - datetime.timedelta(days=1), action="new"),
+    ]
+    assert health_score(asset, [], history, now=now)[0] == 100
 
 
 def test_health_score_falls_as_defect_severity_rises():

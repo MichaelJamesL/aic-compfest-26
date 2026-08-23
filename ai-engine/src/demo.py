@@ -56,6 +56,7 @@ def _generate_defective(tmp: Path) -> str:
 
 def fixture_request() -> AnalysisRequest:
     now = datetime.now(timezone.utc)
+    factory_id = "demo-factory"
 
     asset = Asset(
         id="pump-01",
@@ -96,17 +97,19 @@ def fixture_request() -> AnalysisRequest:
         id="sop-bearing-replacement",
         title="Bearing Replacement SOP",
         kind="sop",
+        factory_id=factory_id,
         text=(
             "Replace the bearing when bearing_temp_c reaches 85C. "
             "Use SKF-6204. Shut down the pump before work. "
             "Replacement takes about 2 hours with two technicians."
         ),
     )
-    knowledge.ingest(sop, asset_id=asset.id)
+    knowledge.ingest(sop, asset_id=asset.id, factory_id=factory_id)
 
     return AnalysisRequest(
         tier=Tier.PROFESSIONAL,
         asset=asset,
+        factory_id=factory_id,
         readings=readings,
         history=history,
         images=[],

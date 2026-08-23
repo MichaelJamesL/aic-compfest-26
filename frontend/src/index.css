@@ -55,8 +55,8 @@
   --font-sans: 'Plus Jakarta Sans', ui-sans-serif, system-ui, -apple-system,
     'Segoe UI', Roboto, sans-serif;
 
-  --shadow-shell: 0 24px 64px -24px rgba(17, 17, 17, 0.2),
-    0 2px 8px -2px rgba(17, 17, 17, 0.06);
+  /* One shadow in the product, for floating layers only. The shell used to
+     cast a second one onto a page gutter; it is full-bleed now. */
   --shadow-float: 0 16px 40px -12px rgba(0, 0, 0, 0.55);
 }
 
@@ -66,7 +66,8 @@
     -moz-osx-font-smoothing: grayscale;
   }
   body {
-    background: var(--color-page);
+    /* Matches the shell so overscroll never reveals a stray gutter. */
+    background: var(--color-shell);
     color: var(--color-ink);
     font-family: var(--font-sans);
     font-size: 14px;

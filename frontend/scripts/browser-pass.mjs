@@ -70,6 +70,19 @@ async function visit(page, name, path) {
       pageScrollsSideways: doc.scrollWidth > doc.clientWidth + 1,
       overflowing: wide,
       bodyBg: getComputedStyle(body).backgroundColor,
+      // The white chrome must reach every edge of the viewport.
+      shellGutter: (() => {
+        const shell = document.querySelector('nav')?.parentElement
+        if (!shell) return 'no shell'
+        const box = shell.getBoundingClientRect()
+        const gaps = []
+        if (box.left > 0) gaps.push(`left ${Math.round(box.left)}px`)
+        if (box.top > 0) gaps.push(`top ${Math.round(box.top)}px`)
+        if (box.right < window.innerWidth - 1) {
+          gaps.push(`right ${Math.round(window.innerWidth - box.right)}px`)
+        }
+        return gaps.length ? gaps.join(', ') : null
+      })(),
       panelBg: panel ? getComputedStyle(panel).backgroundColor : null,
       panelRadius: panel ? getComputedStyle(panel).borderRadius : null,
       font: getComputedStyle(body).fontFamily,
@@ -172,7 +185,14 @@ async function visit(page, name, path) {
   if (probe.emptyCards) report('fail', path, `${probe.emptyCards} empty card(s) rendered`)
   if (probe.textNodes < 200) report('fail', path, `page looks blank (${probe.textNodes} chars of text)`)
   if (!probe.font.includes('Plus Jakarta Sans')) report('fail', path, `wrong font: ${probe.font}`)
-  if (probe.bodyBg !== 'rgb(229, 229, 229)') report('warn', path, `body background ${probe.bodyBg}, expected #E5E5E5`)
+  // The shell is full-bleed, so the body must match it — a stray page-grey
+  // gutter appearing on overscroll is a regression.
+  if (probe.bodyBg !== 'rgb(255, 255, 255)') {
+    report('warn', path, `body background ${probe.bodyBg}, expected the shell white`)
+  }
+  if (probe.shellGutter) {
+    report('fail', path, `shell does not reach the window edge (${probe.shellGutter})`)
+  }
   if (probe.panelBg && probe.panelBg !== 'rgb(0, 0, 0)') report('warn', path, `panel background ${probe.panelBg}, expected #000000`)
 
   for (const error of errors) report('fail', path, `console: ${error.slice(0, 140)}`)

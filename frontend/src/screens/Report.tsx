@@ -59,7 +59,7 @@ export function ReportScreen() {
     <AppShell title="Verifikasi & laporan" subtitle={data.title}>
       <Link
         to={`/work-orders/${data.id}`}
-        className="mb-3 inline-flex items-center gap-1.5 text-[13px] text-faint hover:text-white"
+        className="mb-3 inline-flex items-center gap-1.5 text-[13px] text-content-3 hover:text-content"
       >
         <ArrowLeft size={14} /> Kembali ke work order
       </Link>
@@ -74,7 +74,7 @@ function NotYetVerified() {
     <>
       <Card>
         <SectionTitle>Belum diverifikasi</SectionTitle>
-        <p className="mt-3 max-w-prose text-[13px] leading-6 text-dim">
+        <p className="mt-3 max-w-prose text-[13px] leading-6 text-content-2">
           Verifikasi berjalan setelah teknisi mengirim hasil pekerjaan. AI membandingkan
           hasil itu dengan SOP dan kondisi mesin, lalu mengeluarkan verdict beserta
           buktinya — bukan menyatakan selesai sendiri.
@@ -82,9 +82,9 @@ function NotYetVerified() {
 
         <div className="mt-5 grid gap-3 md:grid-cols-3">
           {(['resolved', 'partial', 'not_resolved'] as const).map((verdict) => (
-            <div key={verdict} className="rounded-control border border-hair p-4">
+            <div key={verdict} className="rounded-control border border-line p-4">
               <Badge tone={VERDICT[verdict].tone}>{VERDICT[verdict].label}</Badge>
-              <p className="mt-2.5 text-xs leading-5 text-faint">
+              <p className="mt-2.5 text-xs leading-5 text-content-3">
                 {verdict === 'resolved' && 'Bukti mendukung bahwa masalah kondisi mesin hilang.'}
                 {verdict === 'partial' && 'Sebagian tindakan terbukti, sisanya butuh tindak lanjut.'}
                 {verdict === 'not_resolved' && 'Bukti tidak mendukung; diagnosis ulang bisa diminta.'}
@@ -94,10 +94,10 @@ function NotYetVerified() {
         </div>
       </Card>
 
-      <p className="mt-3 text-xs leading-5 text-faint">
+      <p className="mt-3 text-xs leading-5 text-content-3">
         Verifikasi belum bisa dijalankan: backend belum punya route
-        <span className="text-dim"> POST /work-orders/{'{id}'}/verify</span>, dan engine belum
-        punya <span className="text-dim">MaintenanceEngine.verify()</span>. Lihat
+        <span className="text-content-2"> POST /work-orders/{'{id}'}/verify</span>, dan engine belum
+        punya <span className="text-content-2">MaintenanceEngine.verify()</span>. Lihat
         docs/requirements/AI_ENGINE.md §1.
       </p>
     </>
@@ -134,7 +134,7 @@ function Verdict({ report }: { report: MaintenanceReport }) {
           <SectionTitle>Tindak lanjut</SectionTitle>
           <ul className="mt-4 space-y-2">
             {report.verification.follow_up.map((item) => (
-              <li key={item} className="text-[13px] text-dim">
+              <li key={item} className="text-[13px] text-content-2">
                 {item}
               </li>
             ))}
@@ -143,7 +143,7 @@ function Verdict({ report }: { report: MaintenanceReport }) {
             <Button icon={<RefreshCw size={14} />} size="sm">
               Jalankan diagnosis ulang
             </Button>
-            <p className="mt-2 text-xs text-faint">
+            <p className="mt-2 text-xs text-content-3">
               Dijalankan atas permintaan pengguna, bukan otomatis.
             </p>
           </div>
@@ -160,20 +160,20 @@ function Verdict({ report }: { report: MaintenanceReport }) {
         <dl className="mt-4 space-y-4">
           <div>
             <CardTitle muted>Masalah</CardTitle>
-            <dd className="mt-1 text-[13px] leading-6 text-dim">{report.problem}</dd>
+            <dd className="mt-1 text-[13px] leading-6 text-content-2">{report.problem}</dd>
           </div>
           <div>
             <CardTitle muted>Tindakan</CardTitle>
-            <dd className="mt-1 text-[13px] leading-6 text-dim">{report.action}</dd>
+            <dd className="mt-1 text-[13px] leading-6 text-content-2">{report.action}</dd>
           </div>
           <div>
             <CardTitle muted>Kondisi akhir mesin</CardTitle>
-            <dd className="mt-1 text-[13px] leading-6 text-dim">{report.final_state}</dd>
+            <dd className="mt-1 text-[13px] leading-6 text-content-2">{report.final_state}</dd>
           </div>
         </dl>
 
         {report.written_back && (
-          <p className="mt-5 border-t border-hair pt-4 text-xs leading-5 text-faint">
+          <p className="mt-5 border-t border-line pt-4 text-xs leading-5 text-content-3">
             Work order yang selesai ditulis kembali sebagai dokumen histori maintenance di
             knowledge base, dan akan dibaca analisis berikutnya.
           </p>

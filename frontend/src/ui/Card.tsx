@@ -5,7 +5,7 @@ type Tint = 'dark' | 'sage' | 'apricot' | 'clay' | 'mint'
 
 /** Tinted cards always use #111111 for text — never white on these tones. */
 const TINT: Record<Tint, string> = {
-  dark: 'bg-card text-white',
+  dark: 'bg-surface-card text-content',
   sage: 'bg-sage text-card',
   apricot: 'bg-apricot text-card',
   clay: 'bg-clay text-card',
@@ -39,7 +39,7 @@ export function CardTitle({
   muted?: boolean
 }) {
   // `text-soft`, not a colour token: this heading appears on both the dark
-  // cards and the tinted ones, where `text-dim` would be grey on clay.
+  // cards and the tinted ones, where `text-content-2` would be grey on clay.
   return <h3 className={cn('text-sm font-medium', muted && 'text-soft')}>{children}</h3>
 }
 
@@ -50,7 +50,7 @@ export function SectionTitle({ children }: { children: ReactNode }) {
 /** The line that marks a number as computed, not written by the model. */
 export function DeterministicNote({ children }: { children?: ReactNode }) {
   return (
-    <p className="text-[11.5px] leading-4 text-teal">
+    <p className="text-[11.5px] leading-4 text-teal-ink">
       {children ?? 'Dihitung deterministik, bukan oleh LLM.'}
     </p>
   )

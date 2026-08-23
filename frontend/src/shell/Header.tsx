@@ -28,9 +28,9 @@ function RoleSwitcher() {
     <div className="relative" ref={box}>
       <button
         onClick={() => setOpen((v) => !v)}
-        className="flex h-9 items-center gap-2 rounded-full border border-hair pr-3 pl-1 text-[13px] text-dim transition-colors duration-100 hover:text-white"
+        className="flex h-9 items-center gap-2 rounded-full border border-line pr-3 pl-1 text-[13px] text-content-2 transition-colors duration-100 hover:text-content"
       >
-        <span className="grid size-7 place-items-center rounded-full bg-raised text-[11px] font-semibold text-white">
+        <span className="grid size-7 place-items-center rounded-full bg-surface-raised text-[11px] font-semibold text-content">
           {active.label.slice(0, 2).toUpperCase()}
         </span>
         {active.label}
@@ -38,7 +38,7 @@ function RoleSwitcher() {
       </button>
 
       {open && (
-        <ul className="glass-dark absolute top-full right-0 z-30 mt-2 w-44 rounded-control p-1">
+        <ul className="glass-light absolute top-full right-0 z-30 mt-2 w-44 rounded-control p-1">
           {ROLES.map((role) => (
             <li key={role.user}>
               <button
@@ -51,7 +51,7 @@ function RoleSwitcher() {
                 }}
                 className={cn(
                   'flex h-9 w-full items-center rounded-lg px-3 text-[13px]',
-                  role.user === user ? 'bg-raised text-white' : 'text-dim hover:text-white',
+                  role.user === user ? 'bg-surface-raised text-content' : 'text-content-2 hover:text-content',
                 )}
               >
                 {role.label}
@@ -77,23 +77,23 @@ export function Header({
     <header
       className={cn(
         'sticky top-0 z-20 flex items-center gap-4 rounded-t-panel px-5 py-4',
-        stuck ? 'glass-dark rounded-b-none' : 'border border-transparent',
+        stuck ? 'glass-light rounded-b-none' : 'border border-transparent',
       )}
     >
       <div className="min-w-0 flex-1">
-        <h1 className="truncate text-[22px] leading-7 font-semibold -tracking-[0.015em] text-white">
+        <h1 className="truncate text-[22px] leading-7 font-semibold -tracking-[0.015em] text-content">
           {title}
         </h1>
-        {subtitle && <p className="mt-0.5 truncate text-xs text-faint">{subtitle}</p>}
+        {subtitle && <p className="mt-0.5 truncate text-xs text-content-3">{subtitle}</p>}
       </div>
 
       {/* The ring lives on the pill, not the bare input inside it. */}
-      <label className="hidden h-9 max-w-[280px] flex-1 items-center gap-2 rounded-full bg-card px-4 focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-white/60 lg:flex">
-        <Search size={15} className="shrink-0 text-faint" />
+      <label className="hidden h-9 max-w-[280px] flex-1 items-center gap-2 rounded-full bg-surface-card px-4 focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-white/60 lg:flex">
+        <Search size={15} className="shrink-0 text-content-3" />
         <input
           type="search"
           placeholder="Cari mesin atau work order…"
-          className="w-full bg-transparent text-[13px] text-white placeholder:text-faint focus:outline-none"
+          className="w-full bg-transparent text-[13px] text-content placeholder:text-content-3 focus:outline-none"
           aria-label="Cari mesin atau work order"
         />
       </label>
@@ -101,13 +101,13 @@ export function Header({
       <div className="flex items-center gap-1">
         <button
           aria-label="Pengaturan"
-          className="grid size-9 place-items-center rounded-full text-faint transition-colors duration-100 hover:text-white"
+          className="grid size-9 place-items-center rounded-full text-content-3 transition-colors duration-100 hover:text-content"
         >
           <Settings size={17} />
         </button>
         <button
           aria-label="Notifikasi"
-          className="grid size-9 place-items-center rounded-full text-faint transition-colors duration-100 hover:text-white"
+          className="grid size-9 place-items-center rounded-full text-content-3 transition-colors duration-100 hover:text-content"
         >
           <Bell size={17} />
         </button>

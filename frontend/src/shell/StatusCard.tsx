@@ -29,7 +29,7 @@ export function StatusDotCompact() {
       <span
         className={cn(
           'size-2 rounded-full',
-          unknown ? 'bg-ink-faint' : live ? 'bg-teal' : 'bg-burnt',
+          unknown ? 'bg-content-3' : live ? 'bg-teal-ink' : 'bg-burnt',
         )}
       />
     </div>
@@ -50,7 +50,7 @@ export function StatusCard() {
         <span
           className={cn(
             'size-1.5 rounded-full',
-            unknown ? 'bg-ink-faint' : live ? 'bg-teal' : 'bg-burnt',
+            unknown ? 'bg-content-3' : live ? 'bg-teal-ink' : 'bg-burnt',
           )}
           aria-hidden
         />

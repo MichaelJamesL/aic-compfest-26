@@ -50,13 +50,25 @@ describe('NavRail', () => {
     expect(nav.className).not.toContain('hidden')
   })
 
+  // A long results page must not scroll the navigation away.
+  it('stays put while the page scrolls', () => {
+    const { container } = render()
+    const nav = container.querySelector('nav')!.className.split(' ')
+    expect(nav).toContain('sticky')
+    expect(nav).toContain('top-0')
+    expect(nav).toContain('h-screen')
+    // Its own content scrolls internally rather than pushing the rail taller.
+    expect(nav).toContain('overflow-y-auto')
+  })
+
   it('marks the current destination as active', () => {
     render()
-    // Class membership, not substring: the inactive item carries `hover:bg-ink/5`.
+    // Class membership, not substring: the inactive item carries `hover:bg-white/5`.
     const classes = (title: string) => screen.getByTitle(title).className.split(' ')
-    expect(classes('Analisis')).toContain('bg-ink')
-    expect(classes('Setup')).not.toContain('bg-ink')
-    expect(classes('Analisis')).toContain('text-shell')
+    // The rail is dark, so the active pill inverts to a light fill.
+    expect(classes('Analisis')).toContain('bg-rail-content')
+    expect(classes('Setup')).not.toContain('bg-rail-content')
+    expect(classes('Analisis')).toContain('text-rail')
   })
 })
 

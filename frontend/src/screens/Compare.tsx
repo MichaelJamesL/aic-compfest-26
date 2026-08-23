@@ -63,7 +63,7 @@ export function CompareScreen() {
     <AppShell title="Perbandingan run" subtitle={asset}>
       <Link
         to={`/analysis/${id}`}
-        className="mb-3 inline-flex items-center gap-1.5 text-[13px] text-faint hover:text-white"
+        className="mb-3 inline-flex items-center gap-1.5 text-[13px] text-content-3 hover:text-content"
       >
         <ArrowLeft size={14} /> Kembali ke hasil analisis
       </Link>
@@ -126,8 +126,8 @@ function RunPicker({
     <Card className="mb-3">
       <div className="grid gap-4 md:grid-cols-2">
         <div>
-          <p className="text-[13px] font-medium text-dim">Run A</p>
-          <p className="mt-1.5 text-[13px] text-faint">
+          <p className="text-[13px] font-medium text-content-2">Run A</p>
+          <p className="mt-1.5 text-[13px] text-content-3">
             Analisis {currentId.slice(0, 8)} — run yang sedang dibuka
           </p>
         </div>
@@ -184,8 +184,8 @@ function Column({ detail, label }: { detail: AnalysisDetail; label: string }) {
               key={item.key}
               className={
                 item.present
-                  ? 'rounded-lg bg-raised px-2 py-1 text-xs text-white'
-                  : 'rounded-lg border border-hair px-2 py-1 text-xs text-faint'
+                  ? 'rounded-lg bg-surface-raised px-2 py-1 text-xs text-content'
+                  : 'rounded-lg border border-line px-2 py-1 text-xs text-content-3'
               }
             >
               {item.label}
@@ -239,9 +239,9 @@ function Column({ detail, label }: { detail: AnalysisDetail; label: string }) {
         <SectionTitle>Root cause</SectionTitle>
         <ul className="mt-3 space-y-2">
           {result.root_causes.map((cause) => (
-            <li key={cause.cause} className="text-[13px] text-dim">
+            <li key={cause.cause} className="text-[13px] text-content-2">
               {cause.cause}{' '}
-              <span className="tnum text-faint">{Math.round(cause.confidence * 100)}%</span>
+              <span className="tnum text-content-3">{Math.round(cause.confidence * 100)}%</span>
             </li>
           ))}
           {result.root_causes.length === 0 && (

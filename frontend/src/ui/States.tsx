@@ -7,7 +7,7 @@ import { Button } from './Button'
 export function EmptyState({ children, action }: { children: ReactNode; action?: ReactNode }) {
   return (
     <div className="flex flex-col items-start gap-4 py-8">
-      <p className="max-w-prose text-sm text-dim">{children}</p>
+      <p className="max-w-prose text-sm text-content-2">{children}</p>
       {action}
     </div>
   )
@@ -35,13 +35,13 @@ export function ErrorState({
       <div className="flex items-start gap-3">
         <AlertCircle size={18} className="mt-0.5 shrink-0 text-crit-text" />
         <div>
-          <p className="text-sm text-white">{errorCopy(error)}</p>
-          <p className="mt-1.5 max-w-prose text-[13px] leading-6 text-dim">
+          <p className="text-sm text-content">{errorCopy(error)}</p>
+          <p className="mt-1.5 max-w-prose text-[13px] leading-6 text-content-2">
             {notFound
               ? 'Data ini mungkin sudah dihapus, atau tautannya tidak lagi berlaku.'
               : 'Periksa apakah backend berjalan, lalu coba lagi. Bila berulang, sertakan Request ID di bawah saat melapor.'}
           </p>
-          {requestId && <p className="mt-2 text-xs text-faint">Request ID: {requestId}</p>}
+          {requestId && <p className="mt-2 text-xs text-content-3">Request ID: {requestId}</p>}
         </div>
       </div>
       <div className="flex flex-wrap gap-2">
@@ -61,5 +61,5 @@ export function ErrorState({
  * The absence is the message — never hide the section.
  */
 export function MissingInput({ children }: { children: ReactNode }) {
-  return <p className="text-[13px] text-faint">{children}</p>
+  return <p className="text-[13px] text-content-3">{children}</p>
 }

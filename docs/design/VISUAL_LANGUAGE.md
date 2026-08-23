@@ -10,9 +10,15 @@ Read this before writing any UI code. It is not a suggestion.
 
 ## 1. What the reference actually is
 
-A light-grey page holds a white rounded shell. Inside the shell: a white
-navigation rail on the left, and a **near-black work surface** filling the rest.
-On that black surface sit cards — some black, some in muted earth tones.
+A white shell fills the window. Inside it: a white navigation rail on the left,
+and a **near-black work surface** filling the rest. On that black surface sit
+cards — some black, some in muted earth tones.
+
+> **Deviation from the reference, on purpose.** `ui-ref.jpg` frames its shell as
+> a floating card on a light-grey page — that is a marketing mockup's device
+> framing, not an application layout. Ours is full-bleed: the white chrome
+> reaches every edge, there is no outer gutter, and the shell casts no shadow.
+> Everything else below is taken from the reference unchanged.
 
 Four structural ideas carry the whole design. Copy these, not the invoice data:
 
@@ -25,10 +31,10 @@ Four structural ideas carry the whole design. Copy these, not the invoice data:
    gets **one** colour, and colour marks a category, never decoration.
 3. **The number is the design.** Metric cards are 80% empty space around one
    large tabular number. Titles are small and quiet; the value is loud.
-4. **Depth comes from fill, not effects.** On the light side, one soft shadow
-   lifts the shell off the page. On the dark side there are no shadows at all —
-   surfaces separate by getting one step lighter (`#000` → `#111` → `#1E1E1E`)
-   plus a hairline.
+4. **Depth comes from fill, not effects.** There are no shadows on any surface
+   — light or dark. Surfaces separate by getting one step lighter
+   (`#000` → `#111` → `#1E1E1E`) plus a hairline, and by the 12px inset that
+   floats the black panel inside the white chrome.
 
 What **not** to copy: the sample data, the "Upgrade to PREMIUM" card, the
 donut-with-social-networks. Take the system, not the content.
@@ -41,7 +47,7 @@ donut-with-social-networks. Take the system, not the content.
 
 | Token | Value | Sampled from | Use |
 | --- | --- | --- | --- |
-| `--page` | `#E5E5E5` | page background | outside the shell |
+| `--page` | `#E5E5E5` | page background | reserved; the shell is full-bleed, so nothing renders it today |
 | `--shell` | `#FFFFFF` | sidebar | shell, nav rail, light cards |
 | `--panel` | `#000000` | dark canvas | the work surface |
 | `--card` | `#111111` | metric card, invoices card, search field | cards and inputs on the panel |
@@ -49,9 +55,10 @@ donut-with-social-networks. Take the system, not the content.
 | `--hairline` | `rgba(255,255,255,.08)` | card and row edges | 1px separation on dark |
 | `--hairline-ink` | `rgba(17,17,17,.08)` | — | 1px separation on light |
 
-Pure black is safe here specifically because it is inset in a white shell on a
-grey page. Do not use `--panel` as a full-bleed page background — without the
-shell it reads as harsh, and the whole depth model collapses.
+Pure black is safe here specifically because it is inset inside the white
+shell, with a 12px margin on every side. Do not use `--panel` as the outermost
+background — without the white chrome around it, it reads as harsh and the whole
+depth model collapses.
 
 ### Text
 
@@ -186,7 +193,8 @@ Rules:
 
 | Thing | Value |
 | --- | --- |
-| Shell padding | 12 (the black panel is inset in the white shell) |
+| Shell padding | 0 — the white chrome is full-bleed |
+| Panel inset | 12 (the black panel floats inside the white shell) |
 | Nav rail width | 232 |
 | Nav rail padding | 20 |
 | Panel padding | 16 |
@@ -203,7 +211,7 @@ Radii — the reference is generous and consistent:
 
 | Token | Value | Applies to |
 | --- | --- | --- |
-| `--r-shell` | 28 | outer shell |
+| `--r-shell` | 28 | reserved; the shell is full-bleed and unrounded |
 | `--r-panel` | 24 | the black work surface |
 | `--r-card` | 20 | every card |
 | `--r-control` | 12 | buttons, inputs, nav items, small tiles |
@@ -218,20 +226,19 @@ inner box looks like a mistake. Card 20 → inner 12 is correct.
 
 | Layer | Light side | Dark side |
 | --- | --- | --- |
-| Base | `--page` | `--panel` |
-| Container | `--shell` + shell shadow | `--card` + hairline |
+| Base | `--shell` (fills the window) | `--panel` (inset 12) |
+| Container | `--shell`, hairline-ink | `--card` + hairline |
 | Raised | `--shell`, hairline-ink | `--raised` + hairline |
 | Floating | glass (§6) | glass (§6) |
 
 ```css
---shadow-shell: 0 24px 64px -24px rgba(17,17,17,.20),
-                0 2px 8px -2px rgba(17,17,17,.06);
 --shadow-float: 0 16px 40px -12px rgba(0,0,0,.55);
 ```
 
-**There are exactly two shadows in this product.** `--shadow-shell` on the
-shell, `--shadow-float` on floating layers. Cards get none — on dark they
-separate by fill step, on light by a hairline. A shadow on a card is a bug.
+**There is exactly one shadow in this product**, and it belongs to floating
+layers only. Cards get none — on dark they separate by fill step, on light by a
+hairline. A shadow on a card is a bug. The shell used to cast a second one onto
+a page gutter; the full-bleed layout removed both.
 
 Focus: `outline: 2px solid` in `--text-1` with `outline-offset: 2px`. Visible
 on both surfaces, never removed, never replaced with a colour glow.
@@ -445,7 +452,7 @@ Tailwind v4, CSS-first configuration.
 
 :root { --hairline: rgba(255,255,255,.08); --hairline-ink: rgba(17,17,17,.08); }
 
-body { background: var(--color-page); color: var(--color-ink-1);
+body { background: var(--color-shell); color: var(--color-ink-1);
        font-family: var(--font-sans); -webkit-font-smoothing: antialiased; }
 
 .tnum { font-variant-numeric: tabular-nums; }
@@ -464,7 +471,7 @@ Font, self-hosted or from Google Fonts:
 
 1. Does every colour on screen appear in §2? If not, delete it.
 2. Is there any uppercase letterspaced text? Remove it.
-3. Do any cards have shadows? Remove them.
+3. Do any cards have shadows? Remove them. The only shadow is `--shadow-float`.
 4. Is glass on anything that does not float? Make it opaque.
 5. Is every number tabular?
 6. Is there more than one primary button in view?

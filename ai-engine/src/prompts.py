@@ -86,16 +86,23 @@ def _corpus_block(bundle: ContextBundle) -> str:
 
 def _business_block(bundle: ContextBundle) -> str:
     b = bundle.business
+    inv_lines = [
+        f"  {sp.name}: {sp.stock} {sp.unit}"
+        + (f" [min: {sp.min_stock}]" if sp.min_stock is not None else "")
+        + (f" [ETA: {sp.eta}]" if sp.eta else "")
+        for sp in b.inventory
+    ]
     return (
         f"- production_schedule: {b.production_schedule or 'not provided'}\n"
-        f"- spareparts: {b.spareparts or 'none listed'}\n"
-        f"- sparepart_eta: {b.sparepart_eta or 'not provided'}\n"
-        f"- technicians_available: {b.technicians_available if b.technicians_available is not None else 'not provided'}"
+        f"- technicians_available: {b.technicians_available if b.technicians_available is not None else 'not provided'}\n"
+        f"- inventory:\n"
+        + ("\n".join(inv_lines) if inv_lines else "  (none listed)")
     )
 
 
-def _context_str(bundle: ContextBundle) -> str:
+def _context_str(bundle: ContextBundle, asset_id: str) -> str:
     defects_block = _defects_block(bundle)
+    qc_block = _qc_block(bundle, asset_id)
 
     return (
         "=== ASSET FACTS ===\n"
@@ -106,8 +113,8 @@ def _context_str(bundle: ContextBundle) -> str:
         + (str([a.model_dump() for a in bundle.anomalies]) if bundle.anomalies else "none")
         + "\n\n"
         + defects_block
-        + "\n"
-        "=== REFERENCE DOCUMENTS (cite by title) ===\n"
+        + qc_block
+        + "=== REFERENCE DOCUMENTS (cite by title) ===\n"
         f"{_corpus_block(bundle)}\n\n"
         "=== RECENT MAINTENANCE HISTORY ===\n"
         f"{_history_block(bundle)}\n\n"
@@ -135,17 +142,30 @@ def _defects_block(bundle: ContextBundle) -> str:
     return "\n".join(lines) + "\n\n"
 
 
-def build_user_turn(bundle: ContextBundle, tier) -> str:
+def _qc_block(bundle: ContextBundle, asset_id: str) -> str:
+    if not bundle.qc_by_phase:
+        return ""
+    lines = ["=== PRODUCT QC BY PHASE ==="]
+    for q in bundle.qc_by_phase:
+        tag = "<-- THIS ASSET" if q.asset_id == asset_id else "<-- upstream"
+        lines.append(
+            f"{q.phase} (asset: {q.asset_id}, product: {q.product}) {tag}: "
+            f"{q.defects}/{q.inspected} defects ({q.defect_rate:.0%})"
+        )
+    return "\n".join(lines) + "\n\n"
+
+
+def build_user_turn(bundle: ContextBundle, tier, asset_id: str = "") -> str:
     return (
-        f"{_context_str(bundle)}\n\n"
+        f"{_context_str(bundle, asset_id)}\n\n"
         f"Tier: {tier}\n"
         "Produce the maintenance analysis JSON for this asset."
     )
 
 
-def build_ask_turn(bundle: ContextBundle, question: str) -> str:
+def build_ask_turn(bundle: ContextBundle, question: str, asset_id: str = "") -> str:
     return (
-        f"{_context_str(bundle)}\n\n"
+        f"{_context_str(bundle, asset_id)}\n\n"
         f"Question: {question}\n"
         "Answer the question using the provided context. Cite documents by title. "
         "IMPORTANT: ignore the JSON output rule above - return a plain-text answer, "

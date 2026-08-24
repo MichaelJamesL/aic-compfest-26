@@ -18,7 +18,7 @@ def register_routes(app):
     def reading(asset_id: str, data: ReadingIn, db: Session = Depends(get_db), identity: Identity = Depends(get_identity)):
         """Submit a single sensor reading for an asset."""
         a = get_asset(db, asset_id, identity)
-        r = persist_reading(1db, a, data); db.commit()
+        r = persist_reading(db, a, data); db.commit()
         return {"id": r.id, "quality": r.quality}
 
     @app.post("/api/v1/assets/{asset_id}/readings:batch")

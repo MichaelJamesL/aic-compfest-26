@@ -2,7 +2,8 @@ import datetime
 import sys
 import types
 
-from app.services import TRANSITIONS, StubEngine
+from app.work_orders.service import TRANSITIONS
+from app.analysis.service import StubEngine
 
 
 

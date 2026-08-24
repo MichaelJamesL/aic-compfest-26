@@ -10,7 +10,7 @@ from datetime import datetime, timedelta, timezone
 import numpy as np
 
 from . import config
-from .schemas import Anomaly, Asset, DefectFinding, MaintenanceRecord, SensorReading
+from .schemas import Anomaly, Asset, DefectFinding, MaintenanceRecord, SensorReading, SparePart
 
 # Whether a tag has enough points to be scored at all.
 MIN_POINTS = config.MIN_POINTS_PER_TAG
@@ -176,3 +176,16 @@ def health_score(
     if reasons:
         summary += " " + "; ".join(reasons) + "."
     return score, summary
+
+
+def shortages(parts: list[str], inventory: list[SparePart]) -> list[str]:
+    blockers: list[str] = []
+    for part in parts:
+        part_lower = part.lower()
+        for sp in inventory:
+            if sp.id.lower() in part_lower or sp.name.lower() in part_lower:
+                if sp.stock <= 0:
+                    eta_suffix = f" (ETA: {sp.eta})" if sp.eta else ""
+                    blockers.append(f"{sp.name} out of stock{eta_suffix}")
+                break
+    return blockers

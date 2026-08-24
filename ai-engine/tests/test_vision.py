@@ -40,6 +40,16 @@ def test_nonzero_region_empty():
     assert _nonzero_region(mask) == (0, 0, 0, 0)
 
 
+def test_defectfinding_phase_defaults_to_none():
+    d = DefectFinding(image="test.png", score=0.5, threshold=0.5, label="ok", severity="low")
+    assert d.phase is None
+
+
+def test_defectfinding_accepts_phase():
+    d = DefectFinding(image="test.png", score=0.5, threshold=0.5, label="ok", severity="low", phase="milling")
+    assert d.phase == "milling"
+
+
 def test_fit_inspect_round_trip():
     pytest.importorskip("anomalib")
     from src import vision

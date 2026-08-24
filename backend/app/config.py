@@ -6,6 +6,7 @@ class Settings(BaseSettings):
     app_env: str = "local"
     database_url: str = "sqlite:///./backend.db"
     storage_path: Path = Path("./storage")
+    bank_dir: Path = Path("./.banks")
     deployment_tier: str = "starter"
     demo_auth: bool = True
     ai_engine_enabled: bool = False

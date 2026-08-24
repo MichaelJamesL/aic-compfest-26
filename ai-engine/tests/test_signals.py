@@ -1,7 +1,7 @@
 import datetime
 
-from src.schemas import Anomaly, Asset, DefectFinding, MaintenanceRecord, SensorReading
-from src.signals import detect_anomalies, health_score
+from src.schemas import Anomaly, Asset, DefectFinding, MaintenanceRecord, SensorReading, SparePart
+from src.signals import detect_anomalies, health_score, shortages
 
 
 def _readings(values, tag="bearing_temp_c"):
@@ -105,3 +105,31 @@ def test_health_score_falls_as_defect_severity_rises():
     low_score, _ = health_score(asset, [], [], [low], now=now)
     high_score, _ = health_score(asset, [], [], [high], now=now)
     assert clean_score > low_score > high_score
+
+
+def test_shortages_match_by_id():
+    inv = [SparePart(id="skf-6204", name="SKF-6204 bearing", stock=0)]
+    assert "out of stock" in shortages(["SKF-6204"], inv)[0]
+
+
+def test_shortages_match_by_name():
+    inv = [SparePart(id="skf", name="motor bearing", stock=0)]
+    blockers = shortages(["replace motor bearing"], inv)
+    assert len(blockers) == 1
+    assert "motor bearing" in blockers[0]
+
+
+def test_shortages_no_match_returns_empty():
+    inv = [SparePart(id="skf-6204", name="SKF-6204 bearing", stock=0)]
+    assert shortages(["some valve"], inv) == []
+
+
+def test_shortages_nonzero_stock_no_blocker():
+    inv = [SparePart(id="skf-6204", name="SKF-6204 bearing", stock=3)]
+    assert shortages(["SKF-6204"], inv) == []
+
+
+def test_shortages_includes_eta():
+    inv = [SparePart(id="skf-6204", name="SKF-6204 bearing", stock=0, eta="5 days")]
+    blocker = shortages(["SKF-6204"], inv)[0]
+    assert "ETA: 5 days" in blocker

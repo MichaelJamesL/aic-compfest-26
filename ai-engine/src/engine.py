@@ -75,7 +75,7 @@ class MaintenanceEngine:
 
     def analyze(self, request: AnalysisRequest) -> AnalysisResult:
         bundle = context.select_context(request, self.budget_tokens)
-        user_turn = prompts.build_user_turn(bundle, request.tier)
+        user_turn = prompts.build_user_turn(bundle, request.tier, asset_id=request.asset.id)
         run = self._analysis_agent.run_sync(user_turn)
         result = run.output
         self.last_usage = run.usage
@@ -84,15 +84,27 @@ class MaintenanceEngine:
         result.health_score = bundle.health_score
         result.anomalies = bundle.anomalies
         result.defects = bundle.defects
+        result.qc_by_phase = bundle.qc_by_phase
         result.sources = bundle.source_names
         result.tier = request.tier
         result.model = config.MODEL
+
+        # ponytail: post-hoc inventory guard — the LLM can't hallucinate
+        # availability. Stock counts are a backend snapshot.
+        if result.work_order:
+            part_blockers = signals.shortages(
+                result.work_order.parts, request.business.inventory
+            )
+            for b in part_blockers:
+                if b not in result.blockers:
+                    result.blockers.append(b)
+
         return result
 
     def ask(self, request: AnalysisRequest, question: str) -> str:
         """Starter-tier Q&A: plain text answer grounded in the retrieved corpus."""
         bundle = context.select_context(request, self.budget_tokens)
-        user_turn = prompts.build_ask_turn(bundle, question)
+        user_turn = prompts.build_ask_turn(bundle, question, asset_id=request.asset.id)
         run = self._ask_agent.run_sync(user_turn)
         self.last_usage = run.usage
         return run.output

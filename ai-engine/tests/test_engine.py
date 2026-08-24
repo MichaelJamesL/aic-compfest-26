@@ -10,6 +10,7 @@ import pytest
 from pydantic_ai.models.test import TestModel
 
 from src.engine import MaintenanceEngine
+from src import signals
 from src.schemas import (
     AnalysisRequest,
     AnalysisResult,
@@ -18,6 +19,7 @@ from src.schemas import (
     MaintenanceRecord,
     RootCause,
     SensorReading,
+    SparePart,
     Tier,
     WorkOrder,
     TechnicianResult,
@@ -46,8 +48,9 @@ def _request() -> AnalysisRequest:
         ],
         business=BusinessContext(
             production_schedule="Line A busy until Saturday",
-            spareparts=["SKF-6204"],
-            sparepart_eta="bearing SKF-6204 ETA 5 days",
+            inventory=[
+                SparePart(id="skf-6204", name="SKF-6204 bearing", stock=1),
+            ],
             technicians_available=2,
             operator_report="Bearing is noisy at startup",
         ),
@@ -101,3 +104,10 @@ def test_verify_returns_typed_result_with_one_agent_call():
     )
     assert isinstance(result, VerificationResult)
     assert result.verdict in {"resolved", "partial", "not_resolved"}
+    
+def test_shortages_appended_to_blockers():
+    inv = [SparePart(id="skf-6204", name="SKF-6204 bearing", stock=0)]
+    blockers = signals.shortages(["SKF-6204"], inv)
+    assert len(blockers) == 1
+    assert "SKF-6204 bearing" in blockers[0]
+    assert "out of stock" in blockers[0]

@@ -14,7 +14,9 @@ from src import (
     Document,
     MaintenanceEngine,
     MaintenanceRecord,
+    QCBatch,
     SensorReading,
+    SparePart,
     Tier,
 )
 from src import knowledge, vision
@@ -88,9 +90,21 @@ def fixture_request() -> AnalysisRequest:
 
     business = BusinessContext(
         production_schedule="Current production run ends Saturday.",
-        spareparts=["SKF-6204 bearing"],
-        sparepart_eta="bearing SKF-6204 ETA 5 days",
         technicians_available=2,
+        inventory=[
+            SparePart(
+                id="skf-6204",
+                name="SKF-6204 bearing",
+                stock=1,
+                min_stock=2,
+            ),
+            SparePart(
+                id="pump-seal",
+                name="pump seal",
+                stock=0,
+                eta="3 days",
+            ),
+        ],
     )
 
     sop = Document(
@@ -113,6 +127,7 @@ def fixture_request() -> AnalysisRequest:
         readings=readings,
         history=history,
         images=[],
+        qc_batches=[],
         business=business,
     )
 
@@ -133,6 +148,14 @@ def main() -> None:
 
         request = fixture_request()
         request.images = [defective_path]
+        request.qc_batches = [
+            QCBatch(
+                phase="assembly",
+                asset_id="pump-01",
+                product="pump-01",
+                images=[defective_path],
+            )
+        ]
 
         engine = MaintenanceEngine()
         result = engine.analyze(request)

@@ -20,7 +20,7 @@
     - {tag: bearing_temp_c, value: 50.0, unit: c, recorded_at: "2026-08-10T00:00:00Z"}
   manual_condition: null
   history: []
-  business: {production_schedule: null, spareparts: [], sparepart_eta: null, technicians_available: null, operator_report: null}
+  business: {production_schedule: null, inventory: [], technicians_available: null, operator_report: null}
   expected: {priority: low, root_cause: [normal, healthy, none], references_window: false, blockers: []}
 
 - id: slow_drift
@@ -39,7 +39,7 @@
     - {tag: bearing_temp_c, value: 68.0, unit: c, recorded_at: "2026-08-10T00:00:00Z"}
   manual_condition: null
   history: []
-  business: {production_schedule: "Line B idle next week", spareparts: [], sparepart_eta: null, technicians_available: 1, operator_report: null}
+  business: {production_schedule: "Line B idle next week", inventory: [], technicians_available: 1, operator_report: null}
   expected: {priority: medium, root_cause: [drift, wear, temperature, degradation], references_window: true, blockers: []}
 
 - id: critical_spike
@@ -58,7 +58,12 @@
     - {tag: motor_vibration_g, value: 80.0, unit: g, recorded_at: "2026-08-10T00:00:00Z"}
   manual_condition: "loud knocking, extreme vibration"
   history: []
-  business: {production_schedule: "critical line running", spareparts: ["motor bearing"], sparepart_eta: null, technicians_available: 2, operator_report: "fan shaking violently"}
+  business:
+    production_schedule: "critical line running"
+    inventory:
+      - {id: motor-bearing, name: motor bearing, stock: 1, unit: pcs}
+    technicians_available: 2
+    operator_report: "fan shaking violently"
   expected: {priority: critical, root_cause: [bearing, vibration, imbalance, failure], references_window: false, blockers: []}
 
 - id: overdue_maintenance
@@ -68,7 +73,7 @@
   manual_condition: "run hours exceeded service interval"
   history:
     - {asset_id: compressor-1, performed_at: "2025-01-15T00:00:00Z", action: oil change, findings: "scheduled service", parts_used: []}
-  business: {production_schedule: null, spareparts: [], sparepart_eta: null, technicians_available: 1, operator_report: null}
+  business: {production_schedule: null, inventory: [], technicians_available: 1, operator_report: null}
   expected: {priority: medium, root_cause: [overdue, service, interval, maintenance], references_window: true, blockers: []}
 
 - id: sparepart_eta_blocker
@@ -87,8 +92,13 @@
     - {tag: bearing_temp_c, value: 64.0, unit: c, recorded_at: "2026-08-10T00:00:00Z"}
   manual_condition: "bearing wear"
   history: []
-  business: {production_schedule: "batch needed daily", spareparts: ["SKF-6204"], sparepart_eta: "bearing SKF-6204 ETA 5 days", technicians_available: 2, operator_report: null}
-  expected: {priority: high, root_cause: [bearing, temperature, wear], references_window: true, blockers: [SKF-6204, ETA, 5 days]}
+  business:
+    production_schedule: "batch needed daily"
+    inventory:
+      - {id: skf-6204, name: SKF-6204 bearing, stock: 0, unit: pcs, eta: "5 days"}
+    technicians_available: 2
+    operator_report: null
+  expected: {priority: high, root_cause: [bearing, temperature, wear], references_window: true, blockers: [SKF-6204, ETA, or, 5 days]}
 
 - id: production_schedule_window
   tier: professional
@@ -106,7 +116,12 @@
     - {tag: winding_temp_c, value: 78.0, unit: c, recorded_at: "2026-08-10T00:00:00Z"}
   manual_condition: null
   history: []
-  business: {production_schedule: "Line A busy until Saturday", spareparts: ["motor seal"], sparepart_eta: null, technicians_available: 2, operator_report: "overheating under load"}
+  business:
+    production_schedule: "Line A busy until Saturday"
+    inventory:
+      - {id: motor-seal, name: motor seal, stock: 3, unit: pcs}
+    technicians_available: 2
+    operator_report: "overheating under load"
   expected: {priority: high, root_cause: [temperature, winding, overheating], references_window: true, blockers: []}
 
 - id: repeat_failure
@@ -127,7 +142,7 @@
   history:
     - {asset_id: pump-4, performed_at: "2026-07-20T00:00:00Z", action: "bearing replacement", findings: "bearing failure", parts_used: [SKF-6204]}
     - {asset_id: pump-4, performed_at: "2026-07-25T00:00:00Z", action: "bearing replacement", findings: "bearing failure", parts_used: [SKF-6204]}
-  business: {production_schedule: null, spareparts: [], sparepart_eta: null, technicians_available: 1, operator_report: "failed twice this month"}
+  business: {production_schedule: null, inventory: [], technicians_available: 1, operator_report: "failed twice this month"}
   expected: {priority: high, root_cause: [repeat, recurring, bearing, recurring failure], references_window: true, blockers: []}
 
 - id: operator_report_cause
@@ -146,7 +161,12 @@
     - {tag: oil_pressure_bar, value: 2.4, unit: bar, recorded_at: "2026-08-10T00:00:00Z"}
   manual_condition: null
   history: []
-  business: {production_schedule: null, spareparts: ["oil filter"], sparepart_eta: null, technicians_available: 1, operator_report: "clogged oil filter seen during inspection"}
+  business:
+    production_schedule: null
+    inventory:
+      - {id: oil-filter, name: oil filter, stock: 2, unit: pcs}
+    technicians_available: 1
+    operator_report: "clogged oil filter seen during inspection"
   expected: {priority: medium, root_cause: [oil filter, filter, clogged, oil], references_window: true, blockers: []}
 
 - id: starter_text_only
@@ -155,7 +175,7 @@
   readings: []
   manual_condition: "cutter is dull, finishing poor"
   history: []
-  business: {production_schedule: null, spareparts: [], sparepart_eta: null, technicians_available: null, operator_report: null}
+  business: {production_schedule: null, inventory: [], technicians_available: null, operator_report: null}
   expected: {priority: medium, root_cause: [cutter, dull, tool, wear], references_window: false, blockers: []}
 
 - id: professional_full_context
@@ -175,5 +195,34 @@
   manual_condition: "spindle bearing rumbling"
   history:
     - {asset_id: cnc-1, performed_at: "2026-06-01T00:00:00Z", action: "spindle inspection", findings: "minor bearing play", parts_used: []}
-  business: {production_schedule: "critical batch due Friday, line full until then", spareparts: ["spindle bearing"], sparepart_eta: "spindle bearing ETA 3 days", technicians_available: 1, operator_report: "spindle rumbles and precision drifting on titanium parts"}
-  expected: {priority: critical, root_cause: [spindle, bearing, vibration, rumbling], references_window: true, blockers: [spindle bearing, ETA, 3 days]}
+  business:
+    production_schedule: "critical batch due Friday, line full until then"
+    inventory:
+      - {id: spindle-bearing, name: spindle bearing, stock: 0, unit: pcs, eta: "3 days"}
+    technicians_available: 1
+    operator_report: "spindle rumbles and precision drifting on titanium parts"
+  expected: {priority: critical, root_cause: [spindle, bearing, vibration, rumbling], references_window: true, blockers: [spindle bearing, ETA, or, 3 days]}
+
+- id: sparepart_out_of_stock
+  tier: standard
+  asset: {id: fan-2, name: Exhaust Fan, type: fan, criticality: high}
+  readings:
+    - {tag: motor_vibration_g, value: 2.0, unit: g, recorded_at: "2026-08-01T00:00:00Z"}
+    - {tag: motor_vibration_g, value: 2.1, unit: g, recorded_at: "2026-08-02T00:00:00Z"}
+    - {tag: motor_vibration_g, value: 2.0, unit: g, recorded_at: "2026-08-03T00:00:00Z"}
+    - {tag: motor_vibration_g, value: 2.2, unit: g, recorded_at: "2026-08-04T00:00:00Z"}
+    - {tag: motor_vibration_g, value: 2.0, unit: g, recorded_at: "2026-08-05T00:00:00Z"}
+    - {tag: motor_vibration_g, value: 2.1, unit: g, recorded_at: "2026-08-06T00:00:00Z"}
+    - {tag: motor_vibration_g, value: 2.0, unit: g, recorded_at: "2026-08-07T00:00:00Z"}
+    - {tag: motor_vibration_g, value: 2.2, unit: g, recorded_at: "2026-08-08T00:00:00Z"}
+    - {tag: motor_vibration_g, value: 2.0, unit: g, recorded_at: "2026-08-09T00:00:00Z"}
+    - {tag: motor_vibration_g, value: 80.0, unit: g, recorded_at: "2026-08-10T00:00:00Z"}
+  manual_condition: "bearing screeching"
+  history: []
+  business:
+    production_schedule: null
+    inventory:
+      - {id: motor-bearing, name: motor bearing, stock: 0, unit: pcs}
+    technicians_available: 2
+    operator_report: "fan vibrating heavily"
+  expected: {priority: critical, root_cause: [bearing, vibration, failure], references_window: false, blockers: [motor bearing, out of stock]}

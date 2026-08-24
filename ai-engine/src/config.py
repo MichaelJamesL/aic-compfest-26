@@ -50,4 +50,4 @@ BANK_DIR: str = os.getenv("AIENGINE_BANK_DIR", "ai-engine/.banks")
 DEFECT_THRESHOLD: float | None = (
     float(v) if (v := os.getenv("AIENGINE_DEFECT_THRESHOLD")) else None
 )
-PATCHCORE_BACKBONE: str = os.getenv("AIENGINE_PATCHCORE_BACKBONE", "wideresnet50")
+PATCHCORE_BACKBONE: str = os.getenv("AIENGINE_PATCHCORE_BACKBONE", "wide_resnet50_2")

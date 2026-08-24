@@ -8,7 +8,10 @@ import csv as csv_module
 os.environ["DATABASE_URL"] = "sqlite://"
 os.environ["STORAGE_PATH"] = "/tmp/aic-backend-test"
 from fastapi.testclient import TestClient
-from app.main import app, _factory_storage_key, _safe_storage_path
+from app.main import app
+from app.documents.service import factory_storage_key, safe_storage_path, MAX_PDF_PAGES, MAX_PDF_TEXT, extract_text, check_file
+from app import services as _svc
+from app.analysis import service as analysis_service
 from app import models, services
 from app.db import SessionLocal
 
@@ -36,7 +39,7 @@ def test_real_ai_engine_path_uses_testmodel_without_network(monkeypatch):
     from src import context as engine_context
     monkeypatch.setattr(engine_context.knowledge, "search", lambda *args, **kwargs: [])
     engine = MaintenanceEngine(model=TestModel())
-    monkeypatch.setattr(services, "engine_factory", lambda settings: engine)
+    monkeypatch.setattr(analysis_service, "engine_factory", lambda settings: engine)
     with TestClient(app) as client:
         asset = client.post("/api/v1/assets", json={"name": "Real engine integration"}).json()
         response = client.post(f"/api/v1/assets/{asset['id']}/analyses", json={"manual_condition": "vibration"})
@@ -93,7 +96,7 @@ def test_audit_events_cover_creation_analysis_failure_and_work_order_evidence(mo
     with TestClient(app) as client:
         asset_response = client.post("/api/v1/assets", headers={"X-Request-ID": "asset-audit"}, json={"name": "Audited"})
         asset = asset_response.json()
-        monkeypatch.setattr(services, "engine_factory", lambda settings: Broken())
+        monkeypatch.setattr(analysis_service, "engine_factory", lambda settings: Broken())
         failed = client.post(f"/api/v1/assets/{asset['id']}/analyses", headers={"X-Request-ID": "analysis-fail"}, json={})
         assert failed.json()["status"] == "failed"
         monkeypatch.undo()
@@ -116,22 +119,22 @@ def test_audit_events_cover_creation_analysis_failure_and_work_order_evidence(mo
 
 
 @pytest.mark.parametrize("value", ["../etc", "a/b", "a\\\\b", "", ".", "-bad", "a" * 65])
-def test_factory_storage_key_rejects_hostile_input(value):
+def testfactory_storage_key_rejects_hostile_input(value):
     with pytest.raises(ValueError):
-        _factory_storage_key(value)
+        factory_storage_key(value)
 
 
 def test_upload_storage_path_is_contained():
     settings = __import__("app.main", fromlist=["get_settings"]).get_settings()
-    assert _safe_storage_path(settings, "demo-factory/file.txt").is_relative_to(settings.storage_path.resolve())
+    assert safe_storage_path(settings, "demo-factory/file.txt").is_relative_to(settings.storage_path.resolve())
     with pytest.raises(ValueError):
-        _safe_storage_path(settings, "../outside.txt")
+        safe_storage_path(settings, "../outside.txt")
     with TestClient(app) as client:
         response = client.post("/api/v1/knowledge/documents", files={"file": ("../../outside.txt", b"safe", "text/plain")})
         assert response.status_code == 201
         with SessionLocal() as db:
             document = db.get(models.Document, response.json()["id"])
-            stored = _safe_storage_path(settings, document.storage_key)
+            stored = safe_storage_path(settings, document.storage_key)
             assert stored.is_relative_to(settings.storage_path.resolve())
 
 def test_import_and_document():
@@ -161,15 +164,13 @@ def test_pdf_extraction_rejects_malformed_and_keeps_valid_empty_pdf_honest():
 
 
 def test_pdf_limits_are_rejected_before_unbounded_extraction(monkeypatch):
-    from app import main
     class ManyPages:
-        pages = [object()] * (main.MAX_PDF_PAGES + 1)
+        pages = [object()] * (MAX_PDF_PAGES + 1)
     monkeypatch.setattr("pypdf.PdfReader", lambda *args, **kwargs: ManyPages())
     with pytest.raises(ValueError, match="pdf_too_many_pages"):
-        main._extract_text("large.pdf", "application/pdf", b"pdf")
+        extract_text("large.pdf", "application/pdf", b"pdf")
 
 def test_text_pdf_extraction():
-    from app.main import _extract_text
     pdf = b"""%PDF-1.4
 1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj
 2 0 obj<</Type/Pages/Count 1/Kids[3 0 R]>>endobj
@@ -185,7 +186,7 @@ trailer<</Root 1 0 R/Size 6>>
 startxref
 0
 %%EOF"""
-    assert "Maintenance SOP" in _extract_text("sop.pdf", "application/pdf", pdf)
+    assert "Maintenance SOP" in extract_text("sop.pdf", "application/pdf", pdf)
 
 def test_bulk_history_csv_and_xlsx_are_scoped_and_report_row_errors():
     from openpyxl import Workbook
@@ -452,7 +453,7 @@ def test_work_order_export_has_headers_and_tenant_isolation():
 
 
 def test_partial_verification_stays_in_progress_and_report_is_scoped(monkeypatch):
-    original = services.engine_factory
+    original = analysis_service.engine_factory
     class Partial:
         mode = "test"
         def verify(self, work_order, technician_result):
@@ -461,7 +462,7 @@ def test_partial_verification_stays_in_progress_and_report_is_scoped(monkeypatch
         with TestClient(app) as client:
             wo = _work_order(client)
             oid = wo["id"]
-            services.engine_factory = lambda settings: Partial()
+            analysis_service.engine_factory = lambda settings: Partial()
             for path, headers in (("submit", {}), ("approve", MANAGER), ("schedule", {}), ("start", {})):
                 client.post(f"/api/v1/work-orders/{oid}/{path}", headers=headers)
             client.post(f"/api/v1/work-orders/{oid}/result", headers=TECHNICIAN, json={"work_done": "Partial", "findings": "Still noisy"})
@@ -470,12 +471,12 @@ def test_partial_verification_stays_in_progress_and_report_is_scoped(monkeypatch
             assert client.get(f"/api/v1/work-orders/{oid}/report").status_code == 200
             assert client.get(f"/api/v1/work-orders/{oid}/report", headers={"X-Factory-ID": "other"}).status_code == 404
     finally:
-        services.engine_factory = original
+        analysis_service.engine_factory = original
 
 
 @pytest.mark.parametrize("verdict, expected_status", [("partial", "in_progress"), ("not_resolved", "in_progress")])
 def test_non_resolved_verdicts_never_complete(verdict, expected_status):
-    original = services.engine_factory
+    original = analysis_service.engine_factory
     class Fake:
         mode = "test"
         def verify(self, work_order, technician_result):
@@ -486,15 +487,15 @@ def test_non_resolved_verdicts_never_complete(verdict, expected_status):
             oid = wo["id"]
             for path, headers in (("submit", {}), ("approve", MANAGER), ("schedule", {}), ("start", {})):
                 client.post(f"/api/v1/work-orders/{oid}/{path}", headers=headers)
-            services.engine_factory = lambda settings: Fake()
+            analysis_service.engine_factory = lambda settings: Fake()
             client.post(f"/api/v1/work-orders/{oid}/result", headers=TECHNICIAN, json={"work_done": "attempt", "findings": "not fixed"})
             assert client.post(f"/api/v1/work-orders/{oid}/verify").json()["status"] == expected_status
     finally:
-        services.engine_factory = original
+        analysis_service.engine_factory = original
 
 
 def test_conflicting_result_and_failed_verification_are_safe():
-    original = services.engine_factory
+    original = analysis_service.engine_factory
     class Broken:
         mode = "test"
         def verify(self, work_order, technician_result):
@@ -509,12 +510,12 @@ def test_conflicting_result_and_failed_verification_are_safe():
             client.post(f"/api/v1/work-orders/{oid}/result", headers=TECHNICIAN, json=payload)
             conflict = client.post(f"/api/v1/work-orders/{oid}/result", headers=TECHNICIAN, json={"work_done": "other"})
             assert conflict.status_code == 409
-            services.engine_factory = lambda settings: Broken()
+            analysis_service.engine_factory = lambda settings: Broken()
             failed = client.post(f"/api/v1/work-orders/{oid}/verify")
             assert failed.status_code == 422
             assert client.get(f"/api/v1/work-orders/{oid}/report").status_code == 404
     finally:
-        services.engine_factory = original
+        analysis_service.engine_factory = original
 
 
 def test_factory_scoping_hides_other_tenants():
@@ -664,7 +665,7 @@ def test_batch_readings_and_mock_ingest_are_idempotent(monkeypatch):
         assert response.json()["count"] == 2
         assert response.json()["readings"][0]["id"] == response.json()["readings"][1]["id"]
         pulled = [{**reading, "source": "mock-plc"}]
-        monkeypatch.setattr("app.main.MockPLC.pull", lambda self, asset_id: pulled)
+        monkeypatch.setattr("app.adapters.MockPLC.pull", lambda self, asset_id: pulled)
         ingest = client.post(f"/api/v1/assets/{aid}/ingest/plc")
         assert ingest.status_code == 200
         assert ingest.json()["readings"][0]["id"] == response.json()["readings"][0]["id"]
@@ -677,7 +678,7 @@ def test_analysis_wires_qc_images_and_preserves_snapshot(monkeypatch):
         def analyze(self, request):
             captured["request"] = request
             return {"health_score": 90, "priority": "low", "model": "test", "work_order": {}}
-    monkeypatch.setattr(services, "engine_factory", lambda settings: Engine())
+    monkeypatch.setattr(analysis_service, "engine_factory", lambda settings: Engine())
     with TestClient(app) as client:
         asset = client.post("/api/v1/assets", json={"name": "Vision"}).json()
         batch = client.post(f"/api/v1/assets/{asset['id']}/qc-batches", files={"files": ("part.png", PNG, "image/png")}).json()
@@ -696,11 +697,11 @@ def test_analysis_include_flags_control_request_and_snapshot(monkeypatch):
         def analyze(self, request):
             captured["request"] = request
             return {"health_score": 100, "priority": "low", "model": "test", "work_order": {}}
-    monkeypatch.setattr(services, "engine_factory", lambda settings: Engine())
+    monkeypatch.setattr(analysis_service, "engine_factory", lambda settings: Engine())
     with TestClient(app) as client:
         asset = client.post("/api/v1/assets", json={"name": "Flags"}).json()
         aid = asset["id"]
-        client.put(f"/api/v1/assets/{aid}/business-context", json={"operator_report": "bearing noise", "spareparts": ["bearing"]})
+        client.put(f"/api/v1/assets/{aid}/business-context", json={"operator_report": "bearing noise", "inventory": [{"id": "bearing", "name": "bearing", "stock": 0}]})
         client.post(f"/api/v1/assets/{aid}/maintenance-records", json={"performed_at": "2026-01-01T00:00:00Z", "action": "overhaul"})
         response = client.post(f"/api/v1/assets/{aid}/analyses", json={"include_history": False, "include_business_context": False})
         assert response.status_code == 201
@@ -709,14 +710,14 @@ def test_analysis_include_flags_control_request_and_snapshot(monkeypatch):
         assert (request.business["operator_report"] if isinstance(request.business, dict) else request.business.operator_report) is None
         snapshot = client.get(f"/api/v1/analyses/{response.json()['id']}").json()["request_snapshot"]
         assert snapshot["history"] == []
-        assert snapshot["business"]["spareparts"] == []
+        assert snapshot["business"]["inventory"] == []
 
 def test_analysis_failure_is_stored(monkeypatch):
     class Broken:
         mode = "test"
         def analyze(self, request):
             raise RuntimeError("boom")
-    monkeypatch.setattr(services, "engine_factory", lambda settings: Broken())
+    monkeypatch.setattr(analysis_service, "engine_factory", lambda settings: Broken())
     with TestClient(app) as client:
         asset = client.post("/api/v1/assets", json={"name": "Failure"}).json()
         response = client.post(f"/api/v1/assets/{asset['id']}/analyses", json={})

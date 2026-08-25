@@ -313,6 +313,105 @@ def test_full_work_order_lifecycle():
         assert client.post(f"/api/v1/work-orders/{order_id}/complete").status_code == 409
 
 
+def _roster(client, technicians, production=None):
+    client.put("/api/v1/business-context", json={
+        "production_schedule": {"work_time": production} if production else None,
+        "technicians": technicians,
+    })
+
+
+ALL_DAY = {day: {"start": "00:00:00", "end": "23:30:00"} for day in
+           ("monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday")}
+
+
+def test_work_order_is_proposed_with_a_technician_and_a_slot():
+    with TestClient(app) as client:
+        _roster(client, [{"name": "Budi", "role": "mekanik", "work_time": ALL_DAY, "occupied_time": {}}])
+        wo = _work_order(client)
+        assert wo["assigned_technician"] == "Budi"
+        assert wo["scheduled_start"] and wo["scheduled_end"]
+
+
+def test_a_held_slot_is_not_offered_to_the_next_work_order():
+    """The whole point: a proposal blocks that technician from the moment it exists."""
+    with TestClient(app) as client:
+        _roster(client, [{"name": "Budi", "role": "mekanik", "work_time": ALL_DAY, "occupied_time": {}}])
+        first = _work_order(client)
+        second = _work_order(client)
+        assert second["assigned_technician"] == "Budi"
+        assert second["scheduled_start"] >= first["scheduled_end"], (first, second)
+
+        # a second technician means the next job runs in parallel, not after
+        _roster(client, [
+            {"name": "Budi", "role": "mekanik", "work_time": ALL_DAY, "occupied_time": {}},
+            {"name": "Sari", "role": "mekanik", "work_time": ALL_DAY, "occupied_time": {}},
+        ])
+        third = _work_order(client)
+        assert third["assigned_technician"] == "Sari"
+        assert third["scheduled_start"] < second["scheduled_end"]
+
+
+def test_standing_busy_blocks_and_shifts_are_respected():
+    with TestClient(app) as client:
+        # on shift 08:00-17:00, but booked solid until 15:00 every day
+        _roster(client, [{
+            "name": "Budi", "role": "mekanik",
+            "work_time": {day: {"start": "08:00:00", "end": "17:00:00"} for day in
+                          ("monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday")},
+            "occupied_time": {day: [{"start": "08:00:00", "end": "15:00:00"}] for day in
+                              ("monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday")},
+        }])
+        wo = _work_order(client)
+        assert wo["assigned_technician"] == "Budi"
+        assert wo["scheduled_start"][11:16] >= "15:00"
+        assert wo["scheduled_end"][11:16] <= "17:00"
+
+
+def test_no_roster_leaves_the_work_order_unscheduled_but_created():
+    with TestClient(app) as client:
+        _roster(client, [])
+        wo = _work_order(client)
+        assert wo["assigned_technician"] is None
+        assert wo["schedule_note"] == "no_technicians"
+
+
+def test_coordinator_reschedules_and_cannot_double_book():
+    with TestClient(app) as client:
+        _roster(client, [{"name": "Budi", "role": "mekanik", "work_time": ALL_DAY, "occupied_time": {}},
+                         {"name": "Sari", "role": "mekanik", "work_time": ALL_DAY, "occupied_time": {}}])
+        first = _work_order(client)
+        second = _work_order(client)
+
+        moved = client.put(f"/api/v1/work-orders/{second['id']}/assignment", headers=MANAGER, json={
+            "technician": "Sari", "start": "2026-09-01T08:00:00Z", "end": "2026-09-01T10:00:00Z",
+        })
+        assert moved.status_code == 200
+        assert moved.json()["assigned_technician"] == "Sari"
+
+        # onto a slot Sari already holds
+        clash = client.put(f"/api/v1/work-orders/{first['id']}/assignment", headers=MANAGER, json={
+            "technician": "Sari", "start": "2026-09-01T09:00:00Z", "end": "2026-09-01T11:00:00Z",
+        })
+        assert clash.status_code == 409
+        assert clash.json()["error"]["code"] == "CONFLICT"
+        assert "double_booked" in clash.json()["error"]["message"]
+
+        # touching the edge is not an overlap
+        ok = client.put(f"/api/v1/work-orders/{first['id']}/assignment", headers=MANAGER, json={
+            "technician": "Sari", "start": "2026-09-01T10:00:00Z", "end": "2026-09-01T12:00:00Z",
+        })
+        assert ok.status_code == 200
+
+
+def test_rescheduling_is_the_coordinators_alone():
+    with TestClient(app) as client:
+        _roster(client, [{"name": "Budi", "role": "mekanik", "work_time": ALL_DAY, "occupied_time": {}}])
+        wo = _work_order(client)
+        denied = client.put(f"/api/v1/work-orders/{wo['id']}/assignment", headers={"X-Demo-User": "demo-technician"},
+                            json={"technician": "Budi", "start": "2026-09-01T08:00:00Z", "end": "2026-09-01T10:00:00Z"})
+        assert denied.status_code == 403
+
+
 def test_approval_is_the_coordinators_alone():
     with TestClient(app) as client:
         wo = _work_order(client)

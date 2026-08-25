@@ -103,7 +103,8 @@ def ingest_iot(asset_id: str, db: Session = Depends(get_db), identity: Identity 
 @app.exception_handler(ValueError)
 async def value_error(request: Request, exc: ValueError):
     msg = str(exc)
-    code = "NOT_FOUND" if "not_found" in msg else "CONFLICT" if "transition" in msg or "conflicting" in msg else "VALIDATION_ERROR"
+    conflict = any(token in msg for token in ("transition", "conflicting", "double_booked"))
+    code = "NOT_FOUND" if "not_found" in msg else "CONFLICT" if conflict else "VALIDATION_ERROR"
     return error_response(request, code, msg, 404 if code == "NOT_FOUND" else 409 if code == "CONFLICT" else 422)
 
 

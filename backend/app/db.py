@@ -105,6 +105,10 @@ def init_db() -> None:
         "result_submitted_at": "DATETIME",
         "verification_json": "JSON",
         "verified_at": "DATETIME",
+        "assigned_technician": "VARCHAR(200)",
+        "scheduled_start": "TIMESTAMP WITH TIME ZONE" if engine.dialect.name == "postgresql" else "DATETIME",
+        "scheduled_end": "TIMESTAMP WITH TIME ZONE" if engine.dialect.name == "postgresql" else "DATETIME",
+        "schedule_note": "VARCHAR(100)",
     }
     missing = {name: definition for name, definition in additions.items() if name not in wo_columns}
     if missing:

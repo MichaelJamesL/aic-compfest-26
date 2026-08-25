@@ -8,6 +8,7 @@ from ..maintenance.models import MaintenanceRecord
 from ..repositories import audit
 from .schemas import VerificationResultOut
 from ..work_orders.models import WorkOrder
+from . import scheduling
 
 TRANSITIONS = {
     "draft": {"pending_approval", "cancelled"},
@@ -158,3 +159,32 @@ def _finish_history_ingestion(db, document, order, settings):
         document.ingestion_error = ingestion["error"]
     order.verification_json = {**(order.verification_json or {}), "ingestion": ingestion}
     db.commit()
+
+def apply_schedule(db, order, data, identity, request_id):
+    """Move a job to another technician or another slot.
+
+    A technician is never double-booked: the clashing work order is named so the
+    coordinator can pick around it. Booking outside a shift or into production
+    hours is allowed and only noted — the coordinator may know something the
+    roster does not.
+    """
+    if order.status in scheduling.RELEASED:
+        raise ValueError(f"invalid_transition:{order.status}->schedule")
+    clash = scheduling.conflicting_order(
+        db, order.factory_id, data.technician, data.start, data.end, exclude_order_id=order.id
+    )
+    if clash:
+        raise ValueError(
+            f"technician_double_booked:{clash.title} "
+            f"({clash.scheduled_start:%d %b %H:%M}-{clash.scheduled_end:%H:%M})"
+        )
+    before = {"technician": order.assigned_technician,
+              "start": order.scheduled_start.isoformat() if order.scheduled_start else None}
+    order.assigned_technician = data.technician
+    order.scheduled_start, order.scheduled_end = data.start, data.end
+    order.schedule_note = "manual"
+    audit(db, identity, request_id, "work_order.rescheduled", "work_order", order.id, before,
+          {"technician": data.technician, "start": data.start.isoformat(), "end": data.end.isoformat()})
+    db.commit()
+    db.refresh(order)
+    return order

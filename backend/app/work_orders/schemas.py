@@ -1,5 +1,6 @@
+from datetime import datetime
 from typing import Literal
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 
 class WorkOrderUpdate(BaseModel):
@@ -12,6 +13,19 @@ class RejectIn(BaseModel):
 
 class ProgressIn(BaseModel):
     percentage: int = Field(ge=0, le=100); note: str = ""
+
+
+class ScheduleIn(BaseModel):
+    """A coordinator's correction to who does the job and when."""
+    technician: str = Field(min_length=1, max_length=200)
+    start: datetime
+    end: datetime
+
+    @model_validator(mode="after")
+    def _ordered(self):
+        if self.end <= self.start:
+            raise ValueError("end must be after start")
+        return self
 
 
 class TechnicianResultIn(BaseModel):

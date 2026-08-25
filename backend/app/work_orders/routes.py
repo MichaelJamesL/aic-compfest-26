@@ -11,8 +11,9 @@ from ..auth import Identity, get_identity, require_role
 from ..config import get_settings
 from ..db import get_db
 from ..repositories import audit
-from ..work_orders.schemas import ProgressIn, RejectIn, TechnicianResultIn
-from ..work_orders.service import transition, submit_technician_result, verify_work_order
+from ..work_orders.schemas import ProgressIn, RejectIn, ScheduleIn, TechnicianResultIn
+from ..work_orders.service import transition, submit_technician_result, verify_work_order, apply_schedule
+from . import scheduling
 
 
 APPROVER_ROLES = ("manager", "admin")
@@ -41,7 +42,19 @@ def register_routes(app):
             priority=r.priority or "medium", details_json=wdata,
         )
         db.add(w); db.flush()
-        audit(db, identity, request.state.request_id, "work_order.created", "work_order", w.id, after={"status": w.status})
+        # Proposed now, not at approval: the coordinator reviews a concrete
+        # technician and slot, and the slot is held against later work orders
+        # from the moment it is proposed.
+        proposal = scheduling.propose(db, identity.factory_id, wdata, w.priority)
+        if proposal["technician"]:
+            w.assigned_technician = proposal["technician"]
+            w.scheduled_start, w.scheduled_end = proposal["start"], proposal["end"]
+            w.schedule_note = "during_production" if proposal["during_production"] else None
+        else:
+            w.schedule_note = proposal["reason"]
+        audit(db, identity, request.state.request_id, "work_order.created", "work_order", w.id,
+              after={"status": w.status, "technician": w.assigned_technician,
+                     "scheduled_start": w.scheduled_start.isoformat() if w.scheduled_start else None})
         db.commit(); db.refresh(w); return w
 
     @app.get("/api/v1/work-orders")
@@ -50,6 +63,14 @@ def register_routes(app):
         return list(db.scalars(
             select(WorkOrder).where(WorkOrder.factory_id == identity.factory_id).order_by(WorkOrder.created_at.desc())
         ))
+
+    @app.put("/api/v1/work-orders/{order_id}/assignment")
+    def reschedule(order_id: str, data: ScheduleIn, request: Request, db: Session = Depends(get_db), identity: Identity = Depends(get_identity)):
+        """Coordinator override of who does the job and when."""
+        w = db.scalar(select(WorkOrder).where(WorkOrder.id == order_id, WorkOrder.factory_id == identity.factory_id))
+        if not w: raise ValueError("work_order_not_found")
+        require_role(identity, APPROVER_ROLES)
+        return apply_schedule(db, w, data, identity, request.state.request_id)
 
     @app.post("/api/v1/work-orders/{order_id}/submit")
     def submit(order_id: str, request: Request, db: Session = Depends(get_db), identity: Identity = Depends(get_identity)):

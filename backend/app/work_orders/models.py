@@ -21,6 +21,12 @@ class WorkOrder(Base):
     details_json: Mapped[dict] = mapped_column(JSON, default=dict)
     technician_result_json: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     result_submitted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # Assigned when the work order is created, editable by a coordinator until
+    # the job is done. A held slot blocks that technician for every later order.
+    assigned_technician: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    scheduled_start: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    scheduled_end: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    schedule_note: Mapped[str | None] = mapped_column(String(100), nullable=True)
     verification_json: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     verified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)

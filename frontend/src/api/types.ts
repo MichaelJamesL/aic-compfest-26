@@ -64,6 +64,13 @@ export interface BaselineFit {
   readings_available: number
 }
 
+/** A visual model that exists. Keyed by product, shared by machines of that type. */
+export interface ModelBank {
+  product: string
+  size_bytes: number
+  trained_at: string
+}
+
 /** What training a PatchCore bank from reference images returns. */
 export interface ModelFit {
   asset_id: string

@@ -8,6 +8,7 @@ import type {
   AssetInput,
   BaselineFit,
   BusinessContext,
+  ModelBank,
   ModelFit,
   Capabilities,
   DocumentOut,
@@ -238,6 +239,8 @@ export const api = {
   /** Fits the anomaly baseline from the readings already stored for the machine. */
   fitBaseline: (assetId: string) =>
     request<BaselineFit>(`/api/v1/assets/${assetId}/baseline`, { method: 'POST' }),
+
+  models: () => request<ModelBank[]>('/api/v1/models'),
 
   /** Reference images of a GOOD unit — the bank is keyed by product, not by machine. */
   trainModel: (assetId: string, files: File[], product?: string) => {

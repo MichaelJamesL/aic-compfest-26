@@ -1,11 +1,12 @@
 import { NavLink } from 'react-router'
-import { ClipboardList, Factory, FlaskConical, FolderUp, Wrench } from 'lucide-react'
+import { ClipboardList, Factory, FlaskConical, FolderUp, ScanEye, Wrench } from 'lucide-react'
 import { cn } from '../lib/cn'
 
-/** Five items. Not seven. SCREENS.md §0. */
+/** Six items. SCREENS.md §0. */
 const ITEMS = [
   { to: '/setup', label: 'Setup', icon: FolderUp },
   { to: '/machines/new', label: 'Mesin baru', icon: Wrench },
+  { to: '/qc-model', label: 'Model QC', icon: ScanEye },
   { to: '/business-context', label: 'Konteks bisnis', icon: Factory },
   { to: '/analyze', label: 'Analisis', icon: FlaskConical },
   { to: '/work-orders', label: 'Work order', icon: ClipboardList },

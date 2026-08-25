@@ -3,6 +3,7 @@ import { SetupScreen } from './screens/Setup'
 import { AnalyzeScreen } from './screens/Analyze'
 import { BusinessContextScreen } from './screens/BusinessContext'
 import { NewMachineScreen } from './screens/NewMachine'
+import { QCModelScreen } from './screens/QCModel'
 import { AnalysisResultScreen } from './screens/AnalysisResult'
 import { WorkOrdersScreen } from './screens/WorkOrders'
 import { WorkOrderDetailScreen } from './screens/WorkOrderDetail'
@@ -16,6 +17,7 @@ export default function App() {
       <Route path="/" element={<Navigate to="/analyze" replace />} />
       <Route path="/setup" element={<SetupScreen />} />
       <Route path="/machines/new" element={<NewMachineScreen />} />
+      <Route path="/qc-model" element={<QCModelScreen />} />
       <Route path="/business-context" element={<BusinessContextScreen />} />
       <Route path="/analyze" element={<AnalyzeScreen />} />
       <Route path="/analysis/:id" element={<AnalysisResultScreen />} />

@@ -1,4 +1,5 @@
 import uuid, tempfile
+from datetime import datetime, timezone
 from pathlib import Path
 from fastapi import Depends, File, Form, Request, UploadFile
 from sqlalchemy import select
@@ -76,6 +77,31 @@ def register_routes(app):
                 raise ValueError("ai_engine_unavailable") from exc
         audit(db, identity, request.state.request_id, "model.created", "asset", asset.id, after={"product": product, "bank_path": str(bank_path), "images_used": len(files)})
         return {"asset_id": asset.id, "product": product, "bank_path": str(bank_path), "images_used": len(files)}
+
+    @app.get("/api/v1/models")
+    def trained_models(identity: Identity = Depends(get_identity)):
+        """Which products already have a visual model, so a screen can say what
+        re-training would replace.
+
+        Banks are keyed by product and shared across machines of that type, so
+        this is deliberately not scoped per asset.
+        """
+        try:
+            from src import config as engine_config
+        except ImportError:
+            return []
+        bank_dir = Path(engine_config.BANK_DIR)
+        if not bank_dir.is_dir():
+            return []
+        return sorted(
+            (
+                {"product": bank.stem,
+                 "size_bytes": bank.stat().st_size,
+                 "trained_at": datetime.fromtimestamp(bank.stat().st_mtime, tz=timezone.utc)}
+                for bank in bank_dir.glob("*.pt")
+            ),
+            key=lambda row: row["product"],
+        )
 
     @app.get("/api/v1/qc-batches/{batch_id}", response_model=QCBatchOut)
     def get_qc_batch(batch_id: str, db: Session = Depends(get_db), identity: Identity = Depends(get_identity)):

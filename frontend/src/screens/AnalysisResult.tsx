@@ -4,7 +4,7 @@ import { ArrowRight, Download, FileText, GitCompare, ShieldAlert, Wrench } from 
 import { AppShell } from '../shell/AppShell'
 import { api, errorCopy } from '../api/client'
 import { useRequest } from '../lib/useRequest'
-import { healthSegments, inputCoverage } from '../lib/health'
+import { findings, healthSegments, healthSources, inputCoverage } from '../lib/health'
 import { formatDuration, formatPercent } from '../lib/format'
 import { cn } from '../lib/cn'
 import {
@@ -24,7 +24,7 @@ import { Bars, ConfidenceBar } from '../ui/Bars'
 import { Table, Td, Th, Tr } from '../ui/Table'
 import { ErrorState, MissingInput } from '../ui/States'
 import { Skeleton } from '../ui/Skeleton'
-import type { AnalysisDetail, AnalysisResult, DefectFinding } from '../api/types'
+import type { AnalysisDetail, AnalysisResult } from '../api/types'
 
 export function AnalysisResultScreen() {
   const { id = '' } = useParams()
@@ -156,7 +156,12 @@ function Result({ detail, onReload }: { detail: AnalysisDetail; onReload: () => 
       {/* Band — the reference's card row, reused exactly. */}
       <div className="grid grid-cols-12 gap-3">
         <Card className="col-span-12 flex flex-col md:col-span-6 xl:col-span-3">
-          <CardTitle>Skor kesehatan</CardTitle>
+          <div className="flex flex-wrap items-baseline gap-2">
+            <CardTitle>Skor kesehatan</CardTitle>
+            {/* Which signals actually fed it — the score is not sensor-only once
+                a QC batch has been inspected. */}
+            <span className="text-xs text-content-3">({healthSources(result)})</span>
+          </div>
           <div className="mt-4 flex justify-center">
             <Donut
               segments={segments}
@@ -294,20 +299,11 @@ function Result({ detail, onReload }: { detail: AnalysisDetail; onReload: () => 
 }
 
 /**
- * Every finding the run produced. Images uploaded as a QC batch land in
- * qc_by_phase, not in `defects` — reading only the latter reported "no QC
- * images" for a run that had just inspected eight of them.
- */
-function allFindings(result: AnalysisResult): DefectFinding[] {
-  return [...result.defects, ...(result.qc_by_phase ?? []).flatMap((phase) => phase.findings)]
-}
-
-/**
  * The differentiator. Never cut it — when the mechanism is missing, say so
  * rather than hiding the card. SCREENS.md §3 B.
  */
 function QcChainCard({ result }: { result: AnalysisResult }) {
-  const defects = allFindings(result).filter((d) => d.label === 'defect')
+  const defects = findings(result).filter((d) => d.label === 'defect')
 
   return (
     <Card tint="sage" className="col-span-12 md:col-span-6 xl:col-span-3">
@@ -319,7 +315,7 @@ function QcChainCard({ result }: { result: AnalysisResult }) {
             {defects.length}
           </p>
           <p className="text-[13px] leading-6 text-soft">
-            citra menyimpang dari unit normal, dari {allFindings(result).length} yang diperiksa.
+            citra menyimpang dari unit normal, dari {findings(result).length} yang diperiksa.
           </p>
         </div>
       ) : (
@@ -435,9 +431,9 @@ function SourcesCard({
 }
 
 function QcResultCard({ result }: { result: AnalysisResult }) {
-  const findings = allFindings(result)
-  const total = findings.length
-  const defective = findings.filter((d) => d.label === 'defect').length
+  const inspected = findings(result)
+  const total = inspected.length
+  const defective = inspected.filter((d) => d.label === 'defect').length
 
   return (
     <Card className="col-span-12 xl:col-span-4">
@@ -469,7 +465,7 @@ function QcResultCard({ result }: { result: AnalysisResult }) {
           </p>
           <div className="mt-5">
             <Bars
-              bars={findings.slice(0, 6).map((defect, i) => ({
+              bars={inspected.slice(0, 6).map((defect, i) => ({
                 label: defect.defect_class ?? `#${i + 1}`,
                 value: defect.score,
                 highlighted: defect.label === 'defect',

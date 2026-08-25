@@ -2,9 +2,28 @@ import type { AnalysisResult, RequestSnapshot } from '../api/types'
 import type { Segment } from '../ui/Donut'
 
 const WEIGHT: Record<string, number> = { low: 5, medium: 10, high: 20, critical: 30 }
+
+/**
+ * Every finding, whichever way the images arrived. A QC batch lands in
+ * `qc_by_phase`, so reading `defects` alone drew a donut with no defect slice
+ * for a run whose score the defects had just cut in half.
+ */
+export function findings(result: AnalysisResult) {
+  return [...result.defects, ...(result.qc_by_phase ?? []).flatMap((phase) => phase.findings)]
+}
+
+/** What the deterministic score was computed from, for the reader. */
+export function healthSources(result: AnalysisResult): string {
+  const hasSensors = result.anomalies.length > 0
+  const hasQc = findings(result).length > 0
+  if (hasSensors && hasQc) return 'sensor + QC'
+  if (hasQc) return 'QC saja'
+  return 'sensor saja'
+}
+
 export function healthSegments(result: AnalysisResult): Segment[] {
   const fromAnomalies = result.anomalies.reduce((sum, item) => sum + (WEIGHT[item.severity] ?? 0), 0)
-  const fromDefects = result.defects.filter((item) => item.label === 'defect').reduce((sum, item) => sum + (WEIGHT[item.severity] ?? 0), 0)
+  const fromDefects = findings(result).filter((item) => item.label === 'defect').reduce((sum, item) => sum + (WEIGHT[item.severity] ?? 0), 0)
   const other = Math.max(0, 100 - result.health_score - fromAnomalies - fromDefects)
   return [
     { label: 'Sisa skor', value: result.health_score, color: 'var(--color-content)' },

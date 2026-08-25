@@ -234,12 +234,23 @@ class ContextBundle(BaseModel):
     manual_condition: str | None = None
 
     @property
+    def all_findings(self) -> list[DefectFinding]:
+        """Asset-level inspection plus every QC phase.
+
+        Images uploaded as a QC batch land in `qc_by_phase`, not in `defects`.
+        Reading `defects` alone told the prompt no images were inspected while a
+        batch of eight sat in the bundle, and left the health score untouched by
+        a 100% defect rate.
+        """
+        return [*self.defects, *(f for phase in self.qc_by_phase for f in phase.findings)]
+
+    @property
     def defect_rate(self) -> float:
-        total = len(self.defects)
-        if not total:
+        findings = self.all_findings
+        if not findings:
             return 0.0
-        defective = sum(1 for d in self.defects if d.label == "defect")
-        return defective / total
+        defective = sum(1 for d in findings if d.label == "defect")
+        return defective / len(findings)
 
     @property
     def source_names(self) -> list[str]:

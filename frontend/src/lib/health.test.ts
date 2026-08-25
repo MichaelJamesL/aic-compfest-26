@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { healthSegments, inputCoverage } from './health'
+import { healthSegments, healthSources, inputCoverage } from './health'
 import type { AnalysisResult } from '../api/types'
 
 const base: AnalysisResult = {
@@ -91,5 +91,40 @@ describe('inputCoverage', () => {
     })
     const present = coverage.filter((item) => item.present).map((item) => item.key)
     expect(present).toEqual(['sensor', 'schedule', 'tech'])
+  })
+})
+
+describe('healthSources', () => {
+  const base = {
+    health_score: 80, health_summary: '', anomalies: [], defects: [], root_causes: [],
+    recommendation: '', priority: 'low' as const, recommended_window: null, explanation: '',
+    blockers: [], work_order: null, tier: null, model: null, sources: [],
+  }
+  const defect = {
+    image: 'a.png', subject: 'product' as const, score: 0.9, threshold: 0.5,
+    label: 'defect' as const, severity: 'high' as const, region: null,
+    heatmap_path: null, method: 'patchcore', defect_class: null, class_confidence: null,
+  }
+  const anomaly = {
+    tag: 'torque_nm', observed: 9, expected_range: [1, 2] as [number, number],
+    severity: 'high' as const, method: 'robust_z',
+  }
+
+  it('says sensor only when no images were inspected', () => {
+    expect(healthSources({ ...base, anomalies: [anomaly] })).toBe('sensor saja')
+  })
+
+  it('names QC too, including a batch that never touched result.defects', () => {
+    const withBatch = {
+      ...base, anomalies: [anomaly],
+      qc_by_phase: [{ phase: 'f', asset_id: 'a', product: 'n', inspected: 1, defects: 1, defect_rate: 1, findings: [defect] }],
+    }
+    expect(healthSources(withBatch)).toBe('sensor + QC')
+    // and the donut gets its defect slice, which reading result.defects missed
+    expect(healthSegments(withBatch).find((s) => s.label === 'Defect')?.value).toBe(20)
+  })
+
+  it('says QC only when there are no sensor anomalies', () => {
+    expect(healthSources({ ...base, defects: [defect] })).toBe('QC saja')
   })
 })

@@ -148,16 +148,21 @@ def _context_str(bundle: ContextBundle, asset_id: str) -> str:
 
 
 def _defects_block(bundle: ContextBundle) -> str:
-    if not bundle.defects:
+    # Every finding, whichever way the images arrived. Reading bundle.defects
+    # alone printed "(no images inspected)" for a QC batch that had just been
+    # inspected, and the model repeated it back as a blocker.
+    findings = bundle.all_findings
+    if not findings:
         return "=== VISUAL INSPECTION ===\n(no images inspected)\n\n"
     lines = ["=== VISUAL INSPECTION ==="]
     defect_rate = bundle.defect_rate
-    lines.append(f"defect_rate: {defect_rate:.0%} ({sum(1 for d in bundle.defects if d.label == 'defect')} of {len(bundle.defects)})")
-    for d in bundle.defects:
+    lines.append(f"defect_rate: {defect_rate:.0%} ({sum(1 for d in findings if d.label == 'defect')} of {len(findings)})")
+    for d in findings:
         region_str = f" region=({d.region[0]},{d.region[1]},{d.region[2]},{d.region[3]})" if d.region else ""
         lines.append(
             f"- {d.image}: score={d.score:.3f}, threshold={d.threshold:.3f}, "
             f"label={d.label}, severity={d.severity}{region_str}"
+            + (f", phase={d.phase}" if d.phase else "")
             + (f", class={d.defect_class} ({d.class_confidence:.0%})" if d.defect_class else "")
         )
     return "\n".join(lines) + "\n\n"

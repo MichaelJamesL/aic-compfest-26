@@ -68,7 +68,6 @@ def select_context(
 
     anomalies = detect_anomalies(request.readings, request.asset.id)
     defects = vision.inspect(request.asset.id, request.images) if request.images else []
-    health, summary = health_score(request.asset, anomalies, request.history, defects)
 
     qc_by_phase: list[PhaseQC] = []
     for batch in request.qc_batches:
@@ -96,6 +95,15 @@ def select_context(
                 findings=findings,
             )
         )
+
+    # Scored after the QC phases are in: a batch that came back 8/8 defective
+    # must cost the machine health, not just appear in a table.
+    health, summary = health_score(
+        request.asset,
+        anomalies,
+        request.history,
+        [*defects, *(f for phase in qc_by_phase for f in phase.findings)],
+    )
 
     query = _retrieval_query(request)
     corpus = knowledge.search(query, request.asset.id, request.factory_id, k=RETRIEVAL_K)

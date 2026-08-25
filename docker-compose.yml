@@ -47,6 +47,10 @@ services:
       AIENGINE_TIMEOUT: ${AIENGINE_TIMEOUT:-120}
       DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY:-}
       STORAGE_PATH: /app/storage
+      # Trained artefacts (PatchCore banks, sensor baselines) belong on the
+      # storage volume — the image default is ephemeral and a "fitted once at
+      # registration" model would silently vanish on the next recreate.
+      AIENGINE_BANK_DIR: /app/storage/banks
       DEPLOYMENT_TIER: ${DEPLOYMENT_TIER:-starter}
     depends_on:
       db:

@@ -59,6 +59,10 @@ services:
         condition: service_completed_successfully
     volumes:
       - backend_storage:/app/storage
+      # fastembed pulls ~2.1GB of multilingual-e5-large on the first retrieval,
+      # into its own /tmp cache (not HF's ~/.cache). Without this volume that
+      # download repeats every time the container is recreated.
+      - model_cache:/tmp/fastembed_cache
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health/ready', timeout=3)"]
       interval: 5s
@@ -78,3 +82,4 @@ services:
 volumes:
   db_data:
   backend_storage:
+  model_cache:

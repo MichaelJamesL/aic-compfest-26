@@ -1,0 +1,49 @@
+# Dev overlay: hot reload for backend and frontend.
+#
+#   docker compose -f docker-compose.yml -f docker-compose.dev.yml up (later)
+services:
+  backend:
+    # Source is bind-mounted over the image copies, so edits are live. --reload-dir
+    # is narrowed to the two package roots; pointing it at /app/backend would make
+    # watchfiles walk .venv on every scan.
+    command:
+      - uvicorn
+      - backend.app.main:app
+      - --host
+      - "0.0.0.0"
+      - --port
+      - "8000"
+      - --reload
+      - --reload-dir
+      - /app/backend/app
+      - --reload-dir
+      - /app/ai-engine/src
+    environment:
+      # `pip install ./ai-engine` baked a copy of `src` into site-packages.
+      # PYTHONPATH precedes site-packages, so `import src` resolves to the mount
+      # and ai-engine edits take effect too.
+      PYTHONPATH: /app/ai-engine
+    volumes:
+      - ./backend:/app/backend
+      - ./ai-engine:/app/ai-engine
+      # Mask the host virtualenvs: they hold absolute host paths and would only
+      # confuse things inside the container, which has its own site-packages.
+      - /app/backend/.venv
+      - /app/ai-engine/.venv
+
+  web:
+    build:
+      context: ./frontend
+      target: dev
+    environment:
+      # Inside the network the API is another service, not localhost.
+      VITE_PROXY_TARGET: http://backend:8000
+    # Base maps 5173:80 for nginx; vite serves 5173 directly. Replace rather than
+    # append, or both entries claim host 5173.
+    ports: !override
+      - "5173:5173"
+    volumes:
+      - ./frontend:/app
+      # Keep the image's node_modules — the bind mount above would otherwise hide
+      # it, and the host copy may not match the container's platform.
+      - /app/node_modules

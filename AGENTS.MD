@@ -37,7 +37,7 @@ The monorepo is split across three roles:
         ┌───────────▼──────────┐  ┌────────▼──────────┐
         │      knowledge.py    │  │      DeepSeek      │
         │  pgvector RAG        │  │  pydantic_ai Agent │
-        │  fastembed e5-multi  │  │  structured output │
+        │ fastembed MiniLM-L12 │  │  structured output │
         └──────────────────────┘  └────────────────────┘
 ```
 
@@ -48,7 +48,8 @@ The monorepo is split across three roles:
   (`OpenAIChatModel` + `DeepSeekProvider`). Structured output and retry are
   owned by the framework (`output_type=AnalysisResult`, `retries=1`).
 - **Knowledge base** is **Postgres/pgvector**. Embeddings come from local
-  `fastembed` (`intfloat/multilingual-e5-large` — Indonesian + English, CPU, no key, offline).
+  `fastembed` (`paraphrase-multilingual-MiniLM-L12-v2`, 384-dim — Indonesian +
+  English, CPU, no key, offline).
 - **Signals are deterministic, not the LLM's.** Anomaly detection (rolling
   median + IQR), visual defect detection (PatchCore via anomalib), and health
   scoring (weighted deductions) are pure rules in `signals.py` and `vision.py`.
@@ -103,7 +104,7 @@ uv manages the Python versions and virtualenvs itself — no `python -m venv`, n
 docker compose up -d db          # Postgres 16 + pgvector on :5433
 ```
 
-Then create the one table the knowledge base uses (`doc_chunk`, `VECTOR(1024)`
+Then create the one table the knowledge base uses (`doc_chunk`, `VECTOR(384)`
 + HNSW index):
 
 ```bash

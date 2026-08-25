@@ -53,9 +53,28 @@ def _fence(values: np.ndarray) -> tuple[float, float]:
     return lo - IQR_K * iqr, hi + IQR_K * iqr
 
 
-def detect_anomalies(readings: list[SensorReading]) -> list[Anomaly]:
-    """Per-tag rolling-absent IQR fence. Flag the most extreme point per tag
-    that falls outside the fence. Returns [] when a tag has < MIN_POINTS.
+def detect_anomalies(readings: list[SensorReading], asset_id: str | None = None) -> list[Anomaly]:
+    """Anomalies for these readings.
+
+    With `asset_id`, a baseline fitted on that machine's own history scores the
+    tags it knows — it can see a whole batch sitting somewhere it should not.
+    Everything else falls back to the per-tag IQR fence below, so a machine
+    registered without history, or a sensor added since, still gets scored.
+    """
+    if asset_id:
+        from .baseline import score
+
+        result = score(asset_id, readings)
+        if result is not None:
+            learned, covered = result
+            rest = [r for r in readings if r.tag not in covered]
+            return learned + _fence_anomalies(rest)
+    return _fence_anomalies(readings)
+
+
+def _fence_anomalies(readings: list[SensorReading]) -> list[Anomaly]:
+    """Per-tag IQR fence. Flag the most extreme point per tag that falls outside
+    the fence. Returns [] when a tag has < MIN_POINTS.
     """
     anomalies: list[Anomaly] = []
     for tag, series in _group_by_tag(readings).items():

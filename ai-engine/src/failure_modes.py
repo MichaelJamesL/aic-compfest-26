@@ -1,4 +1,15 @@
-"""Defect class -> candidate machine failure modes, corroborated by sensors.
+"""Defect class -> candidate failure modes — NOT USED BY THE CURRENT PIPELINE.
+
+Kept for future development, together with `classify`. Every link here starts
+from a defect *class*, and the current pipeline is PatchCore-only: it reports
+that an image is abnormal, not which defect it is, so there is no key to look
+up. Re-wiring `classify` re-enables this module, and the engine must then apply
+`priority_delta` after the model answers — the escalation belongs on the
+deterministic side, not in the model's judgement.
+
+Original docstring follows.
+
+Defect class -> candidate machine failure modes, corroborated by sensors.
 
 `mapping/qc_failure_modes.yaml` is engineering knowledge, not something the
 system learned, and the rule it states is the point of this module:

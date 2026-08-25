@@ -1,4 +1,19 @@
-"""QC defect classification: which defect, not merely whether one is there.
+"""QC defect classification — NOT USED BY THE CURRENT PIPELINE.
+
+Kept for future development. `context.select_context` runs PatchCore detection
+only: it answers "is this image abnormal", which is the question the deployed
+model can answer honestly. This module answers "which defect class", and the
+checkpoint that exists cannot: it is fine-tuned on MVTec `screw` (15.8% overall
+on its own held-out split, 1.4% on `good`), so on any other product it returns
+a confident label for an object it has never seen. See qc/METRICS.md.
+
+Wiring it back on means retraining on the customer's own product, and probably
+replacing gradient fine-tuning with few-shot centroids so a line can be set up
+from a handful of labelled examples rather than hundreds.
+
+Original docstring follows.
+
+QC defect classification: which defect, not merely whether one is there.
 
 `vision` answers "is this image abnormal" from a memory bank of good units.
 This answers "which defect class", which is the key `mapping/qc_failure_modes.yaml`

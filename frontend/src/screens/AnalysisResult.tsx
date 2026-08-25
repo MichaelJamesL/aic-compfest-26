@@ -216,8 +216,6 @@ function Result({ detail, onReload }: { detail: AnalysisDetail; onReload: () => 
         </div>
       </Card>
 
-      <FailureModes result={result} />
-
       {/* Detail row */}
       <div className="mt-3 grid grid-cols-12 gap-3">
         <Card className="col-span-12 xl:col-span-8">
@@ -308,39 +306,28 @@ function allFindings(result: AnalysisResult): DefectFinding[] {
  * rather than hiding the card. SCREENS.md §3 B.
  */
 function QcChainCard({ result }: { result: AnalysisResult }) {
-  const findings = allFindings(result)
-  const defects = findings.filter((d) => d.label === 'defect')
-  const classified = defects.filter((d) => d.defect_class)
-  const links = result.failure_modes ?? []
+  const defects = allFindings(result).filter((d) => d.label === 'defect')
 
   return (
     <Card tint="sage" className="col-span-12 md:col-span-6 xl:col-span-3">
       <h3 className="text-sm font-medium">Rantai QC → mesin</h3>
 
-      {links.length > 0 ? (
-        <ol className="mt-4 space-y-3 text-[13px]">
-          {links.slice(0, 2).map((link) => (
-            <li key={link.defect_class} className="space-y-1">
-              <p className="font-medium">
-                {link.defect_class} <span className="text-soft">× {link.images}</span>
-              </p>
-              <p className="text-soft">→ {link.failure_modes.join(', ')}</p>
-              <p className="text-soft">
-                {link.corroborated_by.length
-                  ? `Dikonfirmasi ${link.corroborated_by.join(', ')} · prioritas +${link.priority_delta}`
-                  : 'Belum ada sinyal mesin yang mengonfirmasi — prioritas tidak dinaikkan'}
-              </p>
-            </li>
-          ))}
-        </ol>
+      {defects.length > 0 ? (
+        <div className="mt-4 space-y-3">
+          <p className="text-[13px] leading-6">
+            {defects.length} citra ditandai menyimpang dari unit normal.
+          </p>
+          <p className="text-[13px] leading-6 text-soft">
+            Versi ini berhenti di deteksi: PatchCore menilai citra menyimpang atau tidak, tanpa
+            menamai jenis defect-nya. Tanpa kelas defect, kandidat failure mode tidak bisa ditarik
+            dari tabel.
+          </p>
+        </div>
       ) : (
         <div className="mt-4 space-y-3">
           <p className="text-[13px] leading-6 text-soft">
-            {classified.length > 0
-              ? `Kelas defect ${[...new Set(classified.map((d) => d.defect_class))].join(', ')} tidak ada di tabel qc_failure_modes.yaml, jadi tidak ada kandidat yang bisa ditarik.`
-              : defects.length > 0
-                ? 'Defect terdeteksi, tetapi classifier tidak tersedia sehingga kelasnya tidak diketahui dan kandidat failure mode tidak bisa ditarik.'
-                : 'Rantai ini bermula dari kelas defect produk. Analisis ini tidak menyertakan batch citra QC, jadi tidak ada kandidat failure mode.'}
+            Rantai ini bermula dari citra produk. Analisis ini tidak menyertakan batch citra QC,
+            jadi tidak ada sinyal QC sama sekali.
           </p>
         </div>
       )}
@@ -553,54 +540,6 @@ function WorkOrderDraft({ result }: { result: AnalysisResult }) {
           </ul>
         </div>
       )}
-    </Card>
-  )
-}
-
-
-/**
- * Defect class -> candidate failure modes, and whether the sensors backed them.
- *
- * The uncorroborated rows are the point of showing this at all: the table
- * proposes, the sensors dispose, and a hypothesis nothing confirmed must look
- * different from a conclusion.
- */
-function FailureModes({ result }: { result: AnalysisResult }) {
-  const links = result.failure_modes ?? []
-  if (links.length === 0) return null
-
-  return (
-    <Card className="mt-3">
-      <SectionTitle>Defect → failure mode</SectionTitle>
-      <p className="mt-2 max-w-prose text-[13px] text-content-3">
-        Tabel pengetahuan teknik, bukan hasil belajar mesin. Kandidat hanya menaikkan prioritas
-        kalau ada sinyal sensor yang mengonfirmasi.
-      </p>
-      <ul className="mt-4 space-y-4">
-        {links.map((link) => (
-          <li key={link.defect_class} className="border-t border-line pt-4 first:border-0 first:pt-0">
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="text-[15px] font-medium">{link.defect_class}</span>
-              <span className="text-xs text-content-3">{link.images} citra</span>
-              <Badge tone={link.corroborated_by.length ? 'high' : 'neutral'} className="ml-auto">
-                {link.corroborated_by.length
-                  ? `Terkonfirmasi: ${link.corroborated_by.join(', ')}`
-                  : 'Belum terkonfirmasi sensor'}
-              </Badge>
-            </div>
-            <p className="mt-2 text-[13px] text-content-2">
-              Kandidat: {link.failure_modes.join(', ')}
-              {link.priority_delta > 0 && (
-                <span className="ml-2 text-crit-text">prioritas +{link.priority_delta}</span>
-              )}
-            </p>
-            {link.recommended_action && (
-              <p className="mt-1 text-[13px] text-content-2">{link.recommended_action}</p>
-            )}
-            {link.source && <p className="mt-1 text-xs text-content-3">{link.source}</p>}
-          </li>
-        ))}
-      </ul>
     </Card>
   )
 }

@@ -194,22 +194,15 @@ describe('AnalysisResult — error', () => {
     expect(screen.getByText(/req-42/)).toBeTruthy()
   })
 
-  it('shows a failure-mode candidate as a proposal until a sensor confirms it', async () => {
-    stubFetch({ ...succeeded, result: { ...succeeded.result, failure_modes: [
-        { defect_class: 'thread_side', images: 2, failure_modes: ['tool_wear', 'axis_backlash'],
-          corroborated_by: [], priority_delta: 0, recommended_action: 'Periksa tap', source: 'SOP-CNC-04' },
-        { defect_class: 'thread_top', images: 1, failure_modes: ['spindle_runout'],
-          corroborated_by: ['torque_nm'], priority_delta: 1, recommended_action: '', source: '' },
-      ] } })
+  it('says the chain stops at detection, without naming a defect type', async () => {
+    stubFetch({ ...succeeded, result: { ...succeeded.result, defects: [
+      { image: 'a.png', subject: 'product', score: 0.9, threshold: 0.5, label: 'defect',
+        severity: 'high', region: null, heatmap_path: null, method: 'patchcore',
+        defect_class: null, class_confidence: null },
+    ] } })
     renderScreen()
-    expect(await screen.findByText('Defect → failure mode')).toBeTruthy()
-    expect(screen.getByText('Belum terkonfirmasi sensor')).toBeTruthy()
-    // the compact chain card says the same thing in its own words
-    expect(screen.getByText(/prioritas tidak dinaikkan/)).toBeTruthy()
-    expect(screen.getByText('Terkonfirmasi: torque_nm')).toBeTruthy()
-    // the summary card and the full section both name the candidates
-    expect(screen.getAllByText(/tool_wear, axis_backlash/).length).toBeGreaterThan(0)
-    expect(screen.getByText('prioritas +1')).toBeTruthy()
+    expect(await screen.findByText(/1 citra ditandai menyimpang/)).toBeTruthy()
+    expect(screen.getByText(/tanpa menamai jenis defect-nya/)).toBeTruthy()
   })
 
   it('counts QC findings that arrived as a batch, not only asset-level ones', async () => {
@@ -228,7 +221,7 @@ describe('AnalysisResult — error', () => {
     // the card read result.defects only, so a batch of images reported "none"
     expect(await screen.findByText(/2 dari 3 citra ditandai defect/)).toBeTruthy()
     expect(screen.queryByText(/Belum ada citra QC pada analisis ini/)).toBeNull()
-    // and the chain knows the class even without a mapping row
-    expect(screen.getByText(/thread_side tidak ada di tabel/)).toBeTruthy()
+    // and the chain reports detection, which is where this version stops
+    expect(screen.getByText(/2 citra ditandai menyimpang/)).toBeTruthy()
   })
 })

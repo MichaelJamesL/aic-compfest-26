@@ -51,29 +51,27 @@ def test_repeated_class_is_counted_once_with_its_tally():
     assert {link.defect_class: link.images for link in links} == {"thread_top": 2, "thread_side": 1}
 
 
-def test_context_carries_classes_into_failure_modes(monkeypatch):
-    """The wiring: detector flags, classifier names, table maps, engine escalates."""
-    from src import classify, context, knowledge, vision
+def test_the_module_is_not_wired_into_the_pipeline(monkeypatch):
+    """PatchCore-only: a flagged image carries no class, so no link is drawn.
+
+    Kept as a guard: if classification is re-wired, this fails and whoever does
+    it updates the module docstrings that say it is future work.
+    """
+    from src import context, knowledge, vision
     from src.schemas import AnalysisRequest, Asset, DefectFinding, Tier
 
     monkeypatch.setattr(knowledge, "search", lambda *a, **k: [])
     monkeypatch.setattr(vision, "inspect", lambda *a, **k: [
         DefectFinding(image="a.png", score=0.9, threshold=0.5, label="defect", severity="high"),
-        DefectFinding(image="b.png", score=0.1, threshold=0.5, label="ok", severity="low"),
     ])
-    # only the flagged image is classified
-    monkeypatch.setattr(classify, "classify", lambda paths: [("thread_side", 0.91)] * len(paths))
 
     bundle = context.select_context(AnalysisRequest(
         tier=Tier.PROFESSIONAL,
         asset=Asset(id="mill-1", type="cnc-mill"),
-        images=["a.png", "b.png"],
+        images=["a.png"],
         readings=series("torque_nm", [10.0 + i for i in range(20)]),
     ))
 
-    assert [d.defect_class for d in bundle.defects] == ["thread_side", None]
-    assert bundle.defects[0].class_confidence == 0.91
-    link = bundle.failure_modes[0]
-    assert link.defect_class == "thread_side"
-    assert link.corroborated_by == ["torque_nm"]
-    assert link.priority_delta == 1
+    assert bundle.defects[0].label == "defect"
+    assert bundle.defects[0].defect_class is None
+    assert bundle.failure_modes == []

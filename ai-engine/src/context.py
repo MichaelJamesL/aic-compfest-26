@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import tiktoken
 
-from . import classify, config, failure_modes, knowledge, vision
+from . import config, knowledge, vision
 from .schemas import AnalysisRequest, ContextBundle, ContextDoc, PhaseQC
 from .signals import detect_anomalies, health_score
 
@@ -67,7 +67,7 @@ def select_context(
     budget = budget_tokens if budget_tokens is not None else config.CONTEXT_BUDGET_TOKENS
 
     anomalies = detect_anomalies(request.readings, request.asset.id)
-    defects = _classified(vision.inspect(request.asset.id, request.images) if request.images else [])
+    defects = vision.inspect(request.asset.id, request.images) if request.images else []
     health, summary = health_score(request.asset, anomalies, request.history, defects)
 
     qc_by_phase: list[PhaseQC] = []
@@ -75,9 +75,9 @@ def select_context(
         if not batch.images:
             continue
         try:
-            findings = _classified(vision.inspect(
+            findings = vision.inspect(
                 batch.product, batch.images, subject="product", phase=batch.phase
-            ))
+            )
         except (FileNotFoundError, OSError):
             continue
         if not findings:
@@ -97,16 +97,6 @@ def select_context(
             )
         )
 
-    # Which defect, then what it implies about the machine — proposals only,
-    # until a sensor rule in the table actually holds.
-    classes = [
-        finding.defect_class
-        for group in (defects, *(phase.findings for phase in qc_by_phase))
-        for finding in group
-        if finding.defect_class and finding.label == "defect"
-    ]
-    modes = failure_modes.links(classes, request.readings) if classes else []
-
     query = _retrieval_query(request)
     corpus = knowledge.search(query, request.asset.id, request.factory_id, k=RETRIEVAL_K)
 
@@ -119,7 +109,6 @@ def select_context(
         anomalies=anomalies,
         defects=defects,
         qc_by_phase=qc_by_phase,
-        failure_modes=modes,
         health_score=health,
         corpus=_pack_corpus(corpus, budget),
         history=history,
@@ -127,18 +116,3 @@ def select_context(
         manual_condition=request.manual_condition,
     )
 
-
-def _classified(findings):
-    """Attach a defect class to each finding, when a classifier is available.
-
-    Only the images the detector flagged are classified: the classifier is the
-    expensive half, and a class on an image nothing was wrong with is noise.
-    """
-    flagged = [f for f in findings if f.label == "defect"]
-    if not flagged:
-        return findings
-    predictions = classify.classify([f.image for f in flagged])
-    for finding, (name, confidence) in zip(flagged, predictions):
-        finding.defect_class = name
-        finding.class_confidence = round(confidence, 3)
-    return findings

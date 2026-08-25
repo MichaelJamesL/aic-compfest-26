@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Check, Loader2 } from 'lucide-react'
 import { Card, SectionTitle } from '../ui/Card'
+import { cn } from '../lib/cn'
 import { Button } from '../ui/Button'
 
 /**
@@ -13,12 +14,20 @@ interface Stage {
   kind: string
   /** Seconds into the engine call at which this stage is assumed to start. */
   at: number
+  /**
+   * False for a stage the engine does not run. Listed anyway: a pipeline that
+   * hides its gaps is harder to trust than one that names them.
+   */
+  available?: boolean
 }
 
 const STAGES: Stage[] = [
   { label: 'Deteksi anomali', kind: 'deterministik', at: 0 },
-  { label: 'Klasifikasi defect QC', kind: 'model fine-tuned', at: 1 },
-  { label: 'Mapping defect → failure mode', kind: 'tabel pengetahuan', at: 2 },
+  // Detection only: PatchCore says an image is abnormal, nothing names the
+  // defect type. See ai-engine/src/classify.py.
+  { label: 'Klasifikasi defect QC', kind: 'model fine-tuned', at: 1, available: false },
+  // Keys on a defect class, which nothing produces while classification is off.
+  { label: 'Mapping defect → failure mode', kind: 'tabel pengetahuan', at: 2, available: false },
   { label: 'Retrieval SOP & histori', kind: 'deterministik', at: 2 },
   { label: 'Menyusun diagnosis', kind: 'DeepSeek', at: 4 },
   { label: 'Jendela maintenance', kind: 'deterministik', at: 30 },
@@ -94,13 +103,18 @@ export function RunProgress({
 
           <ol className="mt-4 space-y-3">
             {STAGES.map((stage) => {
-              const reached = engineElapsed > stage.at
-              const running = !overtime && reached && engineElapsed <= stage.at + 4
+              const runs = stage.available !== false
+              const reached = runs && engineElapsed > stage.at
+              const running = runs && !overtime && reached && engineElapsed <= stage.at + 4
               return (
                 <li key={stage.label} className="flex items-center gap-3 text-[13px]">
-                  <Marker done={reached && !running} active={running} />
-                  <span className="flex-1 text-content-2">{stage.label}</span>
-                  <span className="text-[11.5px] text-content-3">{stage.kind}</span>
+                  <Marker done={reached && !running} active={running} muted={!runs} />
+                  <span className={cn('flex-1', runs ? 'text-content-2' : 'text-content-3')}>
+                    {stage.label}
+                  </span>
+                  <span className="text-[11.5px] text-content-3">
+                    {runs ? stage.kind : 'belum di versi ini'}
+                  </span>
                 </li>
               )
             })}
@@ -111,7 +125,7 @@ export function RunProgress({
   )
 }
 
-function Marker({ done, active }: { done: boolean; active: boolean }) {
+function Marker({ done, active, muted }: { done: boolean; active: boolean; muted?: boolean }) {
   if (active) return <Loader2 size={14} className="shrink-0 animate-spin text-content" />
   if (done)
     return (
@@ -120,6 +134,9 @@ function Marker({ done, active }: { done: boolean; active: boolean }) {
       </span>
     )
   return (
-    <span className="size-3.5 shrink-0 rounded-full border border-line-strong" aria-hidden />
+    <span
+      className={cn('size-3.5 shrink-0 rounded-full border', muted ? 'border-line' : 'border-line-strong')}
+      aria-hidden
+    />
   )
 }

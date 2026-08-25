@@ -1,4 +1,4 @@
-# SIENA: AI Maintenance Coordinator
+# SIENA
 
 SIENA is a synchronous predictive-maintenance system for small and mid-size
 factories. It combines machine readings, operator reports, SOPs, maintenance

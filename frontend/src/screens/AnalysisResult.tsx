@@ -6,6 +6,7 @@ import { api, errorCopy } from '../api/client'
 import { useRequest } from '../lib/useRequest'
 import { healthSegments, inputCoverage } from '../lib/health'
 import { formatDuration, formatPercent } from '../lib/format'
+import { cn } from '../lib/cn'
 import {
   TONE_TEXT,
   healthLabel,
@@ -313,14 +314,12 @@ function QcChainCard({ result }: { result: AnalysisResult }) {
       <h3 className="text-sm font-medium">Rantai QC → mesin</h3>
 
       {defects.length > 0 ? (
-        <div className="mt-4 space-y-3">
-          <p className="text-[13px] leading-6">
-            {defects.length} citra ditandai menyimpang dari unit normal.
+        <div className="mt-4 space-y-2">
+          <p className="tnum text-[30px] leading-[34px] font-semibold -tracking-[0.02em]">
+            {defects.length}
           </p>
           <p className="text-[13px] leading-6 text-soft">
-            Versi ini berhenti di deteksi: PatchCore menilai citra menyimpang atau tidak, tanpa
-            menamai jenis defect-nya. Tanpa kelas defect, kandidat failure mode tidak bisa ditarik
-            dari tabel.
+            citra menyimpang dari unit normal, dari {allFindings(result).length} yang diperiksa.
           </p>
         </div>
       ) : (
@@ -332,10 +331,6 @@ function QcChainCard({ result }: { result: AnalysisResult }) {
         </div>
       )}
 
-      <p className="mt-5 border-t border-ink/10 pt-3 text-xs leading-5 text-soft">
-        Prioritas hanya naik bila sinyal mesin mengonfirmasi. Bila tidak, sistem menyatakan
-        kemungkinan penyebabnya di luar mesin.
-      </p>
     </Card>
   )
 }
@@ -456,11 +451,21 @@ function QcResultCard({ result }: { result: AnalysisResult }) {
         </div>
       ) : (
         <>
-          <p className="tnum mt-4 text-[30px] leading-[34px] font-semibold -tracking-[0.02em]">
-            {formatPercent(defective / total)}
-          </p>
+          <div className="mt-4 flex flex-wrap items-baseline gap-2">
+            <p
+              className={cn(
+                'tnum text-[30px] leading-[34px] font-semibold -tracking-[0.02em]',
+                defective > 0 && 'text-crit-text',
+              )}
+            >
+              {formatPercent(defective / total)}
+            </p>
+            <span className="text-[13px] text-content-2">defect rate</span>
+          </div>
           <p className="mt-1 text-xs text-content-3">
-            {defective} dari {total} citra ditandai defect
+            {defective === total
+              ? `Semua ${total} citra ditandai defect — tidak ada satu pun yang lolos.`
+              : `${defective} dari ${total} citra ditandai defect`}
           </p>
           <div className="mt-5">
             <Bars

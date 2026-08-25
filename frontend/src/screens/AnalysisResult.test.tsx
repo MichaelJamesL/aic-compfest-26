@@ -194,15 +194,16 @@ describe('AnalysisResult — error', () => {
     expect(screen.getByText(/req-42/)).toBeTruthy()
   })
 
-  it('says the chain stops at detection, without naming a defect type', async () => {
+  it('counts the deviating images without claiming to know the defect type', async () => {
     stubFetch({ ...succeeded, result: { ...succeeded.result, defects: [
       { image: 'a.png', subject: 'product', score: 0.9, threshold: 0.5, label: 'defect',
         severity: 'high', region: null, heatmap_path: null, method: 'patchcore',
         defect_class: null, class_confidence: null },
     ] } })
     renderScreen()
-    expect(await screen.findByText(/1 citra ditandai menyimpang/)).toBeTruthy()
-    expect(screen.getByText(/tanpa menamai jenis defect-nya/)).toBeTruthy()
+    expect(await screen.findByText(/citra menyimpang dari unit normal/)).toBeTruthy()
+    // no defect type is named anywhere: this version detects, it does not classify
+    expect(screen.queryByText(/scratch|thread|failure mode/i)).toBeNull()
   })
 
   it('counts QC findings that arrived as a batch, not only asset-level ones', async () => {
@@ -221,7 +222,24 @@ describe('AnalysisResult — error', () => {
     // the card read result.defects only, so a batch of images reported "none"
     expect(await screen.findByText(/2 dari 3 citra ditandai defect/)).toBeTruthy()
     expect(screen.queryByText(/Belum ada citra QC pada analisis ini/)).toBeNull()
-    // and the chain reports detection, which is where this version stops
-    expect(screen.getByText(/2 citra ditandai menyimpang/)).toBeTruthy()
+    expect(screen.getByText('defect rate')).toBeTruthy()
+  })
+
+  it('says outright when every inspected image failed', async () => {
+    const finding = (label: string) => ({
+      image: `${label}.png`, subject: 'product', score: 0.9, threshold: 0.5,
+      label, severity: 'high', region: null, heatmap_path: null, method: 'patchcore',
+      defect_class: null, class_confidence: null,
+    })
+    stubFetch({ ...succeeded, result: { ...succeeded.result, defects: [], qc_by_phase: [{
+      phase: 'finishing', asset_id: 'a1', product: 'metal-nut-4lug',
+      inspected: 8, defects: 8, defect_rate: 1,
+      findings: Array.from({ length: 8 }, () => finding('defect')),
+    }] } })
+    renderScreen()
+
+    // "8 dari 8" reads as a tally; a total failure should say so in words
+    expect(await screen.findByText(/Semua 8 citra ditandai defect/)).toBeTruthy()
+    expect(screen.getByText('100%')).toBeTruthy()
   })
 })

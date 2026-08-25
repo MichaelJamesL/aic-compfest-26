@@ -133,6 +133,7 @@ def _context_str(bundle: ContextBundle, asset_id: str) -> str:
         + "\n\n"
         + defects_block
         + qc_block
+        + _failure_mode_block(bundle)
         + "=== REFERENCE DOCUMENTS (cite by title) ===\n"
         f"{_corpus_block(bundle)}\n\n"
         "=== RECENT MAINTENANCE HISTORY ===\n"
@@ -157,6 +158,31 @@ def _defects_block(bundle: ContextBundle) -> str:
         lines.append(
             f"- {d.image}: score={d.score:.3f}, threshold={d.threshold:.3f}, "
             f"label={d.label}, severity={d.severity}{region_str}"
+            + (f", class={d.defect_class} ({d.class_confidence:.0%})" if d.defect_class else "")
+        )
+    return "\n".join(lines) + "\n\n"
+
+
+def _failure_mode_block(bundle: ContextBundle) -> str:
+    """What the defect classes imply, and what the sensors did or did not confirm.
+
+    Stated as proposals with their evidence rather than conclusions: the model
+    must not treat an uncorroborated candidate as an established cause.
+    """
+    if not bundle.failure_modes:
+        return ""
+    lines = [
+        "=== DEFECT -> FAILURE MODE (engineering table, not learned) ===",
+        "A candidate is a hypothesis. Only escalate one the sensors corroborate;",
+        "say plainly when none is corroborated.",
+    ]
+    for link in bundle.failure_modes:
+        confirmed = ", ".join(link.corroborated_by) if link.corroborated_by else "NONE"
+        lines.append(
+            f"- {link.defect_class} x{link.images} -> candidates: {', '.join(link.failure_modes)}"
+            f" | corroborated by: {confirmed} | priority_delta: {link.priority_delta:+d}"
+            + (f" | action: {link.recommended_action}" if link.recommended_action else "")
+            + (f" | source: {link.source}" if link.source else "")
         )
     return "\n".join(lines) + "\n\n"
 

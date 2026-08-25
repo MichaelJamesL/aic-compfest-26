@@ -52,6 +52,15 @@ DEFECT_THRESHOLD: float | None = (
 )
 PATCHCORE_BACKBONE: str = os.getenv("AIENGINE_PATCHCORE_BACKBONE", "wide_resnet50_2")
 
+# --- QC classification and failure-mode mapping ---------------------------
+# The fine-tuned defect classifier qc/train.py writes, and the engineering table
+# that turns a defect class into candidate machine failure modes.
+_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+QC_CLASSIFIER_PATH: str = os.getenv("AIENGINE_QC_CLASSIFIER", os.path.join(_ROOT, "qc", "model.pt"))
+FAILURE_MODE_TABLE: str = os.getenv(
+    "AIENGINE_FAILURE_MODES", os.path.join(_ROOT, "mapping", "qc_failure_modes.yaml")
+)
+
 # --- Sensor baselines -------------------------------------------------------
 # One IsolationForest per tag per machine, fitted from historical readings.
 BASELINE_DIR: str = os.getenv("AIENGINE_BASELINE_DIR", os.path.join(BANK_DIR, "baselines"))

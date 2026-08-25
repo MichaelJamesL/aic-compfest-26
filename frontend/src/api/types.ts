@@ -170,7 +170,7 @@ export interface DefectFinding {
   region: [number, number, number, number] | null
   heatmap_path: string | null
   method: string
-  /** Pending DEFECTS.md#defect-class — the classifier is not built yet. */
+  /** From the fine-tuned classifier; null when none was available. */
   defect_class?: string | null
   class_confidence?: number | null
 }
@@ -214,11 +214,35 @@ export interface Schedule {
   blockers: string[]
 }
 
+/** One production phase's QC tally, as the engine computed it. */
+export interface PhaseQC {
+  phase: string
+  asset_id: string
+  product: string
+  inspected: number
+  defects: number
+  defect_rate: number
+  findings: DefectFinding[]
+}
+
+export interface FailureModeLink {
+  defect_class: string
+  images: number
+  failure_modes: string[]
+  /** Tags whose rule held. Empty means the candidates are proposals only. */
+  corroborated_by: string[]
+  priority_delta: number
+  recommended_action: string
+  source: string
+}
+
 export interface AnalysisResult {
   health_score: number
   health_summary: string
   anomalies: Anomaly[]
   defects: DefectFinding[]
+  qc_by_phase?: PhaseQC[]
+  failure_modes?: FailureModeLink[]
   root_causes: RootCause[]
   recommendation: string
   priority: Priority

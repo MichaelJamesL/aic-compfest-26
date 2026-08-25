@@ -216,6 +216,8 @@ function Result({ detail, onReload }: { detail: AnalysisDetail; onReload: () => 
         </div>
       </Card>
 
+      <FailureModes result={result} />
+
       {/* Detail row */}
       <div className="mt-3 grid grid-cols-12 gap-3">
         <Card className="col-span-12 xl:col-span-8">
@@ -536,6 +538,54 @@ function WorkOrderDraft({ result }: { result: AnalysisResult }) {
           </ul>
         </div>
       )}
+    </Card>
+  )
+}
+
+
+/**
+ * Defect class -> candidate failure modes, and whether the sensors backed them.
+ *
+ * The uncorroborated rows are the point of showing this at all: the table
+ * proposes, the sensors dispose, and a hypothesis nothing confirmed must look
+ * different from a conclusion.
+ */
+function FailureModes({ result }: { result: AnalysisResult }) {
+  const links = result.failure_modes ?? []
+  if (links.length === 0) return null
+
+  return (
+    <Card className="mt-3">
+      <SectionTitle>Defect → failure mode</SectionTitle>
+      <p className="mt-2 max-w-prose text-[13px] text-content-3">
+        Tabel pengetahuan teknik, bukan hasil belajar mesin. Kandidat hanya menaikkan prioritas
+        kalau ada sinyal sensor yang mengonfirmasi.
+      </p>
+      <ul className="mt-4 space-y-4">
+        {links.map((link) => (
+          <li key={link.defect_class} className="border-t border-line pt-4 first:border-0 first:pt-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-[15px] font-medium">{link.defect_class}</span>
+              <span className="text-xs text-content-3">{link.images} citra</span>
+              <Badge tone={link.corroborated_by.length ? 'high' : 'neutral'} className="ml-auto">
+                {link.corroborated_by.length
+                  ? `Terkonfirmasi: ${link.corroborated_by.join(', ')}`
+                  : 'Belum terkonfirmasi sensor'}
+              </Badge>
+            </div>
+            <p className="mt-2 text-[13px] text-content-2">
+              Kandidat: {link.failure_modes.join(', ')}
+              {link.priority_delta > 0 && (
+                <span className="ml-2 text-crit-text">prioritas +{link.priority_delta}</span>
+              )}
+            </p>
+            {link.recommended_action && (
+              <p className="mt-1 text-[13px] text-content-2">{link.recommended_action}</p>
+            )}
+            {link.source && <p className="mt-1 text-xs text-content-3">{link.source}</p>}
+          </li>
+        ))}
+      </ul>
     </Card>
   )
 }

@@ -188,9 +188,6 @@ function Verdict({ orderId, report }: { orderId: string; report: MaintenanceRepo
               </li>
             ))}
           </ul>
-          <div className="mt-5">
-            <p className="text-xs text-content-3">Diagnosis ulang belum tersedia pada API saat ini.</p>
-          </div>
         </Card>
       )}
 

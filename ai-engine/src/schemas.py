@@ -110,6 +110,20 @@ class BusinessContext(BaseModel):
     operator_report: str | None = None
 
 
+class FailureModeLink(BaseModel):
+    """What a defect class implies about the machine, and whether sensors agree."""
+
+    defect_class: str
+    images: int = 1
+    failure_modes: list[str] = Field(default_factory=list)
+    #: tags whose rule in the table actually held. Empty means proposed only.
+    corroborated_by: list[str] = Field(default_factory=list)
+    #: 0 unless a signal corroborated — the table's own restraint rule.
+    priority_delta: int = 0
+    recommended_action: str = ""
+    source: str = ""
+
+
 class DefectFinding(BaseModel):
     image: str
     subject: Literal["asset", "product"] = "asset"
@@ -121,6 +135,9 @@ class DefectFinding(BaseModel):
     heatmap_path: str | None = None
     method: str = "patchcore"
     phase: str | None = None
+    #: from the fine-tuned classifier, when one is available
+    defect_class: str | None = None
+    class_confidence: float | None = None
 
 
 class AnalysisRequest(BaseModel):
@@ -181,6 +198,7 @@ class AnalysisResult(BaseModel):
     anomalies: list[Anomaly]
     defects: list[DefectFinding] = Field(default_factory=list)
     qc_by_phase: list[PhaseQC] = Field(default_factory=list)
+    failure_modes: list[FailureModeLink] = Field(default_factory=list)
     root_causes: list[RootCause]
     recommendation: str
     priority: Literal["low", "medium", "high", "critical"]
@@ -208,6 +226,7 @@ class ContextBundle(BaseModel):
     anomalies: list[Anomaly]
     defects: list[DefectFinding] = Field(default_factory=list)
     qc_by_phase: list[PhaseQC] = Field(default_factory=list)
+    failure_modes: list[FailureModeLink] = Field(default_factory=list)
     health_score: int
     corpus: list[ContextDoc]
     history: list[MaintenanceRecord]

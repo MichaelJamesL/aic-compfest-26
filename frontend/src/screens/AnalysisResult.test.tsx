@@ -193,4 +193,19 @@ describe('AnalysisResult — error', () => {
     await waitFor(() => expect(screen.getByText('Analisis tidak ditemukan.')).toBeTruthy())
     expect(screen.getByText(/req-42/)).toBeTruthy()
   })
+
+  it('shows a failure-mode candidate as a proposal until a sensor confirms it', async () => {
+    stubFetch({ ...succeeded, result: { ...succeeded.result, failure_modes: [
+        { defect_class: 'thread_side', images: 2, failure_modes: ['tool_wear', 'axis_backlash'],
+          corroborated_by: [], priority_delta: 0, recommended_action: 'Periksa tap', source: 'SOP-CNC-04' },
+        { defect_class: 'thread_top', images: 1, failure_modes: ['spindle_runout'],
+          corroborated_by: ['torque_nm'], priority_delta: 1, recommended_action: '', source: '' },
+      ] } })
+    renderScreen()
+    expect(await screen.findByText('Defect → failure mode')).toBeTruthy()
+    expect(screen.getByText('Belum terkonfirmasi sensor')).toBeTruthy()
+    expect(screen.getByText('Terkonfirmasi: torque_nm')).toBeTruthy()
+    expect(screen.getByText(/tool_wear, axis_backlash/)).toBeTruthy()
+    expect(screen.getByText('prioritas +1')).toBeTruthy()
+  })
 })

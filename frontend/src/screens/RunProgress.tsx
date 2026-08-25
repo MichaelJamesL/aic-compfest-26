@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react'
 import { Check, Loader2 } from 'lucide-react'
 import { Card, SectionTitle } from '../ui/Card'
 import { Button } from '../ui/Button'
-import { cn } from '../lib/cn'
 
 /**
  * POST /analyses blocks for up to 120s with no progress endpoint, so this is
@@ -14,17 +13,16 @@ interface Stage {
   kind: string
   /** Seconds into the engine call at which this stage is assumed to start. */
   at: number
-  available: boolean
 }
 
 const STAGES: Stage[] = [
-  { label: 'Deteksi anomali', kind: 'deterministik', at: 0, available: true },
-  { label: 'Klasifikasi defect QC', kind: 'model fine-tuned', at: 1, available: false },
-  { label: 'Mapping defect → failure mode', kind: 'tabel pengetahuan', at: 2, available: false },
-  { label: 'Retrieval SOP & histori', kind: 'deterministik', at: 2, available: true },
-  { label: 'Menyusun diagnosis', kind: 'DeepSeek', at: 4, available: true },
-  { label: 'Jendela maintenance', kind: 'deterministik', at: 30, available: false },
-  { label: 'Draft work order', kind: 'DeepSeek', at: 32, available: true },
+  { label: 'Deteksi anomali', kind: 'deterministik', at: 0 },
+  { label: 'Klasifikasi defect QC', kind: 'model fine-tuned', at: 1 },
+  { label: 'Mapping defect → failure mode', kind: 'tabel pengetahuan', at: 2 },
+  { label: 'Retrieval SOP & histori', kind: 'deterministik', at: 2 },
+  { label: 'Menyusun diagnosis', kind: 'DeepSeek', at: 4 },
+  { label: 'Jendela maintenance', kind: 'deterministik', at: 30 },
+  { label: 'Draft work order', kind: 'DeepSeek', at: 32 },
 ]
 
 const TIMEOUT_S = 120
@@ -96,18 +94,13 @@ export function RunProgress({
 
           <ol className="mt-4 space-y-3">
             {STAGES.map((stage) => {
-              const reached = stage.available && engineElapsed > stage.at
-              const running =
-                stage.available && !overtime && reached && engineElapsed <= stage.at + 4
+              const reached = engineElapsed > stage.at
+              const running = !overtime && reached && engineElapsed <= stage.at + 4
               return (
                 <li key={stage.label} className="flex items-center gap-3 text-[13px]">
-                  <Marker done={reached && !running} active={running} muted={!stage.available} />
-                  <span className={cn('flex-1', stage.available ? 'text-content-2' : 'text-content-3')}>
-                    {stage.label}
-                  </span>
-                  <span className="text-[11.5px] text-content-3">
-                    {stage.available ? stage.kind : 'belum tersedia'}
-                  </span>
+                  <Marker done={reached && !running} active={running} />
+                  <span className="flex-1 text-content-2">{stage.label}</span>
+                  <span className="text-[11.5px] text-content-3">{stage.kind}</span>
                 </li>
               )
             })}
@@ -118,15 +111,7 @@ export function RunProgress({
   )
 }
 
-function Marker({
-  done,
-  active,
-  muted,
-}: {
-  done: boolean
-  active: boolean
-  muted?: boolean
-}) {
+function Marker({ done, active }: { done: boolean; active: boolean }) {
   if (active) return <Loader2 size={14} className="shrink-0 animate-spin text-content" />
   if (done)
     return (
@@ -135,12 +120,6 @@ function Marker({
       </span>
     )
   return (
-    <span
-      className={cn(
-        'size-3.5 shrink-0 rounded-full border',
-        muted ? 'border-line' : 'border-line-strong',
-      )}
-      aria-hidden
-    />
+    <span className="size-3.5 shrink-0 rounded-full border border-line-strong" aria-hidden />
   )
 }

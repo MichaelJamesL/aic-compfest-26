@@ -30,7 +30,9 @@ describe('RunProgress — the two-minute wait', () => {
     render(<RunProgress step={3} readingCount={0} />)
     expect(screen.getByText('Klasifikasi defect QC')).toBeTruthy()
     // classifier, mapping, decide.py — three stages that do not exist yet
-    expect(screen.getAllByText('belum tersedia')).toHaveLength(3)
+    // every stage in the list now runs; none is future work
+    expect(screen.queryByText('belum tersedia')).toBeNull()
+    expect(screen.getByText('tabel pengetahuan')).toBeTruthy()
   })
 
   it('counts elapsed time only once the engine call starts', () => {

@@ -85,6 +85,12 @@ class MaintenanceEngine:
         result.anomalies = bundle.anomalies
         result.defects = bundle.defects
         result.qc_by_phase = bundle.qc_by_phase
+        result.failure_modes = bundle.failure_modes
+        # The table's rule, applied here rather than trusted to the model: a
+        # defect class may raise priority only where a sensor corroborated it.
+        escalation = max((link.priority_delta for link in bundle.failure_modes), default=0)
+        if escalation > 0:
+            result.priority = _raised(result.priority, escalation)
         result.sources = bundle.source_names
         result.tier = request.tier
         result.model = config.MODEL
@@ -118,3 +124,15 @@ class MaintenanceEngine:
         run = self._verification_agent.run_sync(prompt)
         self.last_usage = run.usage
         return run.output
+
+
+_PRIORITY_LADDER = ["low", "medium", "high", "critical"]
+
+
+def _raised(priority: str, steps: int) -> str:
+    """Move a priority up the ladder, never past the top and never down."""
+    try:
+        index = _PRIORITY_LADDER.index(priority)
+    except ValueError:
+        return priority
+    return _PRIORITY_LADDER[min(index + steps, len(_PRIORITY_LADDER) - 1)]

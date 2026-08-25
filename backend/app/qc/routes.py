@@ -12,7 +12,7 @@ from ..db import get_db
 from ..documents.service import factory_storage_key, safe_storage_path
 from ..repositories import audit
 from .schemas import QCBatchOut, ModelFitOut
-from .service import qc_batch_out, valid_image_bytes, QC_EXTENSIONS
+from .service import classify_images, qc_batch_out, valid_image_bytes, QC_EXTENSIONS
 
 
 def register_routes(app):
@@ -37,7 +37,7 @@ def register_routes(app):
             if total > settings.max_qc_batch_bytes: raise ValueError("qc_batch_too_large")
             prepared.append((file, filename, actual, raw))
         batch = QCBatch(factory_id=identity.factory_id, asset_id=asset.id, phase=phase, product=product)
-        written = []
+        written, rows = [], []
         try:
             db.add(batch); db.flush()
             for _, filename, mime_type, raw in prepared:
@@ -45,7 +45,9 @@ def register_routes(app):
                 path = safe_storage_path(settings, key)
                 path.parent.mkdir(parents=True, exist_ok=True); path.write_bytes(raw)
                 written.append(path)
-                db.add(QCImage(factory_id=identity.factory_id, batch_id=batch.id, asset_id=asset.id, filename=filename, mime_type=mime_type, size_bytes=len(raw), storage_key=str(key)))
+                row = QCImage(factory_id=identity.factory_id, batch_id=batch.id, asset_id=asset.id, filename=filename, mime_type=mime_type, size_bytes=len(raw), storage_key=str(key))
+                db.add(row); rows.append(row)
+            classify_images(rows, written)
             audit(db, identity, request.state.request_id, "qc_batch.created", "qc_batch", batch.id, after={"asset_id": asset.id, "count": len(prepared)})
             db.commit()
         except Exception:

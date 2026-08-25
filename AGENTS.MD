@@ -81,27 +81,132 @@ engineering docs above already carry what code needs.
 
 ## Onboarding
 
-1. **Install [uv](https://docs.astral.sh/uv/)** (Python package/dependency manager).
-2. **Start the DB** (Postgres + pgvector):
-   ```bash
-   docker compose up -d
-   ```
-3. **Install the AI engine** and run its tests:
-   ```bash
-   cd ai-engine
-   uv sync --extra dev
-   uv run pytest
-   ```
-4. **Init the knowledge-base schema**:
-   ```bash
-   uv run python -c "from src import knowledge; knowledge.init_schema()"
-   ```
-5. **Set env vars** (or a backend `.env`): `DEEPSEEK_API_KEY`,
-   `DATABASE_URL` (defaults to `postgresql://postgres:postgres@localhost:5433/aic26`).
-6. Validate end-to-end with the demo:
-   ```bash
-   uv run python -m src.demo
-   ```
+**You do not need Postgres or a DeepSeek key to work on `backend/` or
+`frontend/`.** The backend defaults to SQLite (auto-created on first boot) and
+to `StubEngine`, an offline stand-in with the same output shape. Only
+`ai-engine/` work — RAG, prompts, real analysis — needs the database and the key.
+
+### Prerequisites
+
+| Tool | For | Check |
+| --- | --- | --- |
+| [uv](https://docs.astral.sh/uv/) | `ai-engine/` and `backend/` | `uv --version` |
+| Node 20+ | `frontend/` | `node -v` |
+| Docker | the pgvector knowledge base | `docker compose config -q` |
+
+uv manages the Python versions and virtualenvs itself — no `python -m venv`, no
+`pip`, no global installs.
+
+### 1. Database — pgvector (ai-engine only)
+
+```bash
+docker compose up -d db          # Postgres 16 + pgvector on :5433
+```
+
+Then create the one table the knowledge base uses (`doc_chunk`, `VECTOR(1024)`
++ HNSW index):
+
+```bash
+cd ai-engine && uv run python -c "from src import knowledge; knowledge.init_schema()"
+```
+
+The **app** database is a separate store and needs none of this — the backend
+calls `Base.metadata.create_all` on startup and seeds `demo-factory`.
+
+### 2. `ai-engine/`
+
+```bash
+cd ai-engine
+uv sync --extra dev
+uv run pytest                    # 19 passed, 1 skipped — no network, no DB
+```
+
+For real analysis, export `DEEPSEEK_API_KEY` and run the end-to-end demo
+(needs step 1):
+
+```bash
+uv run python -m src.demo
+```
+
+Optional extras: `--extra vision` (anomalib/PatchCore), `--extra qc` (CPU torch,
+pinned to the `pytorch-cpu` index).
+
+### 3. `backend/`
+
+```bash
+cd backend
+cp .env.example .env             # defaults are the offline-friendly ones
+uv sync --extra dev
+uv run pytest                    # 14 passed — SQLite in-memory, no DB, no key
+uv run uvicorn app.main:app --reload --port 8000
+```
+
+Verify it is up:
+
+```bash
+curl localhost:8000/health/ready          # {"status":"ready",...}
+curl localhost:8000/config/capabilities   # ai_engine:false → the stub is live
+```
+
+To switch from the stub to the real engine, install the local link and flip the
+flag in `.env`:
+
+```bash
+uv sync --extra dev --extra ai   # editable link to ../ai-engine
+# .env: AI_ENGINE_ENABLED=true + DEEPSEEK_API_KEY=...
+```
+
+### 4. `frontend/`
+
+```bash
+cd frontend
+npm install
+npm run dev                      # :5173, proxies /api /config /health → :8000
+npm run test                     # vitest
+npm run build                    # tsc -b && vite build
+```
+
+`npm run test` and `npm run build` currently fail on a fresh clone —
+`src/lib/` is missing from the repo (see Troubleshooting). `npm run lint` and
+`npm install` are clean.
+
+The dev server proxies to `localhost:8000`, so start the backend first. Read
+[`docs/design/VISUAL_LANGUAGE.md`](docs/design/VISUAL_LANGUAGE.md) before
+touching anything visual — its §9 banned-pattern list is not advisory.
+
+### Running the whole stack
+
+Three terminals, in this order:
+
+```bash
+docker compose up -d db                              # only if using the real engine
+cd backend  && uv run uvicorn app.main:app --port 8000 --reload
+cd frontend && npm run dev
+```
+
+Then open <http://localhost:5173>.
+
+Or run the whole thing in Docker **with hot reload**, one command:
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build
+```
+
+`backend` runs `uvicorn --reload` and `web` runs the vite dev server, both with
+the source bind-mounted, so edits on the host reload in the container — for
+`ai-engine/src` too, via `PYTHONPATH`. The overlay is deliberately **not** named
+`docker-compose.override.yml`, because that loads automatically: plain
+`docker compose up` must stay the built production image the judges run.
+
+### Troubleshooting
+
+| Symptom | Cause and fix |
+| --- | --- |
+| `npm run test` fails: `Failed to resolve import "../lib/cn"` | `frontend/src/lib/` is missing from the repo — six modules (`cn`, `csv`, `format`, `health`, `severity`, `useRequest`) are imported but never committed. The frontend cannot build until they land. |
+| `docker compose up -d db` → `port is already allocated` | Something else holds `:5433`. Free it, or change the host port in `docker-compose.yml` **and** `AIENGINE_DATABASE_URL`. |
+| `/config/capabilities` shows `ai_engine:false` when you wanted the real engine | `AI_ENGINE_ENABLED` is not `true`, or `uv sync --extra ai` was never run. The backend falls back to the stub instead of failing. |
+| Analysis returns `model:"offline-stub"` | Same as above — this is the offline path, working as designed. |
+| Engine reads the wrong database | `DATABASE_URL` (app DB) and `AIENGINE_DATABASE_URL` (knowledge base) are **different stores** in one process. Do not point them at each other. |
 
 ## How to develop (framework first)
 
@@ -148,8 +253,14 @@ and follow its guidance. The relevant skills for this repo:
 
 ## Verification
 
-- `cd ai-engine && uv run pytest` — unit tests (no API/DB needed).
-- `uv run python -m src.demo` — real end-to-end against DeepSeek + local DB.
-- `uv run python eval/run_eval.py` — scores priority accuracy, root-cause hit
-  rate, and retry rate across `eval/cases.yaml`.
-- `docker compose config` — validates the DB deployment.
+Run the checks for the area you touched.
+
+| Area | Command | Needs |
+| --- | --- | --- |
+| `ai-engine/` | `cd ai-engine && uv run pytest` | nothing — no API, no DB |
+| `ai-engine/` | `uv run python -m src.demo` | `DEEPSEEK_API_KEY` + pgvector |
+| `ai-engine/` | `uv run python eval/run_eval.py` | `DEEPSEEK_API_KEY` — scores priority accuracy, root-cause hit rate, retry rate over `eval/cases.yaml` |
+| `backend/` | `cd backend && uv run pytest` | nothing — SQLite in-memory + `StubEngine` |
+| `frontend/` | `cd frontend && npm run test` | nothing |
+| `frontend/` | `npm run build && npm run lint` | nothing |
+| deploy | `docker compose config -q` | Docker |

@@ -84,6 +84,25 @@ def _corpus_block(bundle: ContextBundle) -> str:
     return "\n\n".join(blocks) or "(no documents retrieved)"
 
 
+def _week(work_time) -> str:
+    """dict[day, TimeInterval | list[TimeInterval]] -> "monday: 08:00-16:00; ..."."""
+    days = [
+        f"{day}: " + ", ".join(f"{i.start:%H:%M}-{i.end:%H:%M}" for i in (v if isinstance(v, list) else [v]))
+        for day, v in work_time.items()
+    ]
+    return "; ".join(days) or "not provided"
+
+
+def _technician_block(technicians) -> str:
+    if not technicians:
+        return "not provided"
+    lines = []
+    for t in technicians:
+        who = f"{t.name} ({t.role}" + (f", {t.specialty}" if t.specialty else "") + ")"
+        lines.append(f"\n  {who}\n    shifts: {_week(t.work_time)}\n    already booked: {_week(t.occupied_time)}")
+    return "".join(lines)
+
+
 def _business_block(bundle: ContextBundle) -> str:
     b = bundle.business
     inv_lines = [
@@ -93,8 +112,8 @@ def _business_block(bundle: ContextBundle) -> str:
         for sp in b.inventory
     ]
     return (
-        f"- production_schedule: {b.production_schedule or 'not provided'}\n"
-        f"- technicians_available: {b.technicians_available if b.technicians_available is not None else 'not provided'}\n"
+        f"- production_schedule: {_week(b.production_schedule.work_time)}\n"
+        f"- technicians: {_technician_block(b.technicians)}\n"
         f"- inventory:\n"
         + ("\n".join(inv_lines) if inv_lines else "  (none listed)")
     )

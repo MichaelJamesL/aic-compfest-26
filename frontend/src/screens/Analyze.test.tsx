@@ -12,11 +12,14 @@ const assets = [
   { id: 'a1', name: 'CNC-02', asset_type: 'cnc-mill', criticality: 'high', location: null, status: 'active', specs: {}, factory_id: 'f' },
 ]
 
-function render(list: unknown = assets) {
+const emptyContext = { production_schedule: null, inventory: [], technicians: [] }
+
+function render(list: unknown = assets, context: unknown = emptyContext) {
   stubRoutes({
     '/config/capabilities': CAPABILITIES,
     '/api/v1/assets': list,
-    '/business-context': (init: RequestInit | undefined) => JSON.parse(String(init?.body)),
+    '/api/v1/business-context': context,
+    '/condition': { asset_id: 'a1', condition: 'ok' },
      '/api/v1/assets/a1/qc-batches': { id: 'qc-1', asset_id: 'a1', factory_id: 'f', count: 2, defect_count: 0, defect_rate: 0, images: [], created_at: '2026-08-23T00:00:00' },
      '/analyses': { id: 'run-1', status: 'succeeded', result: null, engine_mode: 'offline_stub', error_code: null, error_message: null, health_score: 78, priority: 'medium' },
   })
@@ -35,7 +38,6 @@ describe('Analyze — the single input form', () => {
       'Mesin',
       'Data sensor',
       'Citra QC',
-      'Konteks bisnis',
       'Kondisi manual',
     ])
     // The completeness panel is a card, so it is an h3 alongside the sections.
@@ -102,17 +104,18 @@ describe('Analyze — the single input form', () => {
     expect(screen.getByText(/ETA tidak bisa jadi blocker penjadwalan/)).toBeTruthy()
   })
 
-  it('drops an input from the missing list once it is filled', async () => {
-    render()
-    await screen.findByText('Kelengkapan input')
-    fireEvent.change(screen.getByLabelText('Jadwal produksi'), {
-      target: { value: 'Sen-Sab 2 shift' },
+  it('scores the factory-wide context it did not collect itself', async () => {
+    render(assets, {
+      production_schedule: { work_time: { monday: { start: '06:00:00', end: '14:00:00' } } },
+      inventory: [],
+      technicians: [],
     })
+    await screen.findByText('Kelengkapan input')
     await waitFor(() =>
-      expect(
-        screen.queryByText(/jendela maintenance tidak bisa dioptimalkan/),
-      ).toBeNull(),
+      expect(screen.queryByText(/jendela maintenance tidak bisa dioptimalkan/)).toBeNull(),
     )
+    // Still missing, and still named with its cost.
+    expect(screen.getByText(/ETA tidak bisa jadi blocker penjadwalan/)).toBeTruthy()
   })
 
   it('does not claim maintenance history, which this form does not collect', async () => {
@@ -121,25 +124,18 @@ describe('Analyze — the single input form', () => {
     expect(screen.queryByText('Histori maintenance')).toBeNull()
   })
 
-  it('sends the complete business context, since the endpoint replaces rather than patches', async () => {
+  it('leaves the factory-wide context alone and only writes the machine condition', async () => {
     render()
     fireEvent.change(await screen.findByLabelText('Pilih mesin'), { target: { value: 'a1' } })
-    fireEvent.change(screen.getByLabelText('Jadwal produksi'), { target: { value: 'Sen-Sab' } })
-    fireEvent.change(screen.getByLabelText('Stok sparepart'), { target: { value: 'insert TNMG, seal' } })
+    fireEvent.change(screen.getByPlaceholderText(/Getaran meningkat/), {
+      target: { value: 'chatter sejak shift malam' },
+    })
     fireEvent.click(screen.getByRole('button', { name: /Jalankan analisis/ }))
 
-    await waitFor(() => expect(calls.some((c) => c.url.includes('/business-context'))).toBe(true))
-    const sent = calls.find((c) => c.url.includes('/business-context'))!.body as Record<string, unknown>
-    // API.md gotcha 2: omitted fields are written as null, so all six go every time.
-    expect(Object.keys(sent).sort()).toEqual([
-      'operator_report',
-      'production_schedule',
-      'sparepart_eta',
-      'spareparts',
-      'technicians_available',
-    ].sort())
-    expect(sent.spareparts).toEqual(['insert TNMG', 'seal'])
-    expect(sent.operator_report).toBeNull()
+    await waitFor(() => expect(calls.some((c) => c.url.includes('/analyses'))).toBe(true))
+    expect(calls.some((c) => c.method === 'PUT' && c.url.includes('/business-context'))).toBe(false)
+    const condition = calls.find((c) => c.url.includes('/condition'))!.body as Record<string, unknown>
+    expect(condition.condition).toBe('chatter sejak shift malam')
   })
 
   it('navigates to the result once the run returns', async () => {

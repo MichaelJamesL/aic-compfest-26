@@ -47,7 +47,7 @@ export function RunProgress({
 
   const outer = [
     { label: `Mengunggah ${readingCount} pembacaan sensor`, done: step > 1, active: step === 1, skip: readingCount === 0 },
-    { label: 'Menyimpan konteks bisnis', done: step > 2, active: step === 2, skip: false },
+    { label: 'Menyimpan kondisi mesin', done: step > 2, active: step === 2, skip: false },
     { label: 'Memanggil mesin analisis', done: false, active: step === 3, skip: false },
   ].filter((item) => !item.skip)
 

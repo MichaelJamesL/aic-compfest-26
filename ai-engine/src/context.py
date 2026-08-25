@@ -66,7 +66,7 @@ def select_context(
 ) -> ContextBundle:
     budget = budget_tokens if budget_tokens is not None else config.CONTEXT_BUDGET_TOKENS
 
-    anomalies = detect_anomalies(request.readings)
+    anomalies = detect_anomalies(request.readings, request.asset.id)
     defects = vision.inspect(request.asset.id, request.images) if request.images else []
     health, summary = health_score(request.asset, anomalies, request.history, defects)
 

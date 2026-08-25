@@ -7,6 +7,7 @@ from sqlalchemy import select
 
 from ..analysis.models import AnalysisRun
 from ..assets.models import BusinessContext
+from ..assets.service import read_inventory
 from ..config import get_settings
 from ..maintenance.models import MaintenanceRecord
 from ..qc.models import QCBatch, QCImage
@@ -179,6 +180,9 @@ def engine_request(asset, readings, history, business, condition, tier, images=N
         from src import AnalysisRequest, Asset as EngineAsset, BusinessContext as EngineBusinessContext, MaintenanceRecord as EngineMaintenanceRecord, QCBatch as EngineQCBatch, SensorReading, Tier
         return AnalysisRequest(
             tier=Tier(tier),
+            # Without this, knowledge.search filters on factory_id = NULL and
+            # every retrieval comes back empty — silently, since the field is optional.
+            factory_id=asset.factory_id,
             asset=EngineAsset(id=asset.id, name=asset.name, type=asset.asset_type,
                               criticality=asset.criticality, specs=asset.specs_json),
             readings=[SensorReading(tag=x.tag, value=x.value, unit=x.unit,
@@ -189,7 +193,7 @@ def engine_request(asset, readings, history, business, condition, tier, images=N
             history=[EngineMaintenanceRecord(asset_id=x.asset_id, performed_at=x.performed_at,
                                              action=x.action, findings=x.findings,
                                              parts_used=x.parts_used_json) for x in history],
-            business=EngineBusinessContext(**business),
+            business=EngineBusinessContext(**{k: v for k, v in business.items() if v is not None}),
         )
     except (ImportError, ModuleNotFoundError):
         class TierValue:
@@ -221,7 +225,7 @@ def input_disclosure(snapshot):
     history = snapshot.get("history") or []
     mark("history", bool(history), "not_in_snapshot" if not history else None)
     business = snapshot.get("business") or {}
-    business_present = any(value not in (None, "", []) for value in business.values())
+    business_present = any(business.values())
     mark("business_context", business_present, "not_in_snapshot" if not business_present else None)
     condition = snapshot.get("condition")
     mark("manual_condition", bool(condition), "no_manual_condition" if not condition else None)
@@ -230,29 +234,28 @@ def input_disclosure(snapshot):
     return {"available": available, "missing": missing, "limitations": limitations}
 
 
-def _inventory_from_db(context, include_business):
-    if not include_business or not context:
+def _inventory_for_asset(db, asset, include_business=True):
+    """Only the parts that fit this machine — the warehouse at large is noise to the engine."""
+    if not include_business:
         return []
-    inventory = []
-    for sp in (context.spareparts_json or []):
-        if isinstance(sp, str):
-            inventory.append({"id": sp, "name": sp, "stock": 0})
-        elif isinstance(sp, dict):
-            inventory.append(sp)
-    return inventory
+    return [
+        {key: value for key, value in part.items() if key != "asset_ids"}
+        for part in read_inventory(db, asset.factory_id, asset_id=asset.id)
+    ]
 
 
 def run_analysis(db, asset, payload, identity, request_id, settings):
     readings = list(db.scalars(select(Reading).where(Reading.asset_id == asset.id).order_by(Reading.recorded_at.desc()).limit(200)))
     history = list(db.scalars(select(MaintenanceRecord).where(MaintenanceRecord.asset_id == asset.id).order_by(MaintenanceRecord.performed_at.desc()).limit(20)))
-    context = db.get(BusinessContext, asset.id)
+    context = db.get(BusinessContext, identity.factory_id)
     include_business = payload.include_business_context
     include_history = payload.include_history
     business = {
         "production_schedule": context.production_schedule if include_business and context else None,
-        "inventory": _inventory_from_db(context, include_business),
-        "technicians_available": context.technicians_available if include_business and context else None,
-        "operator_report": context.operator_report if include_business and context else None,
+        "inventory": _inventory_for_asset(db, asset, include_business),
+        "technicians": context.technicians_json if include_business and context else [],
+        # per-machine, unlike the rest: it rides along so the engine sees it in one place
+        "operator_report": asset.operator_report if include_business else None,
     }
     qc_images = []
     batch = None
@@ -284,7 +287,7 @@ def run_analysis(db, asset, payload, identity, request_id, settings):
         "readings": [{"id": x.id, "tag": x.tag, "value": x.value, "unit": x.unit, "recorded_at": x.recorded_at.isoformat(), "source": x.source, "external_id": x.external_id} for x in readings],
         "history": [{"id": x.id, "performed_at": x.performed_at.isoformat(), "action": x.action, "findings": x.findings, "parts_used": x.parts_used_json} for x in (history if include_history else [])],
         "condition": effective_condition,
-        "business": business if include_business else {"production_schedule": None, "inventory": [], "technicians_available": None, "operator_report": None},
+        "business": business,
         "tier": payload.tier,
         "trigger": payload.trigger,
         "qc_batch_id": payload.qc_batch_id,

@@ -1,5 +1,5 @@
-from datetime import datetime
-from typing import Any
+from datetime import datetime, time
+from typing import Any, Literal
 from pydantic import BaseModel, ConfigDict, Field
 
 
@@ -10,6 +10,8 @@ class SparePartIn(BaseModel):
     unit: str = "pcs"
     min_stock: int | None = None
     eta: str | None = None
+    #: machines this part fits. Analysis only ever sees the target machine's parts.
+    asset_ids: list[str] = []
 
 
 class AssetIn(BaseModel):
@@ -31,8 +33,28 @@ class ConditionIn(BaseModel):
     condition: str = Field(min_length=1)
 
 
+DayOfWeek = Literal["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"]
+
+
+class TimeIntervalIn(BaseModel):
+    start: time
+    end: time
+
+
+class ProductionScheduleIn(BaseModel):
+    work_time: dict[DayOfWeek, TimeIntervalIn] = {}
+
+
+class TechnicianScheduleIn(BaseModel):
+    name: str
+    role: str
+    specialty: str | None = None
+    work_time: dict[DayOfWeek, TimeIntervalIn] = {}
+    occupied_time: dict[DayOfWeek, list[TimeIntervalIn]] = {}
+
+
 class BusinessIn(BaseModel):
-    production_schedule: str | None = None
+    """Factory-wide. The per-machine operator report goes to /assets/{id}/condition."""
+    production_schedule: ProductionScheduleIn | None = None
     inventory: list[SparePartIn] = []
-    technicians_available: int | None = Field(default=None, ge=0)
-    operator_report: str | None = None
+    technicians: list[TechnicianScheduleIn] = []

@@ -224,3 +224,8 @@ __marimo__/
 # QC dataset — MVTec AD is CC BY-NC-SA 4.0 and ~200MB. Rebuild it with
 # `uv run python ai-engine/qc/preprocess.py`; the split is deterministic.
 ai-engine/qc/data/
+
+# Training artefacts and an accidental nested copy of the package. 2.4GB
+# between them — never commit either.
+/ai-engine/results/
+/ai-engine/ai-engine/

@@ -51,3 +51,7 @@ DEFECT_THRESHOLD: float | None = (
     float(v) if (v := os.getenv("AIENGINE_DEFECT_THRESHOLD")) else None
 )
 PATCHCORE_BACKBONE: str = os.getenv("AIENGINE_PATCHCORE_BACKBONE", "wide_resnet50_2")
+
+# --- Sensor baselines -------------------------------------------------------
+# One IsolationForest per tag per machine, fitted from historical readings.
+BASELINE_DIR: str = os.getenv("AIENGINE_BASELINE_DIR", os.path.join(BANK_DIR, "baselines"))

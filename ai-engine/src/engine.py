@@ -14,7 +14,7 @@ from pydantic_ai.models.openai import OpenAIChatModel
 from pydantic_ai.providers.deepseek import DeepSeekProvider
 from pydantic_ai.settings import ModelSettings
 
-from . import config, context, prompts
+from . import config, context, prompts, signals
 from .schemas import AnalysisRequest, AnalysisResult, TechnicianResult, VerificationResult, WorkOrder
 
 _MODEL_SETTINGS = ModelSettings(

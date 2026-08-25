@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState } from 'react'
-import { useNavigate } from 'react-router'
+import { Link, useNavigate } from 'react-router'
 import { Images, Play, Table2 } from 'lucide-react'
 import { AppShell } from '../shell/AppShell'
 import { api, isAborted } from '../api/client'
@@ -9,7 +9,7 @@ import { FORM_INPUTS } from '../lib/health'
 import { Card, CardTitle, SectionTitle } from '../ui/Card'
 import { Button, LinkButton } from '../ui/Button'
 import { DropZone } from '../ui/DropZone'
-import { Select, TextArea, TextInput } from '../ui/Field'
+import { Select, TextArea } from '../ui/Field'
 import { EmptyState, ErrorState } from '../ui/States'
 import { Skeleton } from '../ui/Skeleton'
 import { RunProgress } from './RunProgress'
@@ -17,16 +17,13 @@ import { RunProgress } from './RunProgress'
 export function AnalyzeScreen() {
   const navigate = useNavigate()
   const assets = useRequest(() => api.assets(), [])
+  // Factory-wide, set once on its own screen — read here only to score coverage.
+  const business = useRequest(() => api.businessContext(), [])
 
   const [assetId, setAssetId] = useState('')
   const [readings, setReadings] = useState<ParsedReading[]>([])
   const [csvName, setCsvName] = useState('')
   const [condition, setCondition] = useState('')
-  const [schedule, setSchedule] = useState('')
-  const [spareparts, setSpareparts] = useState('')
-  const [eta, setEta] = useState('')
-  const [technicians, setTechnicians] = useState('')
-  const [operator, setOperator] = useState('')
   const [qcBatchId, setQcBatchId] = useState<string | null>(null)
   const [qcCount, setQcCount] = useState(0)
   const [qcUploading, setQcUploading] = useState(false)
@@ -47,16 +44,17 @@ export function AnalyzeScreen() {
   }
 
   const coverage = useMemo(() => {
+    const context = business.data
     const present: Record<string, boolean> = {
       sensor: readings.length > 0,
        qc: qcCount > 0,
-      schedule: schedule.trim().length > 0,
-      parts: spareparts.trim().length > 0,
-      tech: technicians.trim().length > 0,
-      condition: (condition || operator).trim().length > 0,
+      schedule: Object.keys(context?.production_schedule?.work_time ?? {}).length > 0,
+      parts: (context?.inventory?.length ?? 0) > 0,
+      tech: (context?.technicians?.length ?? 0) > 0,
+      condition: condition.trim().length > 0,
     }
     return FORM_INPUTS.map((input) => ({ ...input, present: present[input.key] }))
-  }, [readings.length, qcCount, schedule, spareparts, technicians, condition, operator])
+  }, [readings.length, qcCount, business.data, condition])
 
   async function uploadQC(files: File[]) {
     if (!assetId) return
@@ -97,16 +95,7 @@ export function AnalyzeScreen() {
       }
 
       setStep(2)
-      await api.setBusinessContext(assetId, {
-        production_schedule: schedule.trim() || null,
-        spareparts: spareparts
-          .split(',')
-          .map((part) => part.trim())
-          .filter(Boolean),
-        sparepart_eta: eta.trim() || null,
-        technicians_available: technicians.trim() ? Number(technicians) : null,
-        operator_report: operator.trim() || null,
-      })
+      if (condition.trim()) await api.setCondition(assetId, condition.trim())
 
       setStep(3)
       const run = await api.analyze(assetId, {
@@ -222,51 +211,10 @@ export function AnalyzeScreen() {
             </Card>
 
             <Card>
-              <SectionTitle>Konteks bisnis</SectionTitle>
-              <div className="mt-4 grid gap-4 md:grid-cols-2">
-                <TextInput
-                  label="Jadwal produksi"
-                  placeholder="Sen–Sab, 2 shift, target 480 unit/hari"
-                  value={schedule}
-                  onChange={(event) => setSchedule(event.target.value)}
-                />
-                <TextInput
-                  label="Stok sparepart"
-                  hint="Pisahkan dengan koma"
-                  placeholder="insert TNMG, seal spindle"
-                  value={spareparts}
-                  onChange={(event) => setSpareparts(event.target.value)}
-                />
-                <TextInput
-                  label="ETA sparepart"
-                  placeholder="insert TNMG ETA 2 hari"
-                  value={eta}
-                  onChange={(event) => setEta(event.target.value)}
-                />
-                <TextInput
-                  label="Teknisi tersedia"
-                  type="number"
-                  min={0}
-                  placeholder="2"
-                  value={technicians}
-                  onChange={(event) => setTechnicians(event.target.value)}
-                />
-                <div className="md:col-span-2">
-                  <TextArea
-                    label="Laporan operator"
-                    placeholder="Terdengar chatter saat finishing pass sejak shift malam."
-                    value={operator}
-                    onChange={(event) => setOperator(event.target.value)}
-                  />
-                </div>
-              </div>
-            </Card>
-
-            <Card>
               <SectionTitle>Kondisi manual</SectionTitle>
               <p className="mt-2 text-[13px] text-content-3">
                 Selalu tersedia. Ini yang membuat analisis tetap jalan pada pabrik tanpa
-                sensor sama sekali.
+                sensor sama sekali. Laporan operator masuk di sini juga.
               </p>
               <div className="mt-4">
                 <TextArea
@@ -316,6 +264,14 @@ export function AnalyzeScreen() {
                   </li>
                 ))}
               </ul>
+
+              <p className="mt-4 text-[13px] leading-6">
+                Jadwal, teknisi, dan stok sparepart berlaku sepabrik —{' '}
+                <Link to="/business-context" className="underline underline-offset-[3px]">
+                  atur di Konteks bisnis
+                </Link>
+                .
+              </p>
 
               <p className="mt-5 border-t border-ink/10 pt-4 text-[13px] leading-6">
                 Sistem tetap menghasilkan analisis dengan input apa pun yang tersedia; makin

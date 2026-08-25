@@ -57,8 +57,11 @@ Indonesian copy; it must never be printed raw.
    keys. Read `specs`. (`AssetOut` inherits `specs_json` from `AssetIn` and adds
    an alias.) Consolidate when convenient; the frontend should not depend on
    `specs_json`.
-2. **`PUT …/business-context` is a full replace, not a patch.** Fields you omit
-   are written as `null`. Always send the complete object — read, merge, send.
+2. **`PUT /api/v1/business-context` is a full replace, not a patch.** Fields you
+   omit are written as `null`. Always send the complete object — read, merge, send.
+   It is **factory-wide**: shifts, technician roster and spare part stock are set
+   once, not per analysis. Only the operator report is per machine, via
+   `PUT …/assets/{id}/condition`.
 3. **Datetimes come back without a timezone suffix** on SQLite
    (`"2026-08-20T10:00:00"`), even though the columns are `timezone=True`.
    Treat every timestamp as UTC and normalise on the client; do not feed the raw
@@ -134,13 +137,24 @@ a `pending` document is **not** in the RAG corpus and will not appear in
 | POST | `/api/v1/assets/{asset_id}/readings:batch` | JSON `{"readings":[ReadingIn,…]}` (1–5000) → `{"count","readings":[{"id","quality"},…]}`. Each row reuses single-reading idempotency. |
 | POST | `/api/v1/assets/{asset_id}/readings/import` | multipart CSV with `tag,value,unit,recorded_at,source,external_id` → count, row errors and reading results. Each row reuses single-reading idempotency. |
 | GET | `/api/v1/assets/{asset_id}/readings` | raw rows, newest first |
-| PUT | `/api/v1/assets/{asset_id}/condition` | `{"condition":"chatter noise"}` → echo. Writes `business_context.operator_report`. |
-| PUT | `/api/v1/assets/{asset_id}/business-context` | `{"production_schedule","spareparts":[],"sparepart_eta","technicians_available","operator_report"}` → echo. **Full replace.** |
+| PUT | `/api/v1/assets/{asset_id}/condition` | `{"condition":"chatter noise"}` → echo. Writes `asset.operator_report` — the one per-machine piece of business context. |
 | POST | `/api/v1/assets/{asset_id}/maintenance-records` | `{"performed_at","action","findings","parts_used":[]}` → `{"id"}` |
 | POST | `/api/v1/maintenance-records/import` | multipart `.csv` or `.xlsx`; rows use `asset_id` or tenant-local `asset_external_id`, plus `performed_at`, `action`, optional `findings`, comma-separated `parts_used`, and optional tenant-scoped `external_id`. Repeating an external id creates no duplicate and returns a row error. |
 
 Batch readings are accepted in one request, with the same `external_id`
 idempotency semantics as the single-reading route.
+
+### Business context (factory-wide)
+
+| Method | Path | Notes |
+| --- | --- | --- |
+| GET | `/api/v1/business-context` | `{"production_schedule":{"work_time":{day:{start,end}}},"inventory":[SparePart],"technicians":[TechnicianSchedule]}`; empty fields when never set |
+| PUT | `/api/v1/business-context` | same shape → echo. **Full replace.** Times are `HH:MM` or `HH:MM:SS`; days are lowercase English names. Mirrors `ai-engine/src/schemas.py`. |
+
+Each `SparePart` carries `asset_ids`: the machines it fits, many-to-many. Linking a
+machine from another factory is a 404, not a silent drop. **An analysis only ever
+sees the target machine's parts** — the rest of the warehouse is never sent to the
+engine, so a part with no `asset_ids` reaches no analysis at all.
 
 ### Quality control batches
 

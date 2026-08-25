@@ -47,11 +47,13 @@ describe('brand', () => {
 })
 
 describe('NavRail', () => {
-  it('offers exactly three destinations', () => {
+  it('offers exactly five destinations', () => {
     render()
     const links = screen.getAllByRole('link')
     expect(links.map((link) => link.getAttribute('href'))).toEqual([
       '/setup',
+      '/machines/new',
+      '/business-context',
       '/analyze',
       '/work-orders',
     ])

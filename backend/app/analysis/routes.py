@@ -7,7 +7,7 @@ from ..auth import Identity, get_identity
 from ..config import get_settings
 from ..db import get_db
 from .schemas import AnalysisIn, AskIn
-from .service import engine_factory, engine_request, input_disclosure, run_analysis
+from .service import _inventory_for_asset, engine_factory, engine_request, input_disclosure, run_analysis
 
 
 def analysis_response(run, include_snapshot=False):
@@ -55,18 +55,12 @@ def register_routes(app):
         a = get_asset(db, asset_id, identity)
         readings = list(db.scalars(select(Reading).where(Reading.asset_id == a.id).order_by(Reading.recorded_at.desc()).limit(50)))
         history = list(db.scalars(select(MaintenanceRecord).where(MaintenanceRecord.asset_id == a.id).order_by(MaintenanceRecord.performed_at.desc()).limit(10)))
-        context = db.get(BusinessContext, a.id)
-        inventory = []
-        for sp in (context.spareparts_json or []) if context else []:
-            if isinstance(sp, str):
-                inventory.append({"id": sp, "name": sp, "stock": 0})
-            elif isinstance(sp, dict):
-                inventory.append(sp)
+        context = db.get(BusinessContext, identity.factory_id)
         business = {
             "production_schedule": context.production_schedule if context else None,
-            "inventory": inventory,
-            "technicians_available": context.technicians_available if context else None,
-            "operator_report": context.operator_report if context else None,
+            "inventory": _inventory_for_asset(db, a),
+            "technicians": context.technicians_json if context else [],
+            "operator_report": a.operator_report,
         }
         req = engine_request(a, readings, history, business, data.question[:100] if data.question else None, "starter")
         return {"answer": engine_factory(get_settings()).ask(req, data.question)}

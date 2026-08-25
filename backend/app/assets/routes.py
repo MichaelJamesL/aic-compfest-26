@@ -10,7 +10,7 @@ from ..db import get_db
 from ..repositories import audit
 from ..documents.service import check_file, factory_storage_key
 from .schemas import AssetIn, AssetOut, BusinessIn, ConditionIn
-from .service import ensure_factory, get_asset
+from .service import ensure_factory, get_asset, read_inventory, replace_inventory
 
 
 def register_routes(app):
@@ -77,21 +77,30 @@ def register_routes(app):
     @app.put("/api/v1/assets/{asset_id}/condition")
     def condition(asset_id: str, data: ConditionIn, db: Session = Depends(get_db), identity: Identity = Depends(get_identity)):
         """Set the operator-reported condition for an asset."""
-        from .models import BusinessContext
         a = get_asset(db, asset_id, identity)
-        c = db.get(BusinessContext, a.id) or BusinessContext(asset_id=a.id, factory_id=identity.factory_id)
-        c.operator_report = data.condition; db.add(c); db.commit()
+        a.operator_report = data.condition; db.add(a); db.commit()
         return {"asset_id": a.id, "condition": data.condition}
 
-    @app.put("/api/v1/assets/{asset_id}/business-context")
-    def business(asset_id: str, data: BusinessIn, db: Session = Depends(get_db), identity: Identity = Depends(get_identity)):
-        """Set business context (production schedule, inventory, technician availability, operator report) for an asset."""
+    @app.get("/api/v1/business-context", response_model=BusinessIn)
+    def read_business(db: Session = Depends(get_db), identity: Identity = Depends(get_identity)):
+        """Read the factory-wide business context: shifts, technician roster, spare part stock."""
         from .models import BusinessContext
-        a = get_asset(db, asset_id, identity)
-        c = db.get(BusinessContext, a.id) or BusinessContext(asset_id=a.id, factory_id=identity.factory_id)
-        c.production_schedule = data.production_schedule
-        c.spareparts_json = [sp.model_dump() if hasattr(sp, 'model_dump') else sp for sp in data.inventory]
-        c.sparepart_eta = None
-        c.technicians_available = data.technicians_available
-        c.operator_report = data.operator_report
-        db.add(c); db.commit(); return data
+        c = db.get(BusinessContext, identity.factory_id)
+        return BusinessIn(
+            production_schedule=c.production_schedule if c else None,
+            inventory=read_inventory(db, identity.factory_id),
+            technicians=(c.technicians_json or []) if c else [],
+        )
+
+    @app.put("/api/v1/business-context", response_model=BusinessIn)
+    def business(data: BusinessIn, db: Session = Depends(get_db), identity: Identity = Depends(get_identity)):
+        """Replace the factory-wide business context. Full replace, not a patch."""
+        from .models import BusinessContext
+        ensure_factory(db, identity)
+        c = db.get(BusinessContext, identity.factory_id) or BusinessContext(factory_id=identity.factory_id)
+        c.production_schedule = data.production_schedule.model_dump(mode="json") if data.production_schedule else None
+        c.technicians_json = [t.model_dump(mode="json") for t in data.technicians]
+        db.add(c)
+        replace_inventory(db, identity.factory_id, data.inventory)
+        db.commit()
+        return data

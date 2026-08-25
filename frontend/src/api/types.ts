@@ -52,6 +52,24 @@ export interface AssetInput {
   criticality?: Criticality
   location?: string | null
   specs_json?: Record<string, unknown>
+  external_id?: string | null
+}
+
+/** What fitting the per-machine anomaly baseline returns. */
+export interface BaselineFit {
+  asset_id: string
+  /** Tag → how many historical points it was fitted on. Empty when history was too thin. */
+  tags: Record<string, number>
+  points_used: number
+  readings_available: number
+}
+
+/** What training a PatchCore bank from reference images returns. */
+export interface ModelFit {
+  asset_id: string
+  product: string
+  bank_path: string
+  images_used: number
 }
 
 export interface DocumentOut {
@@ -74,12 +92,39 @@ export interface Reading {
   external_id: string | null
 }
 
+/** Mirrors ai-engine/src/schemas.py. Factory-wide, not per analysis. */
+export type DayOfWeek =
+  | 'monday' | 'tuesday' | 'wednesday' | 'thursday' | 'friday' | 'saturday' | 'sunday'
+
+export interface TimeInterval {
+  /** "HH:MM" or "HH:MM:SS" — what <input type="time"> emits. */
+  start: string
+  end: string
+}
+
+export interface SparePart {
+  id: string
+  name: string
+  stock: number
+  unit: string
+  min_stock: number | null
+  eta: string | null
+  /** Machines this part fits. An analysis only ever sees its own machine's parts. */
+  asset_ids: string[]
+}
+
+export interface TechnicianSchedule {
+  name: string
+  role: string
+  specialty: string | null
+  work_time: Partial<Record<DayOfWeek, TimeInterval>>
+  occupied_time: Partial<Record<DayOfWeek, TimeInterval[]>>
+}
+
 export interface BusinessContext {
-  production_schedule: string | null
-  spareparts: string[]
-  sparepart_eta: string | null
-  technicians_available: number | null
-  operator_report: string | null
+  production_schedule: { work_time: Partial<Record<DayOfWeek, TimeInterval>> } | null
+  inventory: SparePart[]
+  technicians: TechnicianSchedule[]
 }
 
 export interface QCBatch {
@@ -200,7 +245,8 @@ export interface RequestSnapshot {
   readings: Reading[]
   history: { id: string; performed_at: string; action: string; findings: string }[]
   condition: string | null
-  business: BusinessContext
+  /** The snapshot also carries the per-machine operator report the run used. */
+  business: BusinessContext & { operator_report?: string | null }
   tier: string
   trigger: string
   qc_batch_id?: string | null

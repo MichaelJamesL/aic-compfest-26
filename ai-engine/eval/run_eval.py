@@ -61,10 +61,12 @@ def _build_request(case: dict) -> AnalysisRequest:
             for h in case.get("history", [])
         ],
         business=BusinessContext(
-            production_schedule=bc.get("production_schedule"),
             inventory=[SparePart(**sp) for sp in bc.get("inventory", [])],
-            technicians_available=bc.get("technicians_available"),
             operator_report=bc.get("operator_report"),
+            # cases.yaml still carries the old free-text schedule / technician count;
+            # only structured schedules fit the contract, the rest is dropped.
+            technicians=bc.get("technicians") or [],
+            **{k: bc[k] for k in ("production_schedule",) if isinstance(bc.get(k), dict)},
         ),
         images=case.get("images", []),
         qc_batches=[QCBatch(**qb) for qb in case.get("qc_batches", [])],

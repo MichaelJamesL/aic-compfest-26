@@ -1,4 +1,4 @@
-import type { AnalysisResult } from '../api/types'
+import type { AnalysisResult, RequestSnapshot } from '../api/types'
 import type { Segment } from '../ui/Donut'
 
 const WEIGHT: Record<string, number> = { low: 5, medium: 10, high: 20, critical: 30 }
@@ -26,18 +26,16 @@ export const INPUTS = [
 export const FORM_INPUTS = INPUTS.filter((input) => input.key !== 'history')
 export type InputKey = (typeof INPUTS)[number]['key']
 
-export function inputCoverage(snapshot: {
-  readings?: unknown[]; history?: unknown[]; condition?: string | null
-  qc_batch_id?: string | null; images?: unknown[]
-  business?: { production_schedule: string | null; spareparts: string[]; technicians_available: number | null; operator_report?: string | null }
-} | null) {
+export function inputCoverage(snapshot: Partial<RequestSnapshot> | null) {
   const business = snapshot?.business
   const present: Record<InputKey, boolean> = {
     sensor: (snapshot?.readings?.length ?? 0) > 0,
     qc: Boolean(snapshot?.qc_batch_id || snapshot?.images?.length),
     history: (snapshot?.history?.length ?? 0) > 0,
-    schedule: Boolean(business?.production_schedule), parts: (business?.spareparts?.length ?? 0) > 0,
-    tech: business?.technicians_available != null, condition: Boolean(snapshot?.condition || business?.operator_report),
+    schedule: Object.keys(business?.production_schedule?.work_time ?? {}).length > 0,
+    parts: (business?.inventory?.length ?? 0) > 0,
+    tech: (business?.technicians?.length ?? 0) > 0,
+    condition: Boolean(snapshot?.condition || business?.operator_report),
   }
   return INPUTS.map((input) => ({ ...input, present: present[input.key] }))
 }

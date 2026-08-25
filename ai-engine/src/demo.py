@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 import os
 import tempfile
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, time, timedelta, timezone
 from pathlib import Path
 from random import gauss, randint
 
@@ -14,10 +14,13 @@ from src import (
     Document,
     MaintenanceEngine,
     MaintenanceRecord,
+    ProductionSchedule,
     QCBatch,
     SensorReading,
     SparePart,
+    TechnicianSchedule,
     Tier,
+    TimeInterval,
 )
 from src import knowledge, vision
 
@@ -88,9 +91,25 @@ def fixture_request() -> AnalysisRequest:
         )
     ]
 
+    shift = TimeInterval(start=time(6, 0), end=time(14, 0))
     business = BusinessContext(
-        production_schedule="Current production run ends Saturday.",
-        technicians_available=2,
+        production_schedule=ProductionSchedule(
+            work_time={day: shift for day in ("monday", "tuesday", "wednesday", "thursday", "friday", "saturday")}
+        ),
+        technicians=[
+            TechnicianSchedule(
+                name="Budi",
+                role="mechanical technician",
+                specialty="rotating equipment",
+                work_time={day: shift for day in ("monday", "tuesday", "wednesday", "thursday", "friday")},
+                occupied_time={"monday": [TimeInterval(start=time(8, 0), end=time(12, 0))]},
+            ),
+            TechnicianSchedule(
+                name="Sari",
+                role="electrical technician",
+                work_time={day: shift for day in ("monday", "wednesday", "friday")},
+            ),
+        ],
         inventory=[
             SparePart(
                 id="skf-6204",

@@ -247,9 +247,13 @@ export const api = {
     return request<ModelFit>(`/api/v1/assets/${assetId}/models`, { method: 'POST', body: form })
   },
 
-  uploadQCBatch: (assetId: string, files: File[]) => {
+  /** `product` selects the trained bank — without it the batch falls back to the
+   *  machine's asset_type, which is rarely what the model was fitted on. */
+  uploadQCBatch: (assetId: string, files: File[], product?: string, phase?: string) => {
     const form = new FormData()
     files.forEach((file) => form.append('files', file))
+    if (product) form.append('product', product)
+    if (phase) form.append('phase', phase)
     return request<QCBatch>(`/api/v1/assets/${assetId}/qc-batches`, {
       method: 'POST',
       body: form,

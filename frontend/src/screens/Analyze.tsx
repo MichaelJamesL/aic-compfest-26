@@ -9,7 +9,7 @@ import { FORM_INPUTS } from '../lib/health'
 import { Card, CardTitle, SectionTitle } from '../ui/Card'
 import { Button, LinkButton } from '../ui/Button'
 import { DropZone } from '../ui/DropZone'
-import { Select, TextArea } from '../ui/Field'
+import { Select, TextArea, TextInput } from '../ui/Field'
 import { EmptyState, ErrorState } from '../ui/States'
 import { Skeleton } from '../ui/Skeleton'
 import { RunProgress } from './RunProgress'
@@ -24,6 +24,8 @@ export function AnalyzeScreen() {
   const [readings, setReadings] = useState<ParsedReading[]>([])
   const [csvName, setCsvName] = useState('')
   const [condition, setCondition] = useState('')
+  const [qcProduct, setQcProduct] = useState('')
+  const [qcPhase, setQcPhase] = useState('')
   const [qcBatchId, setQcBatchId] = useState<string | null>(null)
   const [qcCount, setQcCount] = useState(0)
   const [qcUploading, setQcUploading] = useState(false)
@@ -61,7 +63,7 @@ export function AnalyzeScreen() {
     setQcUploading(true)
     setQcError(null)
     try {
-      const batch = await api.uploadQCBatch(assetId, files)
+      const batch = await api.uploadQCBatch(assetId, files, qcProduct.trim(), qcPhase.trim())
       setQcBatchId(batch.id)
       setQcCount(batch.count)
     } catch (err) {
@@ -201,6 +203,21 @@ export function AnalyzeScreen() {
                    disabled={!assetId || qcUploading}
                    onFiles={uploadQC}
                  />
+                 <div className="mt-4 grid gap-4 md:grid-cols-2">
+                   <TextInput
+                     label="Produk"
+                     hint="Nama model visual yang dilatih. Kosong berarti memakai tipe mesin."
+                     placeholder="metal-nut-4lug"
+                     value={qcProduct}
+                     onChange={(event) => setQcProduct(event.target.value)}
+                   />
+                   <TextInput
+                     label="Fase"
+                     placeholder="finishing"
+                     value={qcPhase}
+                     onChange={(event) => setQcPhase(event.target.value)}
+                   />
+                 </div>
                  {qcCount > 0 && (
                    <p className="mt-3 text-[13px] text-dim">
                      Batch QC tersimpan — <span className="text-white">{qcCount} citra</span>

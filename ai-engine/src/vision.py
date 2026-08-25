@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import tempfile
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -35,11 +36,15 @@ def fit(asset_id: str, normal_dir: str | Path) -> Path:
     )
     datamodule.setup()
     model = Patchcore(backbone=config.PATCHCORE_BACKBONE)
-    engine = Engine()
-    engine.fit(model, datamodule)
     bank_dir = Path(config.BANK_DIR)
     bank_dir.mkdir(parents=True, exist_ok=True)
-    engine.export(model, ExportType.TORCH, export_root=str(bank_dir))
+    # anomalib writes a versioned workspace under ./results relative to the
+    # process cwd, which is not writable in the container and is 2GB of run
+    # artefacts on a workstation. Only the exported bank is worth keeping.
+    with tempfile.TemporaryDirectory() as workspace:
+        engine = Engine(default_root_dir=workspace)
+        engine.fit(model, datamodule)
+        engine.export(model, ExportType.TORCH, export_root=str(bank_dir))
     target = bank_dir / f"{asset_id}.pt"
     exported = sorted(bank_dir.rglob("model.pt"), key=lambda p: p.stat().st_mtime, reverse=True)
     if exported:
@@ -124,10 +129,24 @@ def inspect(asset_id: str, paths: list[str], subject="asset", phase=None) -> lis
         pred = inferencer.predict(image_path)
         score = float(pred.pred_score.item())
         threshold = _threshold_for(asset_id)
-        label = "defect" if score > threshold else "ok"
-        mult = score / threshold if threshold > 0 else 0.0
-        severity = _severity(mult)
-        region = _nonzero_region(pred.pred_mask.numpy()) if pred.pred_mask is not None else None
+        # anomalib 2.x post-processes before handing the score back: pred_score
+        # arrives already normalised against the threshold it learned, and
+        # pred_label carries its verdict. Comparing that to a threshold computed
+        # here marked every image "ok", because a binarised score can never
+        # exceed a multiplier of it. Trust the model's own verdict when it gives
+        # one; the hand-rolled fence stays for banks exported by older versions.
+        verdict = getattr(pred, "pred_label", None)
+        if verdict is not None:
+            defect = bool(verdict.item() if hasattr(verdict, "item") else verdict)
+        else:
+            defect = score > threshold
+        label = "defect" if defect else "ok"
+        # How much of the frame the model marked, which is a real measure of how
+        # bad it is — unlike a score that is already collapsed to 0 or 1.
+        mask = pred.pred_mask.numpy() if pred.pred_mask is not None else None
+        flagged = float(mask.mean()) if mask is not None and mask.size else 0.0
+        severity = _severity(flagged / 0.02) if defect else "low"
+        region = _nonzero_region(mask) if mask is not None else None
         findings.append(DefectFinding(
             image=image_path,
             subject=subject,

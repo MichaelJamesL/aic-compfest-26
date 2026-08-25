@@ -58,16 +58,23 @@ class Client:
         return self.request(method, path, json.dumps(payload).encode(), "application/json")
 
     def upload(self, path: str, file: Path):
+        return self.upload_many(path, [file])
+
+    def upload_many(self, path: str, files: list[Path], field: str = "file", **fields: str):
         boundary = uuid.uuid4().hex
-        mime = mimetypes.guess_type(file.name)[0] or "application/octet-stream"
-        body = b"".join([
-            f"--{boundary}\r\n".encode(),
-            f'Content-Disposition: form-data; name="file"; filename="{file.name}"\r\n'.encode(),
-            f"Content-Type: {mime}\r\n\r\n".encode(),
-            file.read_bytes(),
-            f"\r\n--{boundary}--\r\n".encode(),
-        ])
-        return self.request("POST", path, body, f"multipart/form-data; boundary={boundary}")
+        parts = []
+        for name, value in fields.items():
+            parts += [f"--{boundary}\r\n".encode(),
+                      f'Content-Disposition: form-data; name="{name}"\r\n\r\n'.encode(),
+                      value.encode(), b"\r\n"]
+        for file in files:
+            mime = mimetypes.guess_type(file.name)[0] or "application/octet-stream"
+            parts += [f"--{boundary}\r\n".encode(),
+                      f'Content-Disposition: form-data; name="{field}"; filename="{file.name}"\r\n'.encode(),
+                      f"Content-Type: {mime}\r\n\r\n".encode(),
+                      file.read_bytes(), b"\r\n"]
+        parts.append(f"--{boundary}--\r\n".encode())
+        return self.request("POST", path, b"".join(parts), f"multipart/form-data; boundary={boundary}")
 
 
 def main() -> None:
@@ -138,6 +145,41 @@ def main() -> None:
             error = indexed.get("ingestion_error")
             note = f", index {indexed['ingestion_status']}" + (f": {error[:80]}" if error else "")
         print(f"document {name}: {document['size_bytes']} bytes, kind={document['kind']}{note}")
+
+    seed_qc(client, ids)
+
+
+def seed_qc(client: Client, ids: dict[str, str]) -> None:
+    """Visual QC: fit a PatchCore reference model on known-good parts, then
+    upload one inspection batch per mill. Skipped when the images have not been
+    fetched (make_demo_data.py pulls them; they are not committed)."""
+    reference = sorted((HERE / "qc" / "reference").glob("*/*.png"))
+    if not reference:
+        print("qc: no reference images, skipped (run make_demo_data.py to fetch them)")
+        return
+    product = reference[0].parent.name
+    mill = ids["CNC-MILL-01"]
+    # Two banks from the same reference set, because the engine inspects the
+    # batch under `product` and the same images again under the asset id.
+    for bank in (product, mill):
+        try:
+            fitted = client.upload_many(f"/api/v1/assets/{mill}/models", reference, "files", product=bank)
+            print(f"qc model {bank}: fitted on {fitted['images_used']} images -> {fitted['bank_path']}")
+        except SystemExit as error:
+            # No anomalib on this deployment. The batches still upload, so the
+            # model can be fitted later wherever the vision stack is installed.
+            print(f"qc model {bank}: skipped ({str(error).split(' -> ')[-1][:80]})")
+            break
+
+    for directory in sorted((HERE / "qc" / "batches").glob("*")):
+        asset_id = ids.get(directory.name)
+        if not asset_id:
+            continue
+        images = sorted(directory.glob("*.png"))
+        batch = client.upload_many(f"/api/v1/assets/{asset_id}/qc-batches", images, "files",
+                                   phase="final-inspection", product=product)
+        print(f"qc batch {directory.name}: {len(images)} images, id {batch['id']}")
+
 
 
 if __name__ == "__main__":

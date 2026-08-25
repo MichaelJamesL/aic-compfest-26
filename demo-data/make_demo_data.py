@@ -36,6 +36,21 @@ from src.schemas import Asset as EngineAsset, MaintenanceRecord as EngineRecord,
 from src.signals import detect_anomalies, health_score  # noqa: E402
 
 AI4I_URL = "https://archive.ics.uci.edu/static/public/601/ai4i+2020+predictive+maintenance+dataset.zip"
+
+# QC images: the MVTec AD metal_nut category — the product these mills machine.
+# CC BY-NC-SA 4.0, so they are fetched on demand and not committed to the repo.
+MVTEC_URL = "https://huggingface.co/datasets/MSherbinii/mvtec-ad-metal-nut/resolve/main/metal_nut"
+QC_PRODUCT = "metal-nut-4lug"
+QC_REFERENCE = [f"train/good/{i:03d}.png" for i in range(20)]
+QC_BATCHES = {
+    # The failing mill: a shift's inspection with real scratched, bent and
+    # discoloured nuts in it — what a spindle running hot produces.
+    "CNC-MILL-01": ["test/good/000.png", "test/good/001.png", "test/good/002.png",
+                    "test/scratch/000.png", "test/scratch/001.png",
+                    "test/bent/000.png", "test/bent/001.png", "test/color/000.png"],
+    # The healthy twin: same product, same shift, nothing wrong.
+    "CNC-MILL-02": [f"test/good/{i:03d}.png" for i in range(3, 9)],
+}
 SOURCE = HERE / "source" / "ai4i2020.csv"
 NOW = datetime.now(timezone.utc).replace(minute=0, second=0, microsecond=0)
 
@@ -116,6 +131,35 @@ ASSETS = [
                   "maintenance_interval_days": 180},
     },
 ]
+
+
+def fetch_qc_images() -> None:
+    """Download the QC reference set and inspection batches if they are missing.
+
+    Non-fatal: without a network the CSVs still regenerate, and seed.py simply
+    finds no images to upload.
+    """
+    wanted = {HERE / "qc" / "reference" / QC_PRODUCT / Path(name).name.replace("00", "ref-00"): name
+              for name in QC_REFERENCE}
+    for external_id, names in QC_BATCHES.items():
+        for name in names:
+            label = Path(name).parent.name  # good, scratch, bent, color
+            wanted[HERE / "qc" / "batches" / external_id / f"{label}-{Path(name).name}"] = name
+    wanted[HERE / "qc" / "LICENSE-mvtec.txt"] = "license.txt"
+
+    missing = {path: name for path, name in wanted.items() if not path.exists()}
+    if not missing:
+        print(f"qc images: {len(wanted) - 1} already present")
+        return
+    for path, name in missing.items():
+        path.parent.mkdir(parents=True, exist_ok=True)
+        try:
+            with urllib.request.urlopen(f"{MVTEC_URL}/{name}", timeout=60) as response:
+                path.write_bytes(response.read())
+        except OSError as error:
+            print(f"qc images: download failed ({error}); skipping the QC demo")
+            return
+    print(f"qc images: fetched {len(missing)}")
 
 
 # --- real sensor data: UCI AI4I 2020 --------------------------------------
@@ -548,6 +592,8 @@ def main() -> None:
                 "action": action, "findings": findings, "parts_used": parts,
                 "external_id": f"MR-{asset}-{days:04d}"}
                for asset, days, action, findings, parts in HISTORY])
+
+    fetch_qc_images()
 
     (HERE / "business-context.json").write_text(
         json.dumps(BUSINESS_CONTEXT, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")

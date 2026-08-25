@@ -93,7 +93,28 @@ def _threshold_for(asset_id: str) -> float:
     return _THRESHOLDS.get(asset_id, 0.5)
 
 
+def available() -> bool:
+    """Whether the visual inspection stack can run at all.
+
+    anomalib is an optional extra and is not in the deployed backend image, so
+    this is routinely False. A missing extra must not take an analysis down —
+    the sensors, history and business context are still worth reasoning over.
+    """
+    from importlib.util import find_spec
+
+    return find_spec("anomalib") is not None
+
+
+def trained(name: str) -> bool:
+    """Whether a memory bank exists for this asset or product."""
+    return (Path(config.BANK_DIR) / f"{name}.pt").exists()
+
+
 def inspect(asset_id: str, paths: list[str], subject="asset", phase=None) -> list[DefectFinding]:
+    if not paths or not available() or not trained(asset_id):
+        # No opinion, rather than a crash or a false "no defects found". The
+        # caller reports the images as unscored — see input_disclosure.
+        return []
     if asset_id not in _INFERENCES:
         _INFERENCES[asset_id] = _load_inferencer(asset_id)
     inferencer = _INFERENCES[asset_id]

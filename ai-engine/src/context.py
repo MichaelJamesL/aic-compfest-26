@@ -80,6 +80,10 @@ def select_context(
             )
         except (FileNotFoundError, OSError):
             continue
+        if not findings:
+            # Nothing was inspected — no model, or none of the images could be
+            # read. A phase row of "inspected: 0" reads as a clean inspection.
+            continue
         defect_count = sum(1 for f in findings if f.label == "defect")
         qc_by_phase.append(
             PhaseQC(

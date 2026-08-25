@@ -13,7 +13,7 @@ from .service import _inventory_for_asset, engine_factory, engine_request, input
 def analysis_response(run, include_snapshot=False):
     response = {
         "id": run.id, "status": run.status, "result": run.result_json,
-        "input_disclosure": input_disclosure(run.request_snapshot_json),
+        "input_disclosure": input_disclosure(run.request_snapshot_json, run.result_json),
         "engine_mode": run.engine_mode, "error": run.error_message,
         "error_code": run.error_code, "error_message": run.error_message,
         "health_score": run.health_score, "priority": run.priority,

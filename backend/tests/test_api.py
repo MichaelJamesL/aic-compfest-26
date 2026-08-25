@@ -1005,6 +1005,28 @@ def test_baseline_needs_history_and_refuses_to_guess(monkeypatch, tmp_path):
         assert detect_anomalies(readings, aid) == []
 
 
+def test_qc_images_that_reached_no_model_are_reported_unscored(monkeypatch):
+    """A missing visual model degrades the analysis, it does not fail it."""
+    class Engine:
+        mode = "test"
+        def analyze(self, request):
+            # what the engine returns when vision has no bank: no findings
+            return {"health_score": 90, "priority": "low", "model": "test",
+                    "defects": [], "qc_by_phase": [], "work_order": {}}
+    monkeypatch.setattr(analysis_service, "engine_factory", lambda settings: Engine())
+    with TestClient(app) as client:
+        aid = client.post("/api/v1/assets", json={"name": "Mill"}).json()["id"]
+        batch = client.post(f"/api/v1/assets/{aid}/qc-batches",
+                            files=[("files", ("a.png", PNG, "image/png"))]).json()
+        response = client.post(f"/api/v1/assets/{aid}/analyses", json={"qc_batch_id": batch["id"]})
+        assert response.status_code == 201
+        body = response.json()
+        assert body["status"] == "succeeded"
+        disclosure = body["input_disclosure"]
+        assert "qc_images" in disclosure["available"]
+        assert {"token": "qc_images", "reason": "not_scored"} in disclosure["limitations"]
+
+
 def test_analysis_include_flags_control_request_and_snapshot(monkeypatch):
     captured = {}
     class Engine:

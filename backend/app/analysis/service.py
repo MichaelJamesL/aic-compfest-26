@@ -210,7 +210,7 @@ def engine_request(asset, readings, history, business, condition, tier, images=N
         })()
 
 
-def input_disclosure(snapshot):
+def input_disclosure(snapshot, result=None):
     available = []
     missing = []
     limitations = []
@@ -231,6 +231,11 @@ def input_disclosure(snapshot):
     mark("manual_condition", bool(condition), "no_manual_condition" if not condition else None)
     images = snapshot.get("images") or []
     mark("qc_images", bool(images), "no_qc_images" if not images else None)
+    # Images that reached no model are not evidence. Saying "qc_images: available"
+    # while the result carries no findings would read as "inspected, nothing
+    # wrong" — the opposite of what happened.
+    if images and result is not None and not (result.get("defects") or result.get("qc_by_phase")):
+        limitations.append({"token": "qc_images", "reason": "not_scored"})
     return {"available": available, "missing": missing, "limitations": limitations}
 
 

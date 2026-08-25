@@ -70,6 +70,40 @@ DEEPSEEK_API_KEY=your_deepseek_api_key
 The root `.env` is used by Docker Compose. `backend/.env` is only for local
 SQLite development and is not read by Compose.
 
+## Guided Tour
+
+For a first run, follow this order:
+
+1. Read this README for the product, architecture, and MVP boundary.
+2. Follow [`docs/SETUP.md`](docs/SETUP.md) to configure and start the stack.
+3. Load the demo scenario using the commands in the next section.
+4. Open the frontend and follow the operational flow below.
+5. Read [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) for implementation boundaries and data flow.
+6. Read [`docs/API.md`](docs/API.md) when changing or integrating an endpoint.
+7. Read [`docs/STATUS.md`](docs/STATUS.md) before claiming or extending a feature.
+
+The recommended demonstration flow is:
+
+```text
+Setup
+  -> register or import assets, documents, history, and business context
+Analyze
+  -> select an asset, add sensor data or operator condition, and run analysis
+Review
+  -> inspect health score, anomalies, root causes, recommendation, and sources
+Coordinate
+  -> create a work order and approve or reject it
+Execute
+  -> technician submits performed work, findings, parts, and evidence
+Verify
+  -> AI verifies the result and produces the final maintenance report
+```
+
+The system supports analysis with partial input. For a deeper result, provide
+sensor readings, relevant documents, maintenance history, business context, and
+QC images where the visual pipeline is available. The UI shows which inputs were
+available and which were missing for each analysis.
+
 ## Demo Data
 
 The repository includes a complete factory scenario in [`demo-data/`](demo-data/):
@@ -113,6 +147,20 @@ Health score and sensor anomaly detection are deterministic. DeepSeek explains
 those signals and produces structured recommendations; it does not define the
 audit-critical numbers. Coordinator approval and technician verification remain
 human-controlled.
+
+## Documentation Map
+
+| Document | Purpose |
+| --- | --- |
+| [`docs/SETUP.md`](docs/SETUP.md) | Complete Docker, AI, demo-data, local development, and troubleshooting guide |
+| [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | System boundaries, data flow, and invariants |
+| [`docs/API.md`](docs/API.md) | Verified frontend-backend HTTP contract |
+| [`docs/STATUS.md`](docs/STATUS.md) | Implementation status and known gaps per requirement |
+| [`docs/FR.md`](docs/FR.md) | Functional requirements and scope |
+| [`docs/design/SCREENS.md`](docs/design/SCREENS.md) | Screen behavior and UI states |
+| [`docs/design/VISUAL_LANGUAGE.md`](docs/design/VISUAL_LANGUAGE.md) | Frontend visual system and constraints |
+| [`demo-data/README.md`](demo-data/README.md) | Demo dataset and seed workflow |
+| [`Metodologi-SIENA.docx`](Metodologi-SIENA.docx) | Proposal methodology and technical implementation narrative |
 
 ## Checks
 

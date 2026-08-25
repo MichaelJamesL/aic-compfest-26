@@ -46,6 +46,27 @@ def register_routes(app):
         db.commit()
         return {"count": len(saved), "errors": errors, "readings": [{"id": item.id, "quality": item.quality} for item in saved]}
 
+    @app.post("/api/v1/assets/{asset_id}/baseline", status_code=201)
+    def fit_baseline(asset_id: str, db: Session = Depends(get_db), identity: Identity = Depends(get_identity)):
+        """Fit the machine's anomaly baseline from the readings already stored for it.
+
+        Import history first; this reads what is in the database, so refitting
+        after more history arrives is the same call again.
+        """
+        asset = get_asset(db, asset_id, identity)
+        rows = list(db.scalars(select(Reading).where(Reading.asset_id == asset.id)))
+        try:
+            from src import baseline
+            from src.schemas import SensorReading
+        except ImportError as exc:
+            raise ValueError("ai_engine_unavailable") from exc
+        fitted = baseline.fit(asset.id, [
+            SensorReading(tag=r.tag, value=r.value, unit=r.unit, recorded_at=r.recorded_at)
+            for r in rows
+        ])
+        return {"asset_id": asset.id, "tags": fitted, "points_used": sum(fitted.values()),
+                "readings_available": len(rows)}
+
     @app.get("/api/v1/assets/{asset_id}/readings")
     def readings(asset_id: str, db: Session = Depends(get_db), identity: Identity = Depends(get_identity)):
         """List all sensor readings for an asset, newest first."""

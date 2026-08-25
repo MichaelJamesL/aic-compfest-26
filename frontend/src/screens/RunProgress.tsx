@@ -118,19 +118,6 @@ export function RunProgress({
           </ol>
         </div>
       </Card>
-
-      <Card tint="clay" className="col-span-12 xl:col-span-5">
-        <h3 className="text-sm font-medium">Kenapa sinkron</h3>
-        <p className="mt-3 text-[13px] leading-6">
-          Seluruh pemrosesan berjalan sinkron dengan parameter statis saat demonstrasi; tidak
-          ada auto-tuning, background job, maupun loop umpan balik otomatis pada tahap ini.
-        </p>
-        <p className="mt-4 border-t border-ink/10 pt-4 text-xs leading-5 text-soft">
-          Satu permintaan menghasilkan satu keluaran. Tidak ada antrean di belakang layar
-          yang perlu ditunggu, dan tidak ada proses yang tetap berjalan setelah halaman ini
-          ditutup.
-        </p>
-      </Card>
     </div>
   )
 }

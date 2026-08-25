@@ -85,11 +85,4 @@ describe('RunProgress — the two-minute wait', () => {
     tick(121)
     expect(live.textContent).toMatch(/melewati perkiraan waktu/)
   })
-
-  it('states the synchronous-scope claim while the user waits', () => {
-    render(<RunProgress step={3} readingCount={0} />)
-    expect(
-      screen.getByText(/tidak ada auto-tuning, background job, maupun loop umpan balik otomatis/i),
-    ).toBeTruthy()
-  })
 })

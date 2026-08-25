@@ -35,7 +35,7 @@ const analysis = (over: Partial<AnalysisDetail['result']> = {}, snapshot?: unkno
   request_snapshot: (snapshot ?? {
     asset: { id: 'a1', name: 'CNC-02', type: 'cnc-mill', criticality: 'high' },
     readings: [], history: [], condition: 'chatter',
-    business: { production_schedule: null, spareparts: [], sparepart_eta: null, technicians_available: null, operator_report: null },
+    business: { production_schedule: null, inventory: [], technicians: [], operator_report: null },
     tier: 'starter', trigger: 'manual',
   }) as AnalysisDetail['request_snapshot'],
   result: {
@@ -267,7 +267,12 @@ describe('Compare — graceful degradation', () => {
     const full = analysis({}, {
       asset: { id: 'a1', name: 'CNC-02', type: 'cnc-mill', criticality: 'high' },
       readings: [{}], history: [{}], condition: 'chatter',
-      business: { production_schedule: 'Sen-Sab', spareparts: ['TNMG'], sparepart_eta: '2 hari', technicians_available: 2, operator_report: null },
+      business: {
+        production_schedule: { work_time: { monday: { start: '06:00:00', end: '14:00:00' } } },
+        inventory: [{ id: 'tnmg', name: 'TNMG', stock: 3, unit: 'pcs', min_stock: 2, eta: '2 hari' }],
+        technicians: [{ name: 'Budi', role: 'mekanik', specialty: null, work_time: {}, occupied_time: {} }],
+        operator_report: null,
+      },
       tier: 'professional', trigger: 'manual',
     })
     stubRoutes({

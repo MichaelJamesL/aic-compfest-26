@@ -63,6 +63,11 @@ describe('healthSegments', () => {
   })
 })
 
+const reading = {
+  id: 'r1', tag: 'torque_nm', value: 1, unit: 'nm',
+  recorded_at: '2026-08-23T00:00:00Z', source: 'csv', external_id: null,
+}
+
 describe('inputCoverage', () => {
   it('reports everything missing for a null snapshot', () => {
     const coverage = inputCoverage(null)
@@ -73,13 +78,15 @@ describe('inputCoverage', () => {
 
   it('detects the inputs that are present', () => {
     const coverage = inputCoverage({
-      readings: [{}],
+      readings: [reading],
       history: [],
       condition: null,
       business: {
-        production_schedule: 'Sen-Sab 2 shift',
-        spareparts: [],
-        technicians_available: 2,
+        production_schedule: { work_time: { monday: { start: '06:00:00', end: '14:00:00' } } },
+        inventory: [],
+        technicians: [
+          { name: 'Budi', role: 'mekanik', specialty: null, work_time: {}, occupied_time: {} },
+        ],
       },
     })
     const present = coverage.filter((item) => item.present).map((item) => item.key)

@@ -22,10 +22,9 @@ const succeeded: AnalysisDetail = {
     history: [],
     condition: 'chatter',
     business: {
-      production_schedule: 'Sen-Sab 2 shift',
-      spareparts: [],
-      sparepart_eta: null,
-      technicians_available: 2,
+      production_schedule: { work_time: { monday: { start: '06:00:00', end: '14:00:00' } } },
+      inventory: [],
+      technicians: [{ name: 'Budi', role: 'mekanik', specialty: null, work_time: {}, occupied_time: {} }],
       operator_report: null,
     },
     tier: 'professional',

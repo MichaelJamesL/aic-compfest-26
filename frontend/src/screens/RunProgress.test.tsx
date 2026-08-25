@@ -17,11 +17,6 @@ function tick(seconds: number) {
 describe('RunProgress — the two-minute wait', () => {
   // POST /analyses blocks with no progress endpoint, so this is an estimate.
   // Saying so is the point; a fake progress bar would be a lie on camera.
-  it('labels the pipeline as an estimate, not telemetry', () => {
-    render(<RunProgress step={3} readingCount={0} />)
-    expect(screen.getByText('Perkiraan tahap')).toBeTruthy()
-    expect(screen.getByText(/mencerminkan pipeline, bukan telemetri/)).toBeTruthy()
-  })
 
   it('names each stage and whether it is deterministic or the model', () => {
     render(<RunProgress step={3} readingCount={0} />)

@@ -93,10 +93,6 @@ export function RunProgress({
               {overtime ? 'masih berjalan…' : `${engineElapsed}s`}
             </span>
           </div>
-          <p className="mt-1.5 text-xs leading-5 text-content-3">
-            Urutan ini mencerminkan pipeline, bukan telemetri dari server — backend tidak
-            mengirim progres antara.
-          </p>
 
           <ol className="mt-4 space-y-3">
             {STAGES.map((stage) => {

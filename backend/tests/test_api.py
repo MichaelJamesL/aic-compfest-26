@@ -690,6 +690,154 @@ def test_analysis_wires_qc_images_and_preserves_snapshot(monkeypatch):
         assert analysis["request_snapshot"]["images"] == captured["request"].images
 
 
+def test_schedules_survive_the_round_trip_to_the_engine(monkeypatch):
+    captured = {}
+    class Engine:
+        mode = "test"
+        def analyze(self, request):
+            captured["request"] = request
+            return {"health_score": 100, "priority": "low", "model": "test", "work_order": {}}
+    monkeypatch.setattr(analysis_service, "engine_factory", lambda settings: Engine())
+    schedules = {
+        "production_schedule": {"work_time": {"monday": {"start": "06:00:00", "end": "14:00:00"}}},
+        "technicians": [
+            {
+                "name": "Budi", "role": "mechanic", "specialty": "pumps",
+                "work_time": {"monday": {"start": "06:00:00", "end": "14:00:00"}},
+                "occupied_time": {"monday": [{"start": "08:00:00", "end": "12:00:00"}]},
+            },
+            {"name": "Sari", "role": "electrician", "work_time": {"friday": {"start": "08:00:00", "end": "16:00:00"}}},
+        ],
+    }
+    with TestClient(app) as client:
+        aid = client.post("/api/v1/assets", json={"name": "Pump"}).json()["id"]
+
+        # nothing configured yet: engine falls back to its own empty defaults
+        first = client.post(f"/api/v1/assets/{aid}/analyses", json={}).json()["id"]
+        bare = client.get(f"/api/v1/analyses/{first}").json()
+        assert bare["request_snapshot"]["business"]["production_schedule"] is None
+        assert "business_context" in bare["input_disclosure"]["missing"]
+
+        assert client.put("/api/v1/business-context", json=schedules).status_code == 200
+        assert [t["name"] for t in client.get("/api/v1/business-context").json()["technicians"]] == ["Budi", "Sari"]
+
+        response = client.post(f"/api/v1/assets/{aid}/analyses", json={})
+        assert response.status_code == 201
+        business = captured["request"].business
+        business = business if isinstance(business, dict) else business.model_dump(mode="json")
+        assert business["production_schedule"]["work_time"]["monday"]["start"].startswith("06:00")
+        assert business["technicians"][0]["occupied_time"]["monday"][0]["end"].startswith("12:00")
+        assert business["technicians"][1]["name"] == "Sari"
+        analysis = client.get(f"/api/v1/analyses/{response.json()['id']}").json()
+        assert analysis["request_snapshot"]["business"]["production_schedule"] == schedules["production_schedule"]
+        assert "business_context" in analysis["input_disclosure"]["available"]
+
+        # factory-wide: a second machine inherits the same context, no re-entry
+        other = client.post("/api/v1/assets", json={"name": "Lathe"}).json()["id"]
+        client.post(f"/api/v1/assets/{other}/analyses", json={})
+        assert captured["request"].business.production_schedule.work_time
+
+
+def test_engine_sees_only_the_parts_that_fit_the_machine(monkeypatch):
+    captured = {}
+    class Engine:
+        mode = "test"
+        def analyze(self, request):
+            captured["request"] = request
+            return {"health_score": 100, "priority": "low", "model": "test", "work_order": {}}
+    monkeypatch.setattr(analysis_service, "engine_factory", lambda settings: Engine())
+    with TestClient(app) as client:
+        pump = client.post("/api/v1/assets", json={"name": "Pump"}).json()["id"]
+        lathe = client.post("/api/v1/assets", json={"name": "Lathe"}).json()["id"]
+        inventory = [
+            {"id": "seal", "name": "pump seal", "stock": 2, "asset_ids": [pump]},
+            {"id": "insert", "name": "TNMG insert", "stock": 9, "asset_ids": [lathe]},
+            {"id": "belt", "name": "drive belt", "stock": 1, "asset_ids": [pump, lathe]},
+            {"id": "orphan", "name": "unassigned bolt", "stock": 5},
+        ]
+        assert client.put("/api/v1/business-context", json={"inventory": inventory}).status_code == 200
+        # the warehouse view keeps every part and its machines
+        stored = client.get("/api/v1/business-context").json()["inventory"]
+        assert {p["name"] for p in stored} == {"pump seal", "TNMG insert", "drive belt", "unassigned bolt"}
+        assert sorted(next(p for p in stored if p["id"] == "belt")["asset_ids"]) == sorted([pump, lathe])
+
+        client.post(f"/api/v1/assets/{pump}/analyses", json={})
+        sent = captured["request"].business.inventory
+        assert sorted(part.name for part in sent) == ["drive belt", "pump seal"]
+
+        client.post(f"/api/v1/assets/{lathe}/analyses", json={})
+        assert sorted(part.name for part in captured["request"].business.inventory) == ["TNMG insert", "drive belt"]
+
+
+def test_parts_cannot_be_linked_to_another_factorys_machine():
+    with TestClient(app) as client:
+        mine = client.post("/api/v1/assets", json={"name": "Mine"}).json()["id"]
+        response = client.put("/api/v1/business-context", json={
+            "inventory": [{"id": "seal", "name": "seal", "asset_ids": [mine, "not-my-asset"]}],
+        })
+        assert response.status_code == 404
+        assert response.json()["error"]["code"] == "NOT_FOUND"
+
+
+def test_baseline_is_fitted_from_history_and_scores_later_readings(monkeypatch, tmp_path):
+    from src import config as engine_config
+    monkeypatch.setattr(engine_config, "BASELINE_DIR", str(tmp_path))
+    captured = {}
+    class Engine:
+        mode = "test"
+        def analyze(self, request):
+            from src.signals import detect_anomalies
+            captured["anomalies"] = detect_anomalies(request.readings, request.asset.id)
+            return {"health_score": 100, "priority": "low", "model": "test", "work_order": {}}
+    monkeypatch.setattr(analysis_service, "engine_factory", lambda settings: Engine())
+    with TestClient(app) as client:
+        aid = client.post("/api/v1/assets", json={"name": "Pump"}).json()["id"]
+        csv = "tag,value,unit,recorded_at\n" + "".join(
+            f"bearing_temp_c,{50 + i % 3},c,2026-01-{i + 1:02d}T00:00:00Z\n" for i in range(20)
+        )
+        imported = client.post(f"/api/v1/assets/{aid}/readings/import",
+                               files={"file": ("history.csv", csv, "text/csv")}).json()
+        assert imported["count"] == 20
+
+        response = client.post(f"/api/v1/assets/{aid}/baseline")
+        assert response.status_code == 201
+        assert response.json()["tags"] == {"bearing_temp_c": 20}
+
+        # a uniformly hot batch: nothing stands out within it, but it is not this
+        # machine's normal — the batch-local fence alone would report nothing
+        for day in range(21, 25):
+            client.post(f"/api/v1/assets/{aid}/readings", json={
+                "tag": "bearing_temp_c", "value": 80.0, "unit": "c",
+                "recorded_at": f"2026-01-{day}T00:00:00Z", "source": "test", "external_id": None,
+            })
+        client.post(f"/api/v1/assets/{aid}/analyses", json={})
+        flagged = captured["anomalies"]
+        assert [a.method for a in flagged] == ["robust_z"]
+        assert flagged[0].observed == 80.0 and flagged[0].severity == "critical"
+
+
+def test_baseline_needs_history_and_refuses_to_guess(monkeypatch, tmp_path):
+    from src import config as engine_config
+    monkeypatch.setattr(engine_config, "BASELINE_DIR", str(tmp_path))
+    with TestClient(app) as client:
+        aid = client.post("/api/v1/assets", json={"name": "Bare"}).json()["id"]
+        # fewer points than MIN_POINTS_PER_TAG: nothing is fitted, and that is reported
+        client.post(f"/api/v1/assets/{aid}/readings", json={
+            "tag": "torque_nm", "value": 40.0, "unit": "nm",
+            "recorded_at": "2026-01-01T00:00:00Z", "source": "test", "external_id": None,
+        })
+        body = client.post(f"/api/v1/assets/{aid}/baseline").json()
+        assert body["tags"] == {} and body["readings_available"] == 1
+
+        from src.signals import detect_anomalies
+        from src.schemas import SensorReading
+        from datetime import datetime, timezone
+        readings = [SensorReading(tag="torque_nm", value=40.0, unit="nm",
+                                  recorded_at=datetime(2026, 1, 1, tzinfo=timezone.utc))] * 12
+        # no baseline on disk -> the fence, not silence and not a crash
+        assert detect_anomalies(readings, aid) == []
+
+
 def test_analysis_include_flags_control_request_and_snapshot(monkeypatch):
     captured = {}
     class Engine:
@@ -701,7 +849,8 @@ def test_analysis_include_flags_control_request_and_snapshot(monkeypatch):
     with TestClient(app) as client:
         asset = client.post("/api/v1/assets", json={"name": "Flags"}).json()
         aid = asset["id"]
-        client.put(f"/api/v1/assets/{aid}/business-context", json={"operator_report": "bearing noise", "inventory": [{"id": "bearing", "name": "bearing", "stock": 0}]})
+        client.put(f"/api/v1/assets/{aid}/condition", json={"condition": "bearing noise"})
+        client.put("/api/v1/business-context", json={"inventory": [{"id": "bearing", "name": "bearing", "stock": 0}]})
         client.post(f"/api/v1/assets/{aid}/maintenance-records", json={"performed_at": "2026-01-01T00:00:00Z", "action": "overhaul"})
         response = client.post(f"/api/v1/assets/{aid}/analyses", json={"include_history": False, "include_business_context": False})
         assert response.status_code == 201

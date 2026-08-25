@@ -101,24 +101,3 @@ describe('NavRail', () => {
     expect(classes('Analisis')).toContain('text-rail')
   })
 })
-
-describe('engine mode is never hidden', () => {
-  it('shows the offline stub warning in both the card and the compact dot', async () => {
-    render(false)
-    expect(await screen.findByText('Mode offline (stub)')).toBeTruthy()
-    expect(screen.getByLabelText('Mesin analisis: Mode offline (stub)')).toBeTruthy()
-  })
-
-  it('reports the live engine in both', async () => {
-    render(true)
-    expect(await screen.findByText('DeepSeek aktif')).toBeTruthy()
-    expect(screen.getByLabelText('Mesin analisis: DeepSeek aktif')).toBeTruthy()
-  })
-
-  it('states the synchronous-scope claim', async () => {
-    render()
-    expect(
-      await screen.findByText(/Tidak ada background job, auto-tuning, maupun loop umpan balik/i),
-    ).toBeTruthy()
-  })
-})

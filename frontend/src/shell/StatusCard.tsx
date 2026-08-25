@@ -56,10 +56,6 @@ export function StatusCard() {
         />
         {label}
       </p>
-      <p className="mt-3 text-xs leading-5 text-soft">
-        Semua proses sinkron. Tidak ada background job, auto-tuning, maupun loop umpan
-        balik otomatis.
-      </p>
     </div>
   )
 }

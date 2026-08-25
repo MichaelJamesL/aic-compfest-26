@@ -1,7 +1,6 @@
 import { NavLink } from 'react-router'
 import { ClipboardList, Factory, FlaskConical, FolderUp, Wrench } from 'lucide-react'
 import { cn } from '../lib/cn'
-import { StatusCard, StatusDotCompact } from './StatusCard'
 
 /** Five items. Not seven. SCREENS.md §0. */
 const ITEMS = [
@@ -82,12 +81,6 @@ export function NavRail() {
         </ul>
       </div>
 
-      <div className="hidden lg:block">
-        <StatusCard />
-      </div>
-      <div className="lg:hidden">
-        <StatusDotCompact />
-      </div>
     </nav>
   )
 }

@@ -20,7 +20,7 @@ import { Card, CardTitle, DeterministicNote, SectionTitle } from '../ui/Card'
 import { Badge, StatusDot } from '../ui/Badge'
 import { Button, LinkButton } from '../ui/Button'
 import { Donut, DonutLegend } from '../ui/Donut'
-import { Bars, ConfidenceBar } from '../ui/Bars'
+import { ConfidenceBar } from '../ui/Bars'
 import { Table, Td, Th, Tr } from '../ui/Table'
 import { ErrorState, MissingInput } from '../ui/States'
 import { Skeleton } from '../ui/Skeleton'
@@ -463,17 +463,6 @@ function QcResultCard({ result }: { result: AnalysisResult }) {
               ? `Semua ${total} citra ditandai defect — tidak ada satu pun yang lolos.`
               : `${defective} dari ${total} citra ditandai defect`}
           </p>
-          <div className="mt-5">
-            <Bars
-              bars={inspected.slice(0, 6).map((defect, i) => ({
-                label: defect.defect_class ?? `#${i + 1}`,
-                value: defect.score,
-                highlighted: defect.label === 'defect',
-              }))}
-              format={(v) => v.toFixed(2)}
-              height={110}
-            />
-          </div>
         </>
       )}
     </Card>

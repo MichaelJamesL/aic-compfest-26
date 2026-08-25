@@ -23,7 +23,7 @@ import { Bars, ConfidenceBar } from '../ui/Bars'
 import { Table, Td, Th, Tr } from '../ui/Table'
 import { ErrorState, MissingInput } from '../ui/States'
 import { Skeleton } from '../ui/Skeleton'
-import type { AnalysisDetail, AnalysisResult } from '../api/types'
+import type { AnalysisDetail, AnalysisResult, DefectFinding } from '../api/types'
 
 export function AnalysisResultScreen() {
   const { id = '' } = useParams()
@@ -295,24 +295,40 @@ function Result({ detail, onReload }: { detail: AnalysisDetail; onReload: () => 
 }
 
 /**
+ * Every finding the run produced. Images uploaded as a QC batch land in
+ * qc_by_phase, not in `defects` — reading only the latter reported "no QC
+ * images" for a run that had just inspected eight of them.
+ */
+function allFindings(result: AnalysisResult): DefectFinding[] {
+  return [...result.defects, ...(result.qc_by_phase ?? []).flatMap((phase) => phase.findings)]
+}
+
+/**
  * The differentiator. Never cut it — when the mechanism is missing, say so
  * rather than hiding the card. SCREENS.md §3 B.
  */
 function QcChainCard({ result }: { result: AnalysisResult }) {
-  const defects = result.defects.filter((d) => d.label === 'defect')
+  const findings = allFindings(result)
+  const defects = findings.filter((d) => d.label === 'defect')
   const classified = defects.filter((d) => d.defect_class)
+  const links = result.failure_modes ?? []
 
   return (
     <Card tint="sage" className="col-span-12 md:col-span-6 xl:col-span-3">
       <h3 className="text-sm font-medium">Rantai QC → mesin</h3>
 
-      {classified.length > 0 ? (
+      {links.length > 0 ? (
         <ol className="mt-4 space-y-3 text-[13px]">
-          {classified.slice(0, 1).map((defect) => (
-            <li key={defect.image} className="space-y-3">
-              <p className="font-medium">{defect.defect_class}</p>
+          {links.slice(0, 2).map((link) => (
+            <li key={link.defect_class} className="space-y-1">
+              <p className="font-medium">
+                {link.defect_class} <span className="text-soft">× {link.images}</span>
+              </p>
+              <p className="text-soft">→ {link.failure_modes.join(', ')}</p>
               <p className="text-soft">
-                Kandidat failure mode belum dipetakan — tabel mapping belum ada di engine.
+                {link.corroborated_by.length
+                  ? `Dikonfirmasi ${link.corroborated_by.join(', ')} · prioritas +${link.priority_delta}`
+                  : 'Belum ada sinyal mesin yang mengonfirmasi — prioritas tidak dinaikkan'}
               </p>
             </li>
           ))}
@@ -320,13 +336,11 @@ function QcChainCard({ result }: { result: AnalysisResult }) {
       ) : (
         <div className="mt-4 space-y-3">
           <p className="text-[13px] leading-6 text-soft">
-            {defects.length > 0
-              ? 'Defect terdeteksi, tetapi belum ada kelas defect sehingga kandidat failure mode tidak bisa ditarik.'
-              : 'Rantai ini bermula dari kelas defect produk. Belum ada batch citra pada analisis ini, sehingga tidak ada kandidat failure mode yang bisa ditarik.'}
-          </p>
-          <p className="text-xs leading-5 text-soft">
-            Rantai lengkap membutuhkan classifier defect dan tabel
-            <span className="font-medium"> qc_failure_modes.yaml</span> di ai-engine.
+            {classified.length > 0
+              ? `Kelas defect ${[...new Set(classified.map((d) => d.defect_class))].join(', ')} tidak ada di tabel qc_failure_modes.yaml, jadi tidak ada kandidat yang bisa ditarik.`
+              : defects.length > 0
+                ? 'Defect terdeteksi, tetapi classifier tidak tersedia sehingga kelasnya tidak diketahui dan kandidat failure mode tidak bisa ditarik.'
+                : 'Rantai ini bermula dari kelas defect produk. Analisis ini tidak menyertakan batch citra QC, jadi tidak ada kandidat failure mode.'}
           </p>
         </div>
       )}
@@ -439,8 +453,9 @@ function SourcesCard({
 }
 
 function QcResultCard({ result }: { result: AnalysisResult }) {
-  const total = result.defects.length
-  const defective = result.defects.filter((d) => d.label === 'defect').length
+  const findings = allFindings(result)
+  const total = findings.length
+  const defective = findings.filter((d) => d.label === 'defect').length
 
   return (
     <Card className="col-span-12 xl:col-span-4">
@@ -462,7 +477,7 @@ function QcResultCard({ result }: { result: AnalysisResult }) {
           </p>
           <div className="mt-5">
             <Bars
-              bars={result.defects.slice(0, 6).map((defect, i) => ({
+              bars={findings.slice(0, 6).map((defect, i) => ({
                 label: defect.defect_class ?? `#${i + 1}`,
                 value: defect.score,
                 highlighted: defect.label === 'defect',

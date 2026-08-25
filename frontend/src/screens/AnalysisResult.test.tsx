@@ -204,8 +204,31 @@ describe('AnalysisResult — error', () => {
     renderScreen()
     expect(await screen.findByText('Defect → failure mode')).toBeTruthy()
     expect(screen.getByText('Belum terkonfirmasi sensor')).toBeTruthy()
+    // the compact chain card says the same thing in its own words
+    expect(screen.getByText(/prioritas tidak dinaikkan/)).toBeTruthy()
     expect(screen.getByText('Terkonfirmasi: torque_nm')).toBeTruthy()
-    expect(screen.getByText(/tool_wear, axis_backlash/)).toBeTruthy()
+    // the summary card and the full section both name the candidates
+    expect(screen.getAllByText(/tool_wear, axis_backlash/).length).toBeGreaterThan(0)
     expect(screen.getByText('prioritas +1')).toBeTruthy()
+  })
+
+  it('counts QC findings that arrived as a batch, not only asset-level ones', async () => {
+    const finding = (label: string, cls: string | null) => ({
+      image: `${label}.png`, subject: 'product', score: 0.9, threshold: 0.5,
+      label, severity: 'high', region: null, heatmap_path: null, method: 'patchcore',
+      defect_class: cls, class_confidence: cls ? 0.9 : null,
+    })
+    stubFetch({ ...succeeded, result: { ...succeeded.result, defects: [], qc_by_phase: [{
+      phase: 'finishing', asset_id: 'a1', product: 'metal-nut-4lug',
+      inspected: 3, defects: 2, defect_rate: 0.67,
+      findings: [finding('defect', 'thread_side'), finding('defect', 'thread_side'), finding('ok', null)],
+    }] } })
+    renderScreen()
+
+    // the card read result.defects only, so a batch of images reported "none"
+    expect(await screen.findByText(/2 dari 3 citra ditandai defect/)).toBeTruthy()
+    expect(screen.queryByText(/Belum ada citra QC pada analisis ini/)).toBeNull()
+    // and the chain knows the class even without a mapping row
+    expect(screen.getByText(/thread_side tidak ada di tabel/)).toBeTruthy()
   })
 })

@@ -141,13 +141,23 @@ export function QCModelScreen() {
           )}
 
           {fit && (
-            <Card tint="sage">
+            <Card tint={fit.flagged_in_training > fit.images_used / 4 ? 'clay' : 'sage'}>
               <SectionTitle>Model terlatih</SectionTitle>
               <p className="mt-2 text-[13px]">
                 Produk <span className="font-medium">{fit.product}</span> dilatih dari{' '}
                 {fit.images_used} citra. Batch QC yang menyebut produk ini akan diperiksa
                 terhadapnya.
               </p>
+              {/* A bank fitted on images that were not all good units marks almost
+                  everything defective, and nothing downstream can tell. */}
+              {fit.flagged_in_training > fit.images_used / 4 && (
+                <p className="mt-3 text-[13px] leading-6">
+                  Peringatan: model menandai {fit.flagged_in_training} dari {fit.images_used} citra
+                  referensinya sendiri sebagai menyimpang. Citra referensi kemungkinan tidak semuanya
+                  unit normal — model ini akan menandai hampir semua produk sebagai defect. Latih
+                  ulang dengan citra unit yang benar-benar bagus.
+                </p>
+              )}
             </Card>
           )}
 

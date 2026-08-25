@@ -15,3 +15,6 @@ class QCBatchOut(BaseModel):
 
 class ModelFitOut(BaseModel):
     asset_id: str; product: str; bank_path: str; images_used: int
+    #: how many reference images the fitted model itself calls anomalous. Near
+    #: zero on a clean set; high means the references were not all good units.
+    flagged_in_training: int = 0

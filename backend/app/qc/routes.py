@@ -74,11 +74,18 @@ def register_routes(app):
                 path.write_bytes(raw)
             try:
                 from src import vision
-                bank_path = vision.fit(product, normal_dir)
+                fitted = vision.fit(product, normal_dir)
             except ImportError as exc:
                 raise ValueError("ai_engine_unavailable") from exc
-        audit(db, identity, request.state.request_id, "model.created", "asset", asset.id, after={"product": product, "bank_path": str(bank_path), "images_used": len(files)})
-        return {"asset_id": asset.id, "product": product, "bank_path": str(bank_path), "images_used": len(files)}
+        audit(db, identity, request.state.request_id, "model.created", "asset", asset.id,
+              after={"product": product, "bank_path": str(fitted["path"]), "images_used": len(files),
+                     "flagged_in_training": fitted["flagged_in_training"]})
+        # Without this the training event never reached the audit trail: nothing
+        # else in this route commits.
+        db.commit()
+        return {"asset_id": asset.id, "product": product, "bank_path": str(fitted["path"]),
+                "images_used": len(files),
+                "flagged_in_training": fitted["flagged_in_training"]}
 
     @app.get("/api/v1/models")
     def trained_models(identity: Identity = Depends(get_identity)):

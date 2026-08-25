@@ -12,12 +12,13 @@ const assets = [
   { id: 'a1', factory_id: 'f', name: 'CNC-02', asset_type: 'cnc-mill', criticality: 'high', location: null, status: 'active', specs: {} },
 ]
 
-function render(models: unknown = []) {
+function render(models: unknown = [], routes: Record<string, unknown> = {}) {
   stubRoutes({
     '/config/capabilities': CAPABILITIES,
     '/api/v1/assets': assets,
     '/api/v1/models': models,
-    '/api/v1/assets/a1/models': { asset_id: 'a1', product: 'metal-nut-4lug', bank_path: '/b.pt', images_used: 2 },
+    '/api/v1/assets/a1/models': { asset_id: 'a1', product: 'metal-nut-4lug', bank_path: '/b.pt', images_used: 2, flagged_in_training: 0 },
+    ...routes,
   })
   return renderRoute('/qc-model', '/qc-model', <QCModelScreen />)
 }
@@ -78,5 +79,19 @@ describe('Model QC — train from photos of good units', () => {
   it('says what having no model costs', async () => {
     render()
     expect(await screen.findByText(/citra QC tidak diperiksa/)).toBeTruthy()
+  })
+
+  it('warns when the model flags its own reference images', async () => {
+    render([], { '/api/v1/assets/a1/models': {
+      asset_id: 'a1', product: 'cnc-mill', bank_path: '/b.pt', images_used: 8, flagged_in_training: 6,
+    } })
+    fireEvent.change(await screen.findByLabelText('Mesin'), { target: { value: 'a1' } })
+    drop([image('a.png')])
+    fireEvent.click(screen.getByRole('button', { name: /Latih model/ }))
+
+    // a bank fitted on defective references marks everything defective, silently
+    const warning = await screen.findByText(/Latih ulang dengan citra unit yang benar-benar bagus/)
+    // interpolated numbers split the text node, so match on the rendered content
+    expect(warning.textContent).toMatch(/menandai 6 dari 8 citra referensinya sendiri/)
   })
 })

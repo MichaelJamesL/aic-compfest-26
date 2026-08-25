@@ -77,6 +77,8 @@ export interface ModelFit {
   product: string
   bank_path: string
   images_used: number
+  /** How many reference images the fitted model itself calls anomalous. */
+  flagged_in_training: number
 }
 
 export interface DocumentOut {

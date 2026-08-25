@@ -68,7 +68,11 @@ def test_fit_inspect_round_trip():
                 draw.ellipse([x - r, y - r, x + r, y + r], fill=gray)
             img.save(str(normal_dir / f"plate_{i}.png"))
 
-        vision.fit("test-asset", normal_dir)
+        fitted = vision.fit("test-asset", normal_dir)
+        # the self-check that catches a bank fitted on images that were not all
+        # good units: on a clean set the model flags almost none of its own
+        assert fitted["images"] > 0
+        assert fitted["flagged_in_training"] <= fitted["images"]
 
         clean_path = str(normal_dir / "plate_0.png")
 

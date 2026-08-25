@@ -22,7 +22,16 @@ def _threshold_path(asset_id: str) -> Path:
     return Path(config.BANK_DIR) / f"{asset_id}.threshold"
 
 
-def fit(asset_id: str, normal_dir: str | Path) -> Path:
+def fit(asset_id: str, normal_dir: str | Path) -> dict:
+    """Fit a memory bank from images of good units.
+
+    Returns the bank path plus a self-check: how many of the training images the
+    fitted model itself calls anomalous. On a clean reference set that number is
+    near zero. A high one means the references were not all good units, and the
+    bank will mark almost everything defective — which is exactly what a silently
+    bad bank looks like from the outside, so it is reported rather than left to
+    be discovered by an analysis that rejects every product.
+    """
     from anomalib.data import Folder
     from anomalib.deploy import ExportType
     from anomalib.engine import Engine
@@ -57,7 +66,14 @@ def fit(asset_id: str, normal_dir: str | Path) -> Path:
     threshold = max(float(np.max(scores)) * 1.5, 0.5) if scores.size else 0.5
     _threshold_path(asset_id).write_text(json.dumps(threshold))
 
-    return target
+    # anomalib 2.x hands back a score already binarised against the threshold it
+    # learned, so "how many did it flag" is a count of scores at the top end.
+    flagged = int((scores >= 0.5).sum()) if scores.size else 0
+    return {
+        "path": target,
+        "images": int(scores.size),
+        "flagged_in_training": flagged,
+    }
 
 
 def _compute_scores(model_path, normal_dir: Path) -> np.ndarray:

@@ -1,11 +1,13 @@
-import { useEffect, useState } from 'react'
+import { useState, type ReactNode } from 'react'
 import { useParams } from 'react-router'
 import { CalendarClock, ShieldAlert } from 'lucide-react'
 import { AppShell } from '../shell/AppShell'
 import { api, errorCopy, getIdentity } from '../api/client'
 import { useRequest } from '../lib/useRequest'
 import { formatDateTime, formatDuration } from '../lib/format'
-import { WORK_ORDER, priorityLabel, priorityTone } from '../lib/severity'
+import { VERDICT, WORK_ORDER, priorityLabel, priorityTone } from '../lib/severity'
+import { healthSegments } from '../lib/health'
+import { Donut } from '../ui/Donut'
 import { Card, CardTitle, SectionTitle } from '../ui/Card'
 import { Select, TextArea, TextInput } from '../ui/Field'
 import { Badge } from '../ui/Badge'
@@ -14,7 +16,7 @@ import { StateTrack } from '../ui/StateTrack'
 import { ErrorState } from '../ui/States'
 import { Skeleton } from '../ui/Skeleton'
 import { Toast } from '../ui/Toast'
-import type { WorkOrder } from '../api/types'
+import type { TechnicianResult, Verification, WorkOrder } from '../api/types'
 
 /** Only these roles may approve or reject. SCREENS.md §3 approval bar. */
 const APPROVERS = ['demo-manager', 'demo-admin']
@@ -107,6 +109,8 @@ function Detail({ order, onChange }: { order: WorkOrder; onChange: (o: WorkOrder
         </div>
       </Card>
 
+      <Origin order={order} />
+
       <Assignment order={order} canEdit={canApprove} onChange={onChange} onError={setToast} />
 
       <Card className="mt-3">
@@ -163,6 +167,8 @@ function Detail({ order, onChange }: { order: WorkOrder; onChange: (o: WorkOrder
           </div>
         )}
       </Card>
+
+      <Reports order={order} />
 
       {error != null && <p className="mt-3 text-[13px] text-crit-text">{errorCopy(error)}</p>}
 
@@ -289,11 +295,14 @@ function Assignment({
   const [end, setEnd] = useState(toLocalInput(order.scheduled_end))
   const [saving, setSaving] = useState(false)
 
-  useEffect(() => {
+  // Seeded when the editor opens rather than synced from props: a save that
+  // lands must not overwrite what the coordinator is still typing.
+  function openEditor() {
     setTechnician(order.assigned_technician ?? '')
     setStart(toLocalInput(order.scheduled_start))
     setEnd(toLocalInput(order.scheduled_end))
-  }, [order.assigned_technician, order.scheduled_start, order.scheduled_end])
+    setEditing(true)
+  }
 
   async function save() {
     setSaving(true)
@@ -338,7 +347,7 @@ function Assignment({
           className="mt-4"
           size="sm"
           icon={<CalendarClock size={14} />}
-          onClick={() => setEditing(true)}
+          onClick={openEditor}
         >
           Ubah teknisi / jadwal
         </Button>
@@ -383,6 +392,177 @@ function Assignment({
           </div>
         </div>
       )}
+    </Card>
+  )
+}
+
+
+/** Why this work order exists: the machine, and what the analysis found. */
+function Origin({ order }: { order: WorkOrder }) {
+  const asset = useRequest(() => api.asset(order.asset_id), [order.asset_id])
+  const analysis = useRequest(() => api.analysis(order.analysis_id), [order.analysis_id])
+  const result = analysis.data?.result ?? null
+
+  return (
+    <Card className="mt-3">
+      <div className="flex flex-wrap items-baseline gap-3">
+        <SectionTitle>Asal usul</SectionTitle>
+        <LinkButton to={`/analysis/${order.analysis_id}`} size="sm" className="ml-auto">
+          Lihat analisis
+        </LinkButton>
+      </div>
+
+      <div className="mt-4 grid gap-6 lg:grid-cols-12">
+        <dl className="grid grid-cols-2 gap-4 text-[13px] lg:col-span-5">
+          <div>
+            <dt className="text-xs text-content-3">Mesin</dt>
+            <dd className="mt-1 text-content">{asset.data?.name ?? '—'}</dd>
+          </div>
+          <div>
+            <dt className="text-xs text-content-3">Tipe</dt>
+            <dd className="mt-1 text-content-2">{asset.data?.asset_type ?? '—'}</dd>
+          </div>
+          <div>
+            <dt className="text-xs text-content-3">Lokasi</dt>
+            <dd className="mt-1 text-content-2">{asset.data?.location || '—'}</dd>
+          </div>
+          <div>
+            <dt className="text-xs text-content-3">Kritikalitas</dt>
+            <dd className="mt-1">
+              {asset.data && (
+                <Badge tone={priorityTone(asset.data.criticality)}>
+                  {priorityLabel(asset.data.criticality)}
+                </Badge>
+              )}
+            </dd>
+          </div>
+        </dl>
+
+        {result && (
+          <div className="flex items-start gap-5 lg:col-span-7">
+            <Donut
+              segments={healthSegments(result)}
+              value={result.health_score}
+              caption="Skor kesehatan"
+              className="shrink-0"
+            />
+            <div className="min-w-0">
+              <p className="text-[13px] leading-6 text-content-2">{result.health_summary}</p>
+              {result.root_causes?.length > 0 && (
+                <>
+                  <div className="mt-4">
+                    <CardTitle muted>Dugaan penyebab</CardTitle>
+                  </div>
+                  <ul className="mt-2 space-y-1.5">
+                    {result.root_causes.slice(0, 2).map((cause) => (
+                      <li key={cause.cause} className="text-[13px] text-content-2">
+                        {cause.cause}{' '}
+                        <span className="tnum text-content-3">
+                          {Math.round(cause.confidence * 100)}%
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                </>
+              )}
+              <p className="mt-4 text-xs text-content-3">
+                {result.anomalies?.length ?? 0} anomali sensor ·{' '}
+                {(result.defects ?? []).filter((d) => d.label === 'defect').length} defect visual
+              </p>
+            </div>
+          </div>
+        )}
+        {analysis.data && !result && (
+          <p className="text-[13px] text-content-3 lg:col-span-7">
+            Analisis asal tidak menghasilkan result — work order ini dibuat dari draft kosong.
+          </p>
+        )}
+      </div>
+    </Card>
+  )
+}
+
+function ResultBlock({ result, title }: { result: TechnicianResult; title: ReactNode }) {
+  return (
+    <div className="rounded-control border border-line p-4">
+      <CardTitle muted>{title}</CardTitle>
+      <dl className="mt-2.5 space-y-2 text-[13px]">
+        <div>
+          <dt className="text-xs text-content-3">Pekerjaan</dt>
+          <dd className="text-content-2">{result.work_done || '—'}</dd>
+        </div>
+        <div>
+          <dt className="text-xs text-content-3">Temuan</dt>
+          <dd className="text-content-2">{result.findings || '—'}</dd>
+        </div>
+        <div>
+          <dt className="text-xs text-content-3">Sparepart dipakai</dt>
+          <dd className="text-content-2">{result.parts_used?.join(', ') || '—'}</dd>
+        </div>
+      </dl>
+    </div>
+  )
+}
+
+function VerdictBlock({ verification }: { verification: Verification }) {
+  const verdict = VERDICT[verification.verdict]
+  return (
+    <div className="mt-3">
+      <Badge tone={verdict.tone}>{verdict.label}</Badge>
+      {verification.follow_up?.length > 0 && (
+        <ul className="mt-2.5 space-y-1">
+          {verification.follow_up.map((item) => (
+            <li key={item} className="text-[13px] text-content-2">
+              Tindak lanjut: {item}
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  )
+}
+
+/**
+ * What the technician reported and what verification made of it, including the
+ * attempts that were rejected — a report sent back is part of the record, not
+ * something to overwrite.
+ */
+function Reports({ order }: { order: WorkOrder }) {
+  const current = order.technician_result_json
+  const attempts = order.details_json?.result_attempts ?? []
+  if (!current && attempts.length === 0) return null
+
+  return (
+    <Card className="mt-3">
+      <SectionTitle>Laporan teknisi</SectionTitle>
+      <div className="mt-4 space-y-3">
+        {attempts.map((attempt, index) => (
+          <div key={index}>
+            <ResultBlock
+              result={attempt.result}
+              title={`Percobaan ${index + 1} — ditolak${
+                attempt.submitted_at ? ` · ${formatDateTime(attempt.submitted_at)}` : ''
+              }`}
+            />
+            {attempt.verification && <VerdictBlock verification={attempt.verification} />}
+          </div>
+        ))}
+        {current && (
+          <div>
+            <ResultBlock
+              result={current}
+              title={`Percobaan ${attempts.length + 1}${
+                order.result_submitted_at ? ` · ${formatDateTime(order.result_submitted_at)}` : ''
+              }`}
+            />
+            {order.verification_json ? (
+              <VerdictBlock verification={order.verification_json} />
+            ) : (
+              <p className="mt-2.5 text-[13px] text-content-3">Menunggu verifikasi.</p>
+            )}
+          </div>
+        )}
+      </div>
     </Card>
   )
 }

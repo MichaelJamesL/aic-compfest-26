@@ -364,10 +364,6 @@ function ScheduleCard({ result }: { result: AnalysisResult }) {
           <p className="text-[17px] leading-6 font-semibold">
             {result.recommended_window ?? 'Belum ditentukan'}
           </p>
-          <p className="text-xs leading-5 text-soft">
-            Masih berupa teks dari model. Jendela terhitung beserta runner-up dan alasan
-            kalahnya membutuhkan <span className="font-medium">decide.py</span>.
-          </p>
         </div>
       )}
 

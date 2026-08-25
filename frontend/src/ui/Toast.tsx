@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect } from 'react'
 
 /**
  * One transient message, bottom-right. Deliberately not a provider or a queue:
@@ -18,16 +18,13 @@ export function Toast({
   tone?: 'error' | 'success'
   onClose: () => void
 }) {
-  const [visible, setVisible] = useState(false)
-
   useEffect(() => {
-    setVisible(Boolean(message))
     if (!message || tone === 'error') return
     const timer = setTimeout(onClose, 4000)
     return () => clearTimeout(timer)
   }, [message, tone, onClose])
 
-  if (!message || !visible) return null
+  if (!message) return null
 
   return (
     <div

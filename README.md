@@ -148,20 +148,6 @@ those signals and produces structured recommendations; it does not define the
 audit-critical numbers. Coordinator approval and technician verification remain
 human-controlled.
 
-## Documentation Map
-
-| Document | Purpose |
-| --- | --- |
-| [`docs/SETUP.md`](docs/SETUP.md) | Complete Docker, AI, demo-data, local development, and troubleshooting guide |
-| [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | System boundaries, data flow, and invariants |
-| [`docs/API.md`](docs/API.md) | Verified frontend-backend HTTP contract |
-| [`docs/STATUS.md`](docs/STATUS.md) | Implementation status and known gaps per requirement |
-| [`docs/FR.md`](docs/FR.md) | Functional requirements and scope |
-| [`docs/design/SCREENS.md`](docs/design/SCREENS.md) | Screen behavior and UI states |
-| [`docs/design/VISUAL_LANGUAGE.md`](docs/design/VISUAL_LANGUAGE.md) | Frontend visual system and constraints |
-| [`demo-data/README.md`](demo-data/README.md) | Demo dataset and seed workflow |
-| [`Metodologi-SIENA.docx`](Metodologi-SIENA.docx) | Proposal methodology and technical implementation narrative |
-
 ## Checks
 
 ```bash

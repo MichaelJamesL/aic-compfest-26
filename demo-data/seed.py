@@ -33,6 +33,7 @@ DOCUMENTS = {
     "manual-pump-life-cycle-costs-doe.pdf": ("manual", None),
     "manual-screw-air-compressor-oppair.pdf": ("manual", "COMP-01"),
     "manual-bridgeport-series-i-milling-machine.pdf": ("manual", "CNC-MILL-01"),
+    "tds-coolant-castrol-syntilo-9902.pdf": ("manual", "CNC-MILL-01"),
     "manual-motor-abb-low-voltage.pdf": ("manual", "MOTOR-01"),
     "manual-bearing-handbook-electric-motors-skf.pdf": ("manual", "MOTOR-01"),
     "manual-bearing-installation-maintenance-skf.pdf": ("manual", None),

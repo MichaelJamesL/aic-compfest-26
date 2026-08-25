@@ -1,6 +1,6 @@
 # Demo data
 
-A whole factory's worth of input for a demo run: 8 machines, 11 PDFs (SOPs and
+A whole factory's worth of input for a demo run: 8 machines, 12 PDFs (SOPs and
 vendor manuals), 35 maintenance records, PLC/sensor exports for every machine,
 and the factory-wide business context the recommendation depends on.
 
@@ -109,6 +109,9 @@ Everything cross-references, and the generator fails if it stops doing so:
   band, because one machine runs one job — AI4I samples independent cycles
   across products and settings, and a single failure is invisible against that
   spread. The measured tuples are untouched; only the selection is ours.
+- The QC images are the product the mills are said to make, the SOP names the
+  same product code, and the defect types in the batch are the ones the SOP's
+  defect table explains.
 - AI4I's tool-wear column is not exported as a PLC tag: each row is a fresh
   tool, so it would read as a counter resetting at random. Tool life is an
   operator rule in IK-CNC-003 instead.

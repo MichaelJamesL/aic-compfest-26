@@ -6,11 +6,21 @@ import numpy as np
 from pgvector.psycopg import register_vector
 
 from .config import DATABASE_URL
-from .embed import embed
+from .embed import DIM, embed
 from .schemas import ContextDoc, Document
 
 WINDOW_SIZE = 800
 OVERLAP = 100
+
+
+def available() -> bool:
+    """Whether DATABASE_URL actually points at a Postgres knowledge base.
+
+    config falls back to the backend's DATABASE_URL when AIENGINE_DATABASE_URL is
+    unset, and the backend may be on SQLite — retrieval then has no store to read
+    and must say so rather than handing psycopg a DSN it cannot parse.
+    """
+    return DATABASE_URL.startswith(("postgres://", "postgresql://"))
 
 
 def connect() -> psycopg.Connection:
@@ -134,6 +144,10 @@ def search(
     k: int = 5,
     conn: psycopg.Connection | None = None,
 ) -> list[ContextDoc]:
+    if conn is None and not available():
+        # No knowledge base configured: an analysis without retrieval is worse,
+        # but an analysis that dies because the corpus is unreachable is useless.
+        return []
     close = conn is None
     conn = conn or connect()
     init_schema(conn)

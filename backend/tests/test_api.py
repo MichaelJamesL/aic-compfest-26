@@ -5,6 +5,9 @@ import sys
 import types
 import io
 import csv as csv_module
+# The suite must never reach DeepSeek: a .env with AI_ENGINE_ENABLED=true would
+# otherwise make every verification depend on the network.
+os.environ["AI_ENGINE_ENABLED"] = "false"
 os.environ["DATABASE_URL"] = "sqlite://"
 os.environ["STORAGE_PATH"] = "/tmp/aic-backend-test"
 from fastapi.testclient import TestClient
@@ -395,14 +398,15 @@ def test_resolved_verification_reports_ingestion_failure_without_failing_verific
     fake_src.VerificationResult = lambda **values: values
     fake_src.Document = lambda **values: values
     fake_src.knowledge = FakeKnowledge()
-    monkeypatch.setitem(sys.modules, "src", fake_src)
     with TestClient(app) as client:
+        # the fake src also replaces the analysis engine, so build the work order first
         wo = _work_order(client); oid = wo["id"]
+        monkeypatch.setitem(sys.modules, "src", fake_src)
         for path, headers in (("submit", {}), ("approve", MANAGER), ("schedule", {}), ("start", {})):
             client.post(f"/api/v1/work-orders/{oid}/{path}", headers=headers)
         client.post(f"/api/v1/work-orders/{oid}/result", headers=TECHNICIAN, json={"work_done": "fixed", "findings": "clear"})
         response = client.post(f"/api/v1/work-orders/{oid}/verify")
-        assert response.status_code == 200 and response.json()["status"] == "completed"
+        assert response.status_code == 200 and response.json()["status"] == "completed", response.text
         body = response.json()
         assert body["verification"].get("ingestion", {}).get("status") == "failed", response.text
         with SessionLocal() as db:
@@ -424,9 +428,10 @@ def test_resolved_verification_retries_failed_ingestion_without_duplicates(monke
     fake_src.VerificationResult = lambda **values: values
     fake_src.Document = lambda **values: values
     fake_src.knowledge = FakeKnowledge()
-    monkeypatch.setitem(sys.modules, "src", fake_src)
     with TestClient(app) as client:
+        # the fake src also replaces the analysis engine, so build the work order first
         wo = _work_order(client); oid = wo["id"]
+        monkeypatch.setitem(sys.modules, "src", fake_src)
         for path, headers in (("submit", {}), ("approve", MANAGER), ("schedule", {}), ("start", {})):
             client.post(f"/api/v1/work-orders/{oid}/{path}", headers=headers)
         client.post(f"/api/v1/work-orders/{oid}/result", headers=TECHNICIAN, json={"work_done": "fixed", "findings": "clear"})
@@ -711,8 +716,9 @@ def test_schedules_survive_the_round_trip_to_the_engine(monkeypatch):
     }
     with TestClient(app) as client:
         aid = client.post("/api/v1/assets", json={"name": "Pump"}).json()["id"]
+        client.put("/api/v1/business-context", json={})
 
-        # nothing configured yet: engine falls back to its own empty defaults
+        # nothing configured: engine falls back to its own empty defaults
         first = client.post(f"/api/v1/assets/{aid}/analyses", json={}).json()["id"]
         bare = client.get(f"/api/v1/analyses/{first}").json()
         assert bare["request_snapshot"]["business"]["production_schedule"] is None

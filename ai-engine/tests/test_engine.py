@@ -17,10 +17,13 @@ from src.schemas import (
     Asset,
     BusinessContext,
     MaintenanceRecord,
+    ProductionSchedule,
     RootCause,
     SensorReading,
     SparePart,
+    TechnicianSchedule,
     Tier,
+    TimeInterval,
     WorkOrder,
     TechnicianResult,
     VerificationResult,
@@ -47,11 +50,19 @@ def _request() -> AnalysisRequest:
             )
         ],
         business=BusinessContext(
-            production_schedule="Line A busy until Saturday",
+            production_schedule=ProductionSchedule(
+                work_time={"monday": TimeInterval(start=datetime.time(6), end=datetime.time(14))}
+            ),
             inventory=[
                 SparePart(id="skf-6204", name="SKF-6204 bearing", stock=1),
             ],
-            technicians_available=2,
+            technicians=[
+                TechnicianSchedule(
+                    name="Budi",
+                    role="mechanic",
+                    work_time={"monday": TimeInterval(start=datetime.time(6), end=datetime.time(14))},
+                ),
+            ],
             operator_report="Bearing is noisy at startup",
         ),
     )

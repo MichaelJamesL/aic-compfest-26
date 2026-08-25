@@ -101,12 +101,12 @@ class PhaseQC(BaseModel):
 
 
 class BusinessContext(BaseModel):
-    production_schedule: str | None = None
+    production_schedule: ProductionSchedule = Field(default_factory=ProductionSchedule)
     inventory: list[SparePart] = Field(
         default_factory=list,
         description="Available spare parts for this asset (snapshot from backend, not full warehouse inventory).",
     )
-    technicians_available: int | None = None
+    technicians: list[TechnicianSchedule] = Field(default_factory=list)
     operator_report: str | None = None
 
 

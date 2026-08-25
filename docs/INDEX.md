@@ -32,6 +32,7 @@ what a coding task needs.
 
 | File | What it is | Read when |
 | --- | --- | --- |
+| [`USER_FLOW.md`](USER_FLOW.md) | Every route in the app, in the order a user walks them, with the state each screen needs and who has to do what. Written for building the user-flow diagram; also the screenshot inventory. | Capturing screens, or checking a route exists. |
 | [`TODO.md`](TODO.md) | The execution schedule to the deadline: what to do in what order, in which track, with time boxes and the cut-order if we fall behind. Supersedes the plan table in `DECISIONS.md`. | Deciding what to pick up next. |
 | [`STATUS.md`](STATUS.md) | The scoreboard: every FR row mapped to an owning area and its current state (done / partial / broken / not started). Roll-up only — details live in the three checklists. | Start of every session, to know where to continue. |
 | [`adr/`](adr/) | Architecture decision records: one file per decision that was expensive to reach, with the experiment that settled it. `0001` is why sensor anomalies use a per-machine robust baseline and not an IsolationForest. | Before changing anomaly detection, or when a design looks arbitrary and you want the evidence behind it. |

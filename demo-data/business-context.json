@@ -1,0 +1,355 @@
+{
+  "production_schedule": {
+    "work_time": {
+      "monday": {
+        "start": "07:00",
+        "end": "23:00"
+      },
+      "tuesday": {
+        "start": "07:00",
+        "end": "23:00"
+      },
+      "wednesday": {
+        "start": "07:00",
+        "end": "23:00"
+      },
+      "thursday": {
+        "start": "07:00",
+        "end": "23:00"
+      },
+      "friday": {
+        "start": "07:00",
+        "end": "23:00"
+      },
+      "saturday": {
+        "start": "07:00",
+        "end": "15:00"
+      }
+    }
+  },
+  "technicians": [
+    {
+      "name": "Budi Santoso",
+      "role": "teknisi mekanik",
+      "specialty": "rotating equipment",
+      "work_time": {
+        "monday": {
+          "start": "07:00",
+          "end": "15:00"
+        },
+        "tuesday": {
+          "start": "07:00",
+          "end": "15:00"
+        },
+        "wednesday": {
+          "start": "07:00",
+          "end": "15:00"
+        },
+        "thursday": {
+          "start": "07:00",
+          "end": "15:00"
+        },
+        "friday": {
+          "start": "07:00",
+          "end": "15:00"
+        },
+        "saturday": {
+          "start": "07:00",
+          "end": "15:00"
+        }
+      },
+      "occupied_time": {
+        "wednesday": [
+          {
+            "start": "08:00",
+            "end": "12:00"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Rian Pratama",
+      "role": "teknisi mekanik",
+      "specialty": "hidrolik dan pneumatik",
+      "work_time": {
+        "monday": {
+          "start": "15:00",
+          "end": "23:00"
+        },
+        "tuesday": {
+          "start": "15:00",
+          "end": "23:00"
+        },
+        "wednesday": {
+          "start": "15:00",
+          "end": "23:00"
+        },
+        "thursday": {
+          "start": "15:00",
+          "end": "23:00"
+        },
+        "friday": {
+          "start": "15:00",
+          "end": "23:00"
+        }
+      },
+      "occupied_time": {}
+    },
+    {
+      "name": "Sari Wulandari",
+      "role": "teknisi listrik",
+      "specialty": "motor dan kontrol",
+      "work_time": {
+        "monday": {
+          "start": "07:00",
+          "end": "15:00"
+        },
+        "tuesday": {
+          "start": "07:00",
+          "end": "15:00"
+        },
+        "wednesday": {
+          "start": "07:00",
+          "end": "15:00"
+        },
+        "thursday": {
+          "start": "07:00",
+          "end": "15:00"
+        },
+        "friday": {
+          "start": "07:00",
+          "end": "15:00"
+        },
+        "saturday": {
+          "start": "07:00",
+          "end": "12:00"
+        }
+      },
+      "occupied_time": {
+        "friday": [
+          {
+            "start": "13:00",
+            "end": "15:00"
+          }
+        ]
+      }
+    }
+  ],
+  "inventory": [
+    {
+      "id": "skf-3306-a2z",
+      "name": "Bearing SKF 3306 A-2Z (double angular contact)",
+      "stock": 1,
+      "unit": "pcs",
+      "min_stock": 2,
+      "asset_external_ids": [
+        "PUMP-01"
+      ]
+    },
+    {
+      "id": "skf-6306-2z",
+      "name": "Bearing SKF 6306-2Z",
+      "stock": 2,
+      "unit": "pcs",
+      "min_stock": 2,
+      "asset_external_ids": [
+        "PUMP-01"
+      ]
+    },
+    {
+      "id": "grease-mobil-polyrex-em",
+      "name": "Grease Mobil Polyrex EM 390 g",
+      "stock": 4,
+      "unit": "tube",
+      "min_stock": 2,
+      "asset_external_ids": [
+        "PUMP-01",
+        "MOTOR-01",
+        "CONV-01"
+      ]
+    },
+    {
+      "id": "seal-mekanik-nk80",
+      "name": "Seal mekanik Grundfos NK 80-250",
+      "stock": 0,
+      "unit": "pcs",
+      "min_stock": 1,
+      "eta": "3 hari",
+      "asset_external_ids": [
+        "PUMP-01"
+      ]
+    },
+    {
+      "id": "coupling-insert",
+      "name": "Coupling insert pompa NK",
+      "stock": 2,
+      "unit": "set",
+      "min_stock": 1,
+      "asset_external_ids": [
+        "PUMP-01"
+      ]
+    },
+    {
+      "id": "elemen-filter-udara",
+      "name": "Elemen filter udara kompresor sekrup 55 kW",
+      "stock": 2,
+      "unit": "pcs",
+      "min_stock": 1,
+      "asset_external_ids": [
+        "COMP-01"
+      ]
+    },
+    {
+      "id": "filter-oli",
+      "name": "Filter oli kompresor",
+      "stock": 2,
+      "unit": "pcs",
+      "min_stock": 1,
+      "asset_external_ids": [
+        "COMP-01"
+      ]
+    },
+    {
+      "id": "separator-element",
+      "name": "Separator element kompresor",
+      "stock": 0,
+      "unit": "pcs",
+      "min_stock": 1,
+      "eta": "5 hari",
+      "asset_external_ids": [
+        "COMP-01"
+      ]
+    },
+    {
+      "id": "oli-kompresor-46",
+      "name": "Oli kompresor ISO VG 46 20 L",
+      "stock": 1,
+      "unit": "drum",
+      "min_stock": 1,
+      "asset_external_ids": [
+        "COMP-01"
+      ]
+    },
+    {
+      "id": "coolant-concentrate",
+      "name": "Coolant concentrate 20 L",
+      "stock": 3,
+      "unit": "jerigen",
+      "min_stock": 1,
+      "asset_external_ids": [
+        "CNC-MILL-01",
+        "CNC-MILL-02"
+      ]
+    },
+    {
+      "id": "filter-chip",
+      "name": "Filter chip conveyor mesin milling",
+      "stock": 1,
+      "unit": "pcs",
+      "min_stock": 1,
+      "asset_external_ids": [
+        "CNC-MILL-01",
+        "CNC-MILL-02"
+      ]
+    },
+    {
+      "id": "way-lube-iso68",
+      "name": "Way lube ISO VG 68 20 L",
+      "stock": 2,
+      "unit": "jerigen",
+      "min_stock": 1,
+      "asset_external_ids": [
+        "CNC-MILL-01",
+        "CNC-MILL-02"
+      ]
+    },
+    {
+      "id": "spindle-bearing-set",
+      "name": "Bearing spindle Bridgeport (matched pair)",
+      "stock": 0,
+      "unit": "set",
+      "min_stock": 1,
+      "eta": "10 hari",
+      "asset_external_ids": [
+        "CNC-MILL-01",
+        "CNC-MILL-02"
+      ]
+    },
+    {
+      "id": "belt-800mm",
+      "name": "Sabuk konveyor 800 mm",
+      "stock": 1,
+      "unit": "roll",
+      "min_stock": 1,
+      "asset_external_ids": [
+        "CONV-01"
+      ]
+    },
+    {
+      "id": "roller-idler",
+      "name": "Roller idler konveyor",
+      "stock": 6,
+      "unit": "pcs",
+      "min_stock": 4,
+      "asset_external_ids": [
+        "CONV-01"
+      ]
+    },
+    {
+      "id": "seal-kit-100t",
+      "name": "Seal kit silinder hidrolik 100 ton",
+      "stock": 1,
+      "unit": "set",
+      "min_stock": 1,
+      "asset_external_ids": [
+        "PRESS-01"
+      ]
+    },
+    {
+      "id": "oli-hidrolik-iso46",
+      "name": "Oli hidrolik ISO VG 46 20 L",
+      "stock": 2,
+      "unit": "drum",
+      "min_stock": 1,
+      "asset_external_ids": [
+        "PRESS-01"
+      ]
+    },
+    {
+      "id": "filter-hidrolik",
+      "name": "Filter hidrolik press",
+      "stock": 2,
+      "unit": "pcs",
+      "min_stock": 1,
+      "asset_external_ids": [
+        "PRESS-01"
+      ]
+    },
+    {
+      "id": "refrigerant-r410a",
+      "name": "Refrigerant R-410A 11.3 kg",
+      "stock": 1,
+      "unit": "tabung",
+      "min_stock": 1,
+      "asset_external_ids": [
+        "CHILL-01"
+      ]
+    },
+    {
+      "id": "coil-cleaner",
+      "name": "Coil cleaner kondensor 5 L",
+      "stock": 2,
+      "unit": "jerigen",
+      "min_stock": 1,
+      "asset_external_ids": [
+        "CHILL-01"
+      ]
+    }
+  ],
+  "operator_reports": {
+    "PUMP-01": "Suara mendengung dari sisi kopling sejak dua hari terakhir, casing bearing terasa panas saat disentuh.",
+    "COMP-01": "Kompresor lebih sering unload dan tekanan jaringan turun saat semua mesin jalan.",
+    "CNC-MILL-01": "Suhu proses naik dan permukaan hasil milling mulai kasar menjelang akhir shift.",
+    "MOTOR-01": "Getaran terasa di dudukan motor saat konveyor start, hilang setelah beberapa menit."
+  }
+}

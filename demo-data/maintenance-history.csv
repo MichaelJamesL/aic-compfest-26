@@ -1,0 +1,36 @@
+asset_external_id,performed_at,action,findings,parts_used,external_id
+PUMP-01,2025-07-21T07:00:00Z,Overhaul tahunan pompa,"Impeller aus ringan, seal mekanik diganti","seal-mekanik-nk80,gasket-set",MR-PUMP-01-0400
+PUMP-01,2025-10-29T07:00:00Z,Pelumasan ulang bearing bracket (3500 jam),"Grease lama mengeras, bearing DE bersih",grease-mobil-polyrex-em,MR-PUMP-01-0300
+PUMP-01,2026-01-27T07:00:00Z,Penggantian bearing DE,"Bearing DE berisik, clearance di luar batas",skf-3306-a2z,MR-PUMP-01-0210
+PUMP-01,2026-04-07T07:00:00Z,Preventive maintenance 3 bulanan,"Alignment kopling ulang, getaran turun ke 2.4 mm/s",coupling-insert,MR-PUMP-01-0140
+PUMP-01,2026-08-03T07:00:00Z,Inspeksi getaran tidak terjadwal,Bearing DE panas berlebih (>85 C),,MR-PUMP-01-0022
+PUMP-01,2026-08-16T07:00:00Z,Inspeksi getaran tidak terjadwal,Bearing DE panas berlebih (>85 C),,MR-PUMP-01-0009
+CNC-MILL-01,2025-08-10T07:00:00Z,Overhaul spindle,"Bearing spindle diganti sepasang, runout 0.008 mm",spindle-bearing-set,MR-CNC-MILL-01-0380
+CNC-MILL-01,2025-12-08T07:00:00Z,Kalibrasi sumbu X-Y-Z,"Backlash sumbu Y 0.03 mm, dikompensasi di kontroler",,MR-CNC-MILL-01-0260
+CNC-MILL-01,2026-03-03T07:00:00Z,Ganti oli way lube dan filter,"Level oli way lube rendah, saluran Z tersumbat",way-lube-iso68,MR-CNC-MILL-01-0175
+CNC-MILL-01,2026-05-22T07:00:00Z,Preventive maintenance 2 bulanan,"Coolant diganti, filter chip bersih, tool holder diperiksa","coolant-concentrate,filter-chip",MR-CNC-MILL-01-0095
+CNC-MILL-01,2026-07-22T07:00:00Z,Perbaikan sistem pendingin spindle,"Radiator pendingin kotor, suhu proses naik saat beban tinggi",,MR-CNC-MILL-01-0034
+CNC-MILL-02,2025-07-11T07:00:00Z,Instalasi ulang dan leveling mesin,Leveling ulang setelah pemindahan lini,,MR-CNC-MILL-02-0410
+CNC-MILL-02,2025-12-28T07:00:00Z,Ganti oli way lube dan filter,"Normal, tidak ada temuan",way-lube-iso68,MR-CNC-MILL-02-0240
+CNC-MILL-02,2026-04-27T07:00:00Z,Kalibrasi sumbu X-Y-Z,Semua sumbu dalam toleransi 0.01 mm,,MR-CNC-MILL-02-0120
+CNC-MILL-02,2026-07-11T07:00:00Z,Preventive maintenance 2 bulanan,"Coolant diganti, tidak ada temuan",coolant-concentrate,MR-CNC-MILL-02-0045
+COMP-01,2025-08-25T07:00:00Z,Overhaul airend,"Bearing airend diganti, clearance rotor dalam batas",airend-bearing-set,MR-COMP-01-0365
+COMP-01,2025-11-18T07:00:00Z,Ganti oli kompresor dan filter oli,Oli menghitam lebih cepat dari jadwal,"oli-kompresor-46,filter-oli",MR-COMP-01-0280
+COMP-01,2026-02-16T07:00:00Z,Ganti elemen filter udara,Delta P filter 0.48 bar mendekati batas,elemen-filter-udara,MR-COMP-01-0190
+COMP-01,2026-05-17T07:00:00Z,Preventive maintenance 3 bulanan,"Separator diganti, drain trap dibersihkan",separator-element,MR-COMP-01-0100
+COMP-01,2026-07-26T07:00:00Z,Pembersihan cooler dan drain,"Cooler tersumbat debu, suhu oli turun 6 C setelah dibersihkan",,MR-COMP-01-0030
+MOTOR-01,2025-09-29T07:00:00Z,Rewinding motor,"Isolasi belitan turun, motor di-rewind di vendor",,MR-MOTOR-01-0330
+MOTOR-01,2026-02-06T07:00:00Z,Pelumasan ulang bearing motor,Normal,grease-mobil-polyrex-em,MR-MOTOR-01-0200
+MOTOR-01,2026-06-06T07:00:00Z,Pengukuran tahanan isolasi,"IR 120 Mohm, aman",,MR-MOTOR-01-0080
+MOTOR-01,2026-07-30T07:00:00Z,Pengencangan kembali dudukan motor,"Baut dudukan kendor, getaran 3.6 mm/s sebelum perbaikan",,MR-MOTOR-01-0026
+CONV-01,2025-10-29T07:00:00Z,Ganti sabuk konveyor,Sabuk retak di sambungan,belt-800mm,MR-CONV-01-0300
+CONV-01,2026-02-26T07:00:00Z,Ganti roller idler,Dua roller macet,roller-idler,MR-CONV-01-0180
+CONV-01,2026-06-26T07:00:00Z,Preventive maintenance 2 bulanan,"Tracking sabuk disetel, pelumasan bearing roller",grease-mobil-polyrex-em,MR-CONV-01-0060
+PRESS-01,2025-07-01T07:00:00Z,Ganti seal silinder hidrolik,"Kebocoran pada seal rod, oli menetes",seal-kit-100t,MR-PRESS-01-0420
+PRESS-01,2025-10-19T07:00:00Z,Ganti oli hidrolik dan filter,Partikel logam halus di filter,"oli-hidrolik-iso46,filter-hidrolik",MR-PRESS-01-0310
+PRESS-01,2026-03-28T07:00:00Z,Kalibrasi pressure switch,Setpoint bergeser 4 bar,,MR-PRESS-01-0150
+PRESS-01,2026-06-16T07:00:00Z,Preventive maintenance 3 bulanan,"Cycle time 8.4 s, dalam batas",,MR-PRESS-01-0070
+PRESS-01,2026-08-07T07:00:00Z,Inspeksi kebocoran hidrolik,"Rembes kecil pada fitting, dikencangkan",,MR-PRESS-01-0018
+CHILL-01,2025-09-09T07:00:00Z,Cleaning kondensor tahunan,Fin kondensor kotor berat,coil-cleaner,MR-CHILL-01-0350
+CHILL-01,2026-02-06T07:00:00Z,Top-up refrigerant,"Tekanan rendah, ditemukan rembes di flare",refrigerant-r410a,MR-CHILL-01-0200
+CHILL-01,2026-05-27T07:00:00Z,Preventive maintenance 6 bulanan,"Approach temp 1.3 C, normal",,MR-CHILL-01-0090

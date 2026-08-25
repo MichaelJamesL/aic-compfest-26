@@ -183,6 +183,13 @@ export interface WorkOrderDetails {
   safety_notes: string[]
   /** Set by POST /work-orders/{id}/reject. */
   rejection_reason?: string
+  /** Reports that were rejected, kept in order. The current one is not here. */
+  result_attempts?: {
+    result: TechnicianResult
+    verification: Verification | null
+    submitted_at: string | null
+    verified_at: string | null
+  }[]
 }
 
 /** Pending — see API.md "contract changes". decide.py does not exist yet. */
@@ -275,8 +282,15 @@ export interface WorkOrder {
   priority: Priority
   status: WorkOrderStatus
   details_json: WorkOrderDetails
+  /** Proposed when the work order is created; a coordinator may move it. */
+  assigned_technician?: string | null
+  scheduled_start?: string | null
+  scheduled_end?: string | null
+  /** "during_production" | "manual" | why nothing could be scheduled. */
+  schedule_note?: string | null
   technician_result_json?: TechnicianResult | null
   result_submitted_at?: string | null
+  verification_json?: Verification | null
   created_at: string
   updated_at: string
 }

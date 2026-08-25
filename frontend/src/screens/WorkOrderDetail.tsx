@@ -1,18 +1,19 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useParams } from 'react-router'
-import { ShieldAlert } from 'lucide-react'
+import { CalendarClock, ShieldAlert } from 'lucide-react'
 import { AppShell } from '../shell/AppShell'
 import { api, errorCopy, getIdentity } from '../api/client'
 import { useRequest } from '../lib/useRequest'
 import { formatDateTime, formatDuration } from '../lib/format'
 import { WORK_ORDER, priorityLabel, priorityTone } from '../lib/severity'
 import { Card, CardTitle, SectionTitle } from '../ui/Card'
-import { TextArea } from '../ui/Field'
+import { Select, TextArea, TextInput } from '../ui/Field'
 import { Badge } from '../ui/Badge'
 import { BackLink, Button, LinkButton } from '../ui/Button'
 import { StateTrack } from '../ui/StateTrack'
 import { ErrorState } from '../ui/States'
 import { Skeleton } from '../ui/Skeleton'
+import { Toast } from '../ui/Toast'
 import type { WorkOrder } from '../api/types'
 
 /** Only these roles may approve or reject. SCREENS.md §3 approval bar. */
@@ -57,6 +58,7 @@ function Detail({ order, onChange }: { order: WorkOrder; onChange: (o: WorkOrder
   const [error, setError] = useState<unknown>(null)
   const [rejecting, setRejecting] = useState(false)
   const [reason, setReason] = useState('')
+  const [toast, setToast] = useState<string | null>(null)
   const canApprove = APPROVERS.includes(getIdentity().user)
   const state = WORK_ORDER[order.status]
   const details = order.details_json
@@ -104,6 +106,8 @@ function Detail({ order, onChange }: { order: WorkOrder; onChange: (o: WorkOrder
           <StateTrack status={order.status} />
         </div>
       </Card>
+
+      <Assignment order={order} canEdit={canApprove} onChange={onChange} onError={setToast} />
 
       <Card className="mt-3">
         <SectionTitle>Pekerjaan</SectionTitle>
@@ -256,6 +260,129 @@ function Detail({ order, onChange }: { order: WorkOrder; onChange: (o: WorkOrder
           </p>
         </Card>
       )}
+      <Toast message={toast} onClose={() => setToast(null)} />
     </AppShell>
+  )
+}
+
+
+/** "2026-09-01T08:00:00Z" -> "2026-09-01T08:00", what datetime-local speaks. */
+function toLocalInput(value: string | null | undefined): string {
+  return value ? value.slice(0, 16) : ''
+}
+
+function Assignment({
+  order,
+  canEdit,
+  onChange,
+  onError,
+}: {
+  order: WorkOrder
+  canEdit: boolean
+  onChange: (o: WorkOrder) => void
+  onError: (message: string) => void
+}) {
+  const roster = useRequest(() => api.businessContext().then((c) => c.technicians), [])
+  const [editing, setEditing] = useState(false)
+  const [technician, setTechnician] = useState(order.assigned_technician ?? '')
+  const [start, setStart] = useState(toLocalInput(order.scheduled_start))
+  const [end, setEnd] = useState(toLocalInput(order.scheduled_end))
+  const [saving, setSaving] = useState(false)
+
+  useEffect(() => {
+    setTechnician(order.assigned_technician ?? '')
+    setStart(toLocalInput(order.scheduled_start))
+    setEnd(toLocalInput(order.scheduled_end))
+  }, [order.assigned_technician, order.scheduled_start, order.scheduled_end])
+
+  async function save() {
+    setSaving(true)
+    try {
+      onChange(await api.reassign(order.id, {
+        technician,
+        start: new Date(start).toISOString(),
+        end: new Date(end).toISOString(),
+      }))
+      setEditing(false)
+    } catch (err) {
+      // A double booking is the coordinator's to resolve, so it is said out
+      // loud rather than left as a red line under a field.
+      onError(errorCopy(err))
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <Card className="mt-3">
+      <SectionTitle>Penugasan</SectionTitle>
+      {order.assigned_technician ? (
+        <p className="mt-2 text-[13px] text-content-2">
+          <span className="text-content">{order.assigned_technician}</span> ·{' '}
+          {formatDateTime(order.scheduled_start!)} – {formatDateTime(order.scheduled_end!).slice(-5)}
+          {order.schedule_note === 'during_production' && (
+            <span className="ml-2 text-warn">menabrak jam produksi</span>
+          )}
+        </p>
+      ) : (
+        <p className="mt-2 text-[13px] text-content-3">
+          Belum ada teknisi —{' '}
+          {order.schedule_note === 'no_technicians'
+            ? 'roster teknisi masih kosong di Konteks bisnis.'
+            : 'tidak ada slot kosong sebelum tenggat prioritas ini.'}
+        </p>
+      )}
+
+      {canEdit && !editing && (
+        <Button
+          className="mt-4"
+          size="sm"
+          icon={<CalendarClock size={14} />}
+          onClick={() => setEditing(true)}
+        >
+          Ubah teknisi / jadwal
+        </Button>
+      )}
+
+      {canEdit && editing && (
+        <div className="mt-4 grid gap-4 md:grid-cols-3">
+          <Select
+            label="Teknisi"
+            value={technician}
+            onChange={(event) => setTechnician(event.target.value)}
+          >
+            <option value="">— pilih —</option>
+            {(roster.data ?? []).map((one) => (
+              <option key={one.name} value={one.name}>
+                {one.name} · {one.role}
+              </option>
+            ))}
+          </Select>
+          <TextInput
+            label="Mulai"
+            type="datetime-local"
+            value={start}
+            onChange={(event) => setStart(event.target.value)}
+          />
+          <TextInput
+            label="Selesai"
+            type="datetime-local"
+            value={end}
+            onChange={(event) => setEnd(event.target.value)}
+          />
+          <div className="flex items-center gap-3 md:col-span-3">
+            <Button
+              variant="primary"
+              size="sm"
+              disabled={saving || !technician || !start || !end}
+              onClick={save}
+            >
+              Simpan jadwal
+            </Button>
+            <Button size="sm" onClick={() => setEditing(false)}>Batal</Button>
+          </div>
+        </div>
+      )}
+    </Card>
   )
 }

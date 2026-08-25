@@ -100,6 +100,10 @@ const MESSAGES: Record<string, string> = {
   qc_batch_not_found: 'Batch QC tidak ditemukan.',
   verification_failed: 'Verifikasi belum berhasil dijalankan.',
   technician_result_required: 'Hasil pekerjaan teknisi belum dikirim.',
+  conflicting_technician_result:
+    'Laporan sudah dikirim dan belum ditolak, jadi tidak bisa diubah. Tunggu hasil verifikasi.',
+  no_technicians: 'Belum ada teknisi di Konteks bisnis, jadi tidak ada yang bisa ditugaskan.',
+  no_slot_before_deadline: 'Tidak ada slot kosong sebelum tenggat prioritas ini.',
 }
 
 /** True when the user cancelled, which is not a failure to report. */
@@ -116,6 +120,9 @@ export function errorCopy(error: unknown): string {
   if (MESSAGES[msg]) return MESSAGES[msg]
   if (msg.startsWith('unsupported_extension:')) {
     return `Jenis berkas ${msg.split(':')[1]} belum didukung.`
+  }
+  if (msg.startsWith('technician_double_booked:')) {
+    return `Teknisi sudah punya pekerjaan di jam itu — ${msg.split(':').slice(1).join(':')}.`
   }
   if (msg.startsWith('invalid_transition:')) {
     const [from, to] = msg.split(':')[1].split('->')
@@ -278,6 +285,10 @@ export const api = {
     request<{ id: string; status: string; verification: Verification; verified_at: string }>(
       `/api/v1/work-orders/${id}/verify`, { method: 'POST' },
     ),
+  /** Coordinator override of who does the job and when. 409 when double-booked. */
+  reassign: (id: string, body: { technician: string; start: string; end: string }) =>
+    request<WorkOrder>(`/api/v1/work-orders/${id}/assignment`, { method: 'PUT', body: JSON.stringify(body) }),
+
   workOrderReport: (id: string) => request<MaintenanceReport>(`/api/v1/work-orders/${id}/report`),
   exportWorkOrder: (id: string, format: 'json' | 'csv' = 'json') => requestFile(`/api/v1/work-orders/${id}/export?format=${format}`),
 }

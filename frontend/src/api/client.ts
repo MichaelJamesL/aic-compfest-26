@@ -6,7 +6,9 @@ import type {
   ApiErrorBody,
   Asset,
   AssetInput,
+  BaselineFit,
   BusinessContext,
+  ModelFit,
   Capabilities,
   DocumentOut,
   Reading,
@@ -218,12 +220,25 @@ export const api = {
       body: JSON.stringify({ condition }),
     }),
 
-  /** Full replace, not a patch — always send every field. API.md gotcha 2. */
-  setBusinessContext: (assetId: string, body: BusinessContext) =>
-    request<BusinessContext>(`/api/v1/assets/${assetId}/business-context`, {
+  businessContext: () => request<BusinessContext>('/api/v1/business-context'),
+  /** Factory-wide, and a full replace, not a patch — always send every field. */
+  setBusinessContext: (body: BusinessContext) =>
+    request<BusinessContext>('/api/v1/business-context', {
       method: 'PUT',
       body: JSON.stringify(body),
     }),
+
+  /** Fits the anomaly baseline from the readings already stored for the machine. */
+  fitBaseline: (assetId: string) =>
+    request<BaselineFit>(`/api/v1/assets/${assetId}/baseline`, { method: 'POST' }),
+
+  /** Reference images of a GOOD unit — the bank is keyed by product, not by machine. */
+  trainModel: (assetId: string, files: File[], product?: string) => {
+    const form = new FormData()
+    files.forEach((file) => form.append('files', file))
+    if (product) form.append('product', product)
+    return request<ModelFit>(`/api/v1/assets/${assetId}/models`, { method: 'POST', body: form })
+  },
 
   uploadQCBatch: (assetId: string, files: File[]) => {
     const form = new FormData()

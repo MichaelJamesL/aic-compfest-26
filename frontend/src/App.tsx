@@ -1,6 +1,8 @@
 import { Navigate, Route, Routes } from 'react-router'
 import { SetupScreen } from './screens/Setup'
 import { AnalyzeScreen } from './screens/Analyze'
+import { BusinessContextScreen } from './screens/BusinessContext'
+import { NewMachineScreen } from './screens/NewMachine'
 import { AnalysisResultScreen } from './screens/AnalysisResult'
 import { WorkOrdersScreen } from './screens/WorkOrders'
 import { WorkOrderDetailScreen } from './screens/WorkOrderDetail'
@@ -13,6 +15,8 @@ export default function App() {
     <Routes>
       <Route path="/" element={<Navigate to="/analyze" replace />} />
       <Route path="/setup" element={<SetupScreen />} />
+      <Route path="/machines/new" element={<NewMachineScreen />} />
+      <Route path="/business-context" element={<BusinessContextScreen />} />
       <Route path="/analyze" element={<AnalyzeScreen />} />
       <Route path="/analysis/:id" element={<AnalysisResultScreen />} />
       <Route path="/analysis/:id/compare" element={<CompareScreen />} />

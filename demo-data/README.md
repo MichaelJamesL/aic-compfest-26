@@ -10,7 +10,9 @@ demo-data/
   readings/<ID>.csv       PLC export per machine (tag, value, unit, recorded_at)
   maintenance-history.csv 35 records across all machines
   business-context.json   shifts, technician roster, warehouse stock, operator reports
-  docs/                   8 real vendor/regulator PDFs + 3 Indonesian SOPs
+  docs/                   9 real vendor/regulator PDFs + 3 Indonesian SOPs
+  qc/reference/           20 known-good part photos, to fit the PatchCore model
+  qc/batches/<ID>/        one end-of-shift inspection batch per mill
   source/ai4i2020.csv     upstream dataset the mill readings come from
   make_demo_data.py       regenerates the CSVs (timestamps relative to now)
   seed.py                 pushes everything into a running backend
@@ -34,7 +36,9 @@ It walks the same endpoints a person would: `POST /api/v1/assets` per machine,
 (fits the anomaly baseline on the readings just imported),
 `POST /api/v1/maintenance-records/import`, `PUT /api/v1/business-context`
 (factory-wide), `PUT /api/v1/assets/{id}/condition` (the per-machine operator
-report), and `POST /api/v1/knowledge/documents` per PDF.
+report), `POST /api/v1/knowledge/documents` per PDF, and for visual QC
+`POST /api/v1/assets/{id}/models` (fits PatchCore on the reference photos)
+followed by `POST /api/v1/assets/{id}/qc-batches` per inspection batch.
 
 To demo the upload flow by hand instead, every file here goes through a UI path
 as-is. The CSV asset importer only reads `name`, `asset_type`, `criticality` and
@@ -63,6 +67,37 @@ PUMP-01 is the machine to demo end to end: the sensor signature, the SOP, the
 maintenance history, the spare-part shortage and the operator report all have to
 line up in one recommendation.
 
+## Visual QC
+
+The mills machine four-lug flanged nuts (product code `metal-nut-4lug`). QC
+photographs a sample at the end of each shift and the batch goes to the engine
+alongside the sensor data — a hot spindle shows up as scratches and
+discolouration before it shows up as a breakdown, which is the link IK-CNC-003
+section 7 spells out.
+
+| Set | Contents |
+| --- | --- |
+| `qc/reference/metal-nut-4lug/` | 20 known-good parts. `POST /assets/{id}/models` fits the PatchCore memory bank on these. |
+| `qc/batches/CNC-MILL-01/` | 8 parts off the failing mill: 3 good, 2 scratched, 2 bent, 1 discoloured. Filenames carry the ground truth. |
+| `qc/batches/CNC-MILL-02/` | 6 parts off the healthy mill, all good. |
+
+Attach a batch to an analysis with `{"qc_batch_id": "<id>"}` — `seed.py` prints
+the ids it created. Defect detection needs the vision extra
+(`uv sync --extra vision` in `ai-engine`, i.e. anomalib); without it the batches
+still upload and appear in the analysis snapshot, just with no findings.
+
+Two banks get fitted from the same reference set, under the product name and
+under the asset id, because the engine inspects the batch images under
+`batch.product` and then the same paths again under `asset.id`
+(`ai-engine/src/context.py`). One fit would leave the second call without a
+bank.
+
+The images are **MVTec AD** (`metal_nut`), CC BY-NC-SA 4.0 — non-commercial,
+share-alike. They are downloaded on demand by `make_demo_data.py` and
+**not committed**; `qc/.gitignore` keeps them out and `qc/LICENSE-mvtec.txt`
+carries the licence. Cite Bergmann, Fauser, Sattlegger and Steger, *MVTec AD — A
+Comprehensive Real-World Dataset for Unsupervised Anomaly Detection*, CVPR 2019.
+
 ## Where the data comes from
 
 **Real, downloaded:**
@@ -71,12 +106,14 @@ line up in one recommendation.
 | --- | --- |
 | `source/ai4i2020.csv`, `readings/CNC-MILL-0{1,2}.csv` | [UCI AI4I 2020 Predictive Maintenance Dataset](https://archive.ics.uci.edu/dataset/601/ai4i+2020+predictive+maintenance+dataset) (CC BY 4.0) — 10,000 labelled milling cycles |
 | `docs/manual-bridgeport-series-i-milling-machine.pdf` | [Bridgeport Series I mill manual](https://me.berkeley.edu/wp-content/uploads/2020/09/Bridgeport-Vertical-Mill-Manual.pdf) (UC Berkeley ME) |
+| `docs/tds-coolant-castrol-syntilo-9902.pdf` | [Castrol Syntilo 9902 technical data sheet](https://cdn.mscdirect.com/global/images/ProductDataSheet/pds_sku_1180520_technicaldatasheet_technicalspecifications_spec.pdf) (via MSC Direct) — 2 pages, the coolant the mills run |
 | `docs/manual-pump-grundfos-nk-nkg.pdf` | [Grundfos NK, NKG installation and operating instructions](https://api.grundfos.com/literature/Grundfosliterature-4609696.pdf) |
 | `docs/manual-motor-abb-low-voltage.pdf` | [ABB low voltage motors installation, operation and maintenance manual](https://docs.rs-online.com/6952/0900766b81294de7.pdf) |
 | `docs/manual-screw-air-compressor-oppair.pdf` | [OPPAIR screw air compressor user manual](https://www.oppaircompressor.com/uploads/OPPAIR-User-Manual.pdf) |
 | `docs/manual-bearing-installation-maintenance-skf.pdf` | [SKF bearing installation and maintenance guide](https://cdn.skfmediahub.skf.com/api/public/0901d1968024f02a/pdf_preview_medium/0901d1968024f02a_pdf_preview_medium.pdf) |
 | `docs/manual-bearing-handbook-electric-motors-skf.pdf` | [SKF bearing handbook for electric motors](https://cdn.skfmediahub.skf.com/api/public/0901d19680056c36/pdf_preview_medium/0901d19680056c36_pdf_preview_medium.pdf) |
 | `docs/manual-pump-life-cycle-costs-doe.pdf` | [Pump life cycle costs, US DOE / Hydraulic Institute](https://www.energy.gov/sites/prod/files/2014/05/f16/pumplcc_1001.pdf) |
+| `qc/reference/`, `qc/batches/` | [MVTec AD, `metal_nut` category](https://www.mvtec.com/company/research/datasets/mvtec-ad) (CC BY-NC-SA 4.0), fetched from a [Hugging Face mirror](https://huggingface.co/datasets/MSherbinii/mvtec-ad-metal-nut) |
 | `docs/sop-lockout-tagout-osha-3120.pdf` | [OSHA 3120, control of hazardous energy](https://www.osha.gov/sites/default/files/publications/osha3120.pdf) |
 
 Third-party documents, used here as demo inputs under their own licences.

@@ -542,6 +542,68 @@ def test_resolved_verification_retries_failed_ingestion_without_duplicates(monke
             assert db.query(models.MaintenanceRecord).filter_by(asset_id=wo["asset_id"]).count() == 1
             assert db.query(models.Document).filter_by(asset_id=wo["asset_id"], kind="maintenance_history").count() == 1
 
+def _to_in_progress(client, oid):
+    for path, headers in (("submit", {}), ("approve", MANAGER), ("schedule", {}), ("start", {})):
+        client.post(f"/api/v1/work-orders/{oid}/{path}", headers=headers)
+
+
+def test_a_rejected_report_can_be_redone_and_resubmitted(monkeypatch):
+    verdicts = iter(["not_resolved", "resolved"])
+    class Engine:
+        mode = "test"
+        def analyze(self, request):
+            return {"health_score": 50, "priority": "high", "model": "test", "work_order": {"title": "Fix"}}
+        def verify(self, work_order, result):
+            return {"verdict": next(verdicts), "evidence": [], "follow_up": ["ganti bearing"]}
+    monkeypatch.setattr(analysis_service, "engine_factory", lambda settings: Engine())
+    with TestClient(app) as client:
+        wo = _work_order(client); oid = wo["id"]
+        _to_in_progress(client, oid)
+
+        client.post(f"/api/v1/work-orders/{oid}/result", headers=TECHNICIAN,
+                    json={"work_done": "dibersihkan", "findings": "kotor"})
+        rejected = client.post(f"/api/v1/work-orders/{oid}/verify")
+        assert rejected.json()["verification"]["verdict"] == "not_resolved"
+        assert rejected.json()["status"] == "in_progress"
+
+        # the technician redoes the work and reports again
+        again = client.post(f"/api/v1/work-orders/{oid}/result", headers=TECHNICIAN,
+                            json={"work_done": "bearing diganti", "findings": "aus"})
+        assert again.status_code == 200, again.text
+        assert again.json()["result"]["work_done"] == "bearing diganti"
+        assert again.json()["attempts"] == 2
+
+        order = next(o for o in client.get("/api/v1/work-orders").json() if o["id"] == oid)
+        # the rejected attempt is kept, not overwritten
+        attempts = order["details_json"]["result_attempts"]
+        assert len(attempts) == 1
+        assert attempts[0]["result"]["work_done"] == "dibersihkan"
+        assert attempts[0]["verification"]["verdict"] == "not_resolved"
+        # and the stale verdict is gone, so verification runs again
+        assert order["verification_json"] is None
+
+        accepted = client.post(f"/api/v1/work-orders/{oid}/verify")
+        assert accepted.json()["verification"]["verdict"] == "resolved"
+        assert accepted.json()["status"] == "completed"
+
+
+def test_a_standing_report_still_cannot_be_rewritten(monkeypatch):
+    class Engine:
+        mode = "test"
+        def analyze(self, request):
+            return {"health_score": 50, "priority": "high", "model": "test", "work_order": {"title": "Fix"}}
+    monkeypatch.setattr(analysis_service, "engine_factory", lambda settings: Engine())
+    with TestClient(app) as client:
+        wo = _work_order(client); oid = wo["id"]
+        _to_in_progress(client, oid)
+        client.post(f"/api/v1/work-orders/{oid}/result", headers=TECHNICIAN, json={"work_done": "a", "findings": ""})
+        # not verified yet, so nothing was rejected: the report stands
+        clash = client.post(f"/api/v1/work-orders/{oid}/result", headers=TECHNICIAN,
+                            json={"work_done": "b", "findings": ""})
+        assert clash.status_code == 409
+        assert clash.json()["error"]["message"] == "conflicting_technician_result"
+
+
 def test_work_order_export_has_headers_and_tenant_isolation():
     with TestClient(app) as client:
         wo = _work_order(client)

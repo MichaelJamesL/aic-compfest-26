@@ -40,12 +40,35 @@ def transition(db, order, target, identity, request_id, reason: str | None = Non
     return order
 
 
+def report_was_rejected(order) -> bool:
+    """A verdict that is not `resolved` sends the job back to the technician."""
+    return bool(order.verification_json) and order.verification_json.get("verdict") != "resolved"
+
+
 def submit_technician_result(db, order, payload, identity, request_id):
     result = payload.model_dump(mode="json")
     if order.technician_result_json is not None:
-        if order.technician_result_json != result:
+        if order.technician_result_json == result:
+            return order
+        if not report_was_rejected(order):
+            # Write-once while the report still stands: a coordinator verifies
+            # against the evidence submitted, so it cannot change underneath them.
             raise ValueError("conflicting_technician_result")
-        return order
+        # Rejected: the technician redoes the work and reports again. Keep the
+        # rejected attempt — it is the record of what was tried and why it failed
+        # — and clear the verdict so verification runs fresh on the new evidence.
+        details = dict(order.details_json or {})
+        details.setdefault("result_attempts", []).append({
+            "result": order.technician_result_json,
+            "verification": order.verification_json,
+            "submitted_at": order.result_submitted_at.isoformat() if order.result_submitted_at else None,
+            "verified_at": order.verified_at.isoformat() if order.verified_at else None,
+        })
+        order.details_json = details
+        order.verification_json = None
+        order.verified_at = None
+        audit(db, identity, request_id, "work_order.result_resubmitted", "work_order", order.id,
+              before={"attempt": len(details["result_attempts"])}, after={"result": result})
     if order.status != "in_progress":
         raise ValueError(f"invalid_transition:{order.status}->result")
     order.technician_result_json = result

@@ -111,7 +111,9 @@ def register_routes(app):
         if not w: raise ValueError("work_order_not_found")
         require_role(identity, ("technician",))
         w = submit_technician_result(db, w, data, identity, request.state.request_id)
-        return {"id": w.id, "status": w.status, "result": w.technician_result_json, "result_submitted_at": w.result_submitted_at}
+        return {"id": w.id, "status": w.status, "result": w.technician_result_json,
+                "result_submitted_at": w.result_submitted_at,
+                "attempts": len((w.details_json or {}).get("result_attempts", [])) + 1}
 
     @app.post("/api/v1/work-orders/{order_id}/verify")
     def verify(order_id: str, request: Request, db: Session = Depends(get_db), identity: Identity = Depends(get_identity)):

@@ -35,15 +35,25 @@ def init_schema(conn: psycopg.Connection | None = None) -> None:
     close = conn is None
     conn = conn or connect()
     conn.execute("CREATE EXTENSION IF NOT EXISTS vector")
+    # A table built for a different embedding model is not upgradeable: cosine
+    # distance is undefined across dimensions, so the stored vectors are dead
+    # weight. Drop it and let the documents be re-indexed — their extracted text
+    # lives in the app DB, so nothing is unrecoverable.
+    existing = conn.execute(
+        "SELECT atttypmod FROM pg_attribute"
+        " WHERE attrelid = to_regclass('doc_chunk') AND attname = 'embedding'"
+    ).fetchall()
+    if existing and existing[0][0] != DIM:
+        conn.execute("DROP TABLE doc_chunk")
     conn.execute(
-        """
+        f"""
         CREATE TABLE IF NOT EXISTS doc_chunk (
           id BIGSERIAL PRIMARY KEY,
           factory_id TEXT,
           asset_id TEXT,
           doc_id TEXT, doc_title TEXT, kind TEXT,
           chunk_index INT, text TEXT,
-          embedding VECTOR(1024)
+          embedding VECTOR({DIM})
         )
         """
     )

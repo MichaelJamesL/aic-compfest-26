@@ -33,7 +33,7 @@ CREATE TABLE IF NOT EXISTS doc_chunk (
   kind TEXT,
   chunk_index INT,
   text TEXT,
-  embedding VECTOR(1024)
+  embedding VECTOR(384)
 );
 ALTER TABLE doc_chunk ADD COLUMN IF NOT EXISTS factory_id TEXT;
 CREATE INDEX IF NOT EXISTS doc_chunk_embedding_idx

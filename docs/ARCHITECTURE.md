@@ -42,7 +42,7 @@ Two databases are in play and they are **not** the same store:
   readings, documents metadata, business context, analysis runs, work orders,
   audit events. SQLite by default; Postgres for deployment.
 - **Knowledge base** (`ai-engine/src/knowledge.py`, `DATABASE_URL` in the
-  ai-engine env) — one table, `doc_chunk`, with a 1024-dim `VECTOR` column and an
+  ai-engine env) — one table, `doc_chunk`, with a 384-dim `VECTOR` column and an
   HNSW index. Postgres + pgvector only.
 
 The engine reads `AIENGINE_DATABASE_URL`; the backend reads `DATABASE_URL`.

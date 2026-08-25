@@ -21,6 +21,9 @@ class FakeConnection:
     def execute(self, sql, params=None):
         self.calls.append((sql, params))
         normalized = " ".join(sql.split())
+        if normalized.startswith("SELECT atttypmod"):
+            # init_schema's dimension check — a matching column, so no drop.
+            return SimpleNamespace(fetchall=lambda: [(knowledge.DIM,)])
         if normalized.startswith("DELETE FROM doc_chunk"):
             self.pending_chunks = [
                 chunk for chunk in self.pending_chunks
@@ -92,7 +95,7 @@ def test_search_scopes_global_and_asset_chunks_to_factory(monkeypatch):
     result = knowledge.search("pump", "asset-a", "factory-a", conn=conn)
 
     assert result[0].similarity == 0.9
-    search = next(call for call in conn.calls if call[0].lstrip().startswith("SELECT"))
+    search = next(call for call in conn.calls if call[0].lstrip().startswith("SELECT doc_title"))
     assert search[1][1:3] == ("factory-a", "asset-a")
 
 
